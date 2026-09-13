@@ -142,9 +142,13 @@ What it sets up:
   - `filter-verbose-output.sh` (`PreToolUse`, matcher `Bash`) - registered.
   - `destructive-git-guard.sh` (`PreToolUse`, matcher `Bash`, ordered before
     `filter-verbose-output.sh` in the same matcher block) - registered. Catches destructive git
-    flags (force-push, `reset --hard`, `clean -f`, `branch -D`, `commit --no-verify`, `rebase -i`)
-    regardless of where the flag falls on the command line, closing the gap `permissions.deny`'s
-    prefix-only matching leaves open - see `specs/behaviors.md`'s Destructive Git Guard section.
+    flags (force-push, including a `+` refspec prefix; `reset --hard`, `clean -f`, `branch -D`,
+    `commit --no-verify`, `rebase -i`) regardless of where the flag falls on the command line, and
+    regardless of where the git call sits in the command string - each segment of a compound
+    command is inspected, and git's own pre-subcommand options are skipped, so `cd repo && git
+    push --force` and `git -C repo push --force` are caught too. Closes the gap
+    `permissions.deny`'s prefix-only matching leaves open - see `specs/behaviors.md`'s Destructive
+    Git Guard section.
   - `health-check.sh` - logic only, deliberately NOT registered and meant to stay that way: the
     full-tree mechanical half of the periodic self-evaluation, run by hand rather than on any hook
     path. Checks JSON validity of every tracked `*.json`, that every command `settings.json` points
