@@ -1,0 +1,4 @@
+{"type":"user","promptSource":"typed","message":{"content":"hi"}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"hello there"}]}}
+{"type":"user","promptSource":"typed","message":{"content":"thanks"}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"you're welcome"}]}}

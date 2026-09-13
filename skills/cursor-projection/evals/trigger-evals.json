@@ -1,0 +1,18 @@
+[
+  {"query": "does cursor actually honor a skill's model: frontmatter or does it ignore it? i pinned opus on one and it doesn't seem to be taking", "should_trigger": true},
+  {"query": "sync the hooks over to cursor - i added two new ones to settings.json this morning and cursor's still running the old set", "should_trigger": true},
+  {"query": "set up cursor on this machine so it picks up the same rules and hooks as claude code", "should_trigger": true},
+  {"query": "update my cursor user rules, i changed the working style section in CLAUDE.md and want that reflected", "should_trigger": true},
+  {"query": "what carries over from claude code to cursor and what doesn't? trying to figure out if i can rely on the same setup in both", "should_trigger": true},
+  {"query": "cursor isn't picking up my skills at all. does it even read the same directory or is there a separate projection step i'm missing?", "should_trigger": true},
+  {"query": "check whether the cursor projection is current - i don't want to apply anything yet, just tell me what's out of date", "should_trigger": true},
+  {"query": "i'm getting different behavior in cursor vs claude code for the same hook. is the payload shape different between the two?", "should_trigger": true},
+  {"query": "audit my skills directory and tell me which ones are missing eval sets or spec entries", "should_trigger": false},
+  {"query": "proofread skills/cursor-projection/SKILL.md, the verification section reads awkwardly and i think there's a broken reference", "should_trigger": false},
+  {"query": "write a new skill for projecting config into vscode, model it on how the cursor one works", "should_trigger": false},
+  {"query": "my cursor editor keeps reformatting on save and i want it to stop - where's that setting?", "should_trigger": false},
+  {"query": "explain what a PreToolUse hook receives as input, generally - not about cursor, just the claude code contract", "should_trigger": false},
+  {"query": "run the health check and tell me if anything's stale", "should_trigger": false},
+  {"query": "should we even keep supporting cursor? feels like maintaining two projections for one user is a lot of overhead", "should_trigger": false},
+  {"query": "the statusline is showing the wrong branch name in cursor, can you debug scripts/statusline-cursor.sh?", "should_trigger": false}
+]

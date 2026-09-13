@@ -1,0 +1,12 @@
+{
+  "version": "1.2.3", "cwd": "/nonexistent/workspace",
+  "model": {"display_name": "Sonnet 5"}, "effort": {"level": "medium"},
+  "thinking": {"enabled": true},
+  "context_window": {"total_input_tokens": 15000, "total_output_tokens": 2000, "used_percentage": 8.5,
+    "current_usage": {"cache_read_input_tokens": 12000, "cache_creation_input_tokens": 1000},
+    "context_window_size": 200000},
+  "cost": {"total_cost_usd": 0.42, "total_duration_ms": 65000},
+  "exceeds_200k_tokens": false,
+  "rate_limits": {"five_hour": {"used_percentage": 12, "resets_at": 9999999999},
+                  "seven_day": {"used_percentage": 30, "resets_at": 9999999999}}
+}

@@ -1,0 +1,104 @@
+{
+  "skill_name": "execute-plan",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to add a /health endpoint that checks DB connectivity and returns 200/503 - can you figure out the best approach and implement it?",
+      "expected_output": "Does not trigger execute-plan. The skill is manual-only (disable-model-invocation: true); this prompt, however plan-shaped, must not auto-invoke it. It may trigger write-plan instead, or be handled as an ordinary implementation request, but execute-plan itself never fires on its own.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not invoke execute-plan's orchestration behavior (subagent dispatch ladder, worktree-by-default execution, per-unit [x] marks) in response to this natural-language prompt",
+        "[deterministic] Does not claim to have run execute-plan"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/execute-plan add-health-endpoint",
+      "expected_output": "Manual invocation locates the named plan (by slug) in the resolved plans directory, confirms the working state is clean, summarizes the blast radius (waves, files, model plan) before dispatching, and then dispatches every substantive unit to a subagent rather than implementing any unit itself.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Resolves the plan by the given slug in the plans directory (using the same priority order as write-plan) before doing anything else",
+        "[deterministic] Confirms the working state is clean (no uncommitted changes that would corrupt diffs or tests) before dispatching any unit",
+        "[deterministic] Summarizes the blast radius (the waves, the files each will touch, and the model plan) and pauses for confirmation before dispatching, rather than silently starting",
+        "[deterministic] Dispatches the plan's units to subagents and does not perform any unit's initial implementation itself"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/execute-plan refactor-auth-module - one of the units already has a [x] mark from a previous run that got interrupted.",
+      "expected_output": "Resumable execution: skips the already-marked-complete unit and resumes from the first unmarked unit, rather than re-running everything from the start.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not re-dispatch the unit already marked [x] as complete",
+        "[deterministic] Resumes from the first unmarked unit",
+        "[judgment] Confirms or re-verifies the already-marked unit's acceptance gate is still actually satisfied before trusting the old mark, rather than blindly trusting a stale mark from an interrupted run"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "/execute-plan add-rate-limiting - a dispatched unit for the gateway config change comes back reporting the file it was told to edit doesn't have the section the plan described.",
+      "expected_output": "Follows the mechanical-trouble escalation ladder: retries the same unit once at the same tier, then escalates one tier up with the failure context if it fails again, rather than skipping the unit, guessing, or halting immediately on the first failure.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Retries the same unit once, same model tier, same self-contained prompt, before escalating",
+        "[deterministic] If the retry also fails, re-dispatches the same unit one tier up (for example Haiku to Sonnet, or Sonnet to Opus) with the failure context included",
+        "[deterministic] Does not skip, half-apply, or improvise a fix for the unit outside the ladder",
+        "[deterministic] Steps back down to the unit's default tier for later units after a successful escalation"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "/execute-plan migrate-users-table - a dispatched subagent reports back that it can't proceed because the plan doesn't say whether the new column should have a default value, and the three services disagree on what NULL should mean here.",
+      "expected_output": "Recognizes this as genuine ambiguity (a missing/contradictory decision), not mechanical trouble, and halts to ask the user rather than retrying or escalating the model tier - a stronger model would only guess at the same missing decision.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not retry the unit or escalate the model tier in response to this specific failure",
+        "[deterministic] Halts and reports the specific missing decision (the default-value/NULL-semantics question) to the user rather than guessing",
+        "[judgment] Explains why this is treated as a halt rather than an escalation (genuine ambiguity vs. mechanical trouble)"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "/execute-plan add-dark-mode - after finishing all units, the plan's stated Definition of Done includes 'the theme toggle persists across a page reload', but no unit actually implemented persistence.",
+      "expected_output": "Final verification catches that all units passing their local checks does not by itself prove the Definition of Done is met; reports the gap rather than declaring the run complete.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Runs a final verification against the plan's stated Definition of Done, not just each unit's local acceptance check",
+        "[deterministic] Reports the unmet Definition-of-Done item (persistence across reload) rather than reporting the run as fully successful",
+        "[deterministic] Does not silently mark the run complete when a stated Definition-of-Done condition is not actually satisfied"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "/execute-plan refactor-billing-service - please spin up a team of agents that can talk to each other to get through this faster.",
+      "expected_output": "Refuses to use or propose an agent-team feature (for example Claude Code's agent teams) regardless of the request, and explains why (fixed teammate models break the escalation ladder, peer messaging breaks self-contained-prompt isolation), continuing with plain stateless subagent dispatch instead.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not spawn or propose an agent-team / peer-messaging feature even though the user asked for it",
+        "[judgment] Explains why (breaks the escalation ladder and self-contained-prompt isolation) rather than silently ignoring the request",
+        "[deterministic] Proceeds with plain, stateless subagent dispatch instead"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "/execute-plan add-caching-layer",
+      "expected_output": "Runs in a dedicated git worktree by default (not the live checkout) unless the plan explicitly states a reason to use the live checkout, and confirms this before starting.",
+      "files": [],
+      "expectations": [
+        "[deterministic] States that it is running in a dedicated worktree, or explicitly states the plan's stated reason for using the live checkout instead",
+        "[deterministic] Every subagent-facing path used during dispatch is absolute and under the stated working directory"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "/execute-plan add-caching-layer - after several units, three have each needed one retry and one escalation so far, and a fourth unit just failed its first attempt.",
+      "expected_output": "Tracks the run's cumulative retry/escalation count against the plan's stated circuit-breaker threshold, and if the count is at or past that threshold, pauses and reports rather than continuing to escalate indefinitely.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Tracks the cumulative count of retries and escalations across the whole run, not just per-unit",
+        "[judgment] Compares that count against the plan's stated circuit-breaker threshold before deciding whether to continue or pause",
+        "[deterministic] If the threshold is reached or exceeded, pauses and reports rather than silently continuing to retry/escalate"
+      ]
+    }
+  ]
+}

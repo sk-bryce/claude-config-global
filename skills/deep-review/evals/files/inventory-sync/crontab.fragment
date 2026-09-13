@@ -1,0 +1,2 @@
+# inventory sync
+*/15 * * * * cd /srv/inventory-sync && ./sync_inventory.py >> sync.log 2>&1

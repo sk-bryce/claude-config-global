@@ -1,0 +1,99 @@
+{
+  "skill_name": "write-plan",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Can you plan out migrating our REST API from Express to Fastify? It touches routing, middleware, and our error handler.",
+      "expected_output": "Auto-triggers write-plan and produces a meaningful-slug Markdown plan file with a one-line Goal, a testable Definition of Done, self-contained units grouped into dependency waves, a model-role map, per-unit acceptance gates, and the embedded orchestration protocol block with every placeholder filled in.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Writes the plan to a Markdown file with a meaningful (not generic 'plan.md') slug name, in the resolved plans directory",
+        "[deterministic] The plan states a one-line Goal near the top",
+        "[deterministic] The plan states a testable Definition of Done (checkable conditions, not a vague aspiration)",
+        "[deterministic] Every unit inlines what it needs directly (file paths, exact change) rather than any unit saying to 'consult the plan' or 'see above' for its own content",
+        "[deterministic] Units are grouped into explicit dependency waves or otherwise state their dependency order",
+        "[deterministic] Includes a model-role map (which tier does which kind of unit)",
+        "[deterministic] Each unit has a stated acceptance gate (a check, ideally command-shaped, that proves it done)",
+        "[deterministic] The embedded orchestration protocol block from reference/subagent-orchestration.md is present with its placeholders filled in, not left as literal <...> text",
+        "[judgment] Runs a refinement round before presenting the plan as finished, rather than a single draft-and-stop"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I'm already in Plan Mode and drafted this plan with you: 'Add a /health endpoint that checks DB connectivity and returns 200/503.' Can you finalize this into something executable?",
+      "expected_output": "Recognizes the native-plan-already-present case: ingests and upgrades the existing plan content into the full write-plan artifact (Goal, Definition of Done, self-contained units, orchestration block) rather than starting over from scratch or double-planning.",
+      "files": [],
+      "expectations": [
+        "[judgment] Treats the existing native-mode plan content as the starting point to upgrade, rather than discarding it and re-interviewing from zero",
+        "[deterministic] The resulting plan still has all the required parts (Goal, Definition of Done, self-contained units, orchestration block) even though it started from an existing draft",
+        "[deterministic] Does not produce two separate competing plan artifacts for the same request"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "What's a good name for a function that converts Celsius to Fahrenheit?",
+      "expected_output": "Does not trigger write-plan. This is a one-line naming question, not a planning request, and has nothing to do with producing an executable multi-step plan.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not create or reference a plan file in response to this prompt",
+        "[deterministic] Does not invoke the orchestration protocol or model-role-map machinery",
+        "[deterministic] Answers the naming question directly and briefly"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Can you make a plan for renaming the local variable `tmp` to `elapsedMs` in this one function?",
+      "expected_output": "Recognizes this as a genuinely trivial, low-risk task and uses the right-sizing escape hatch: either does the rename directly, or produces a minimal plan explicitly marked for direct execution rather than subagent fan-out, instead of manufacturing dependency waves and a model-role map for a one-line change.",
+      "files": [],
+      "expectations": [
+        "[judgment] Recognizes the task as trivial/low-risk rather than forcing the full heavyweight plan structure onto it",
+        "[deterministic] Does not fabricate multiple dependency waves or a multi-row model-role map for a single-line rename",
+        "[judgment] Either performs the rename directly or produces a plan that itself says this unit is marked for direct execution rather than subagent dispatch"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Design an approach for adding rate limiting to our public API gateway, including which endpoints get which limits.",
+      "expected_output": "Auto-triggers write-plan (matches the 'design an approach for ...' trigger phrase) and resolves the plans directory per the documented priority order, producing a plan with explicit dependency waves given the multi-part nature of the work (limit policy design, gateway config, per-endpoint rollout).",
+      "files": [],
+      "expectations": [
+        "[deterministic] Resolves and states which plans directory it used, following the priority order (explicit native setting, then project .claude/plans, then the global ${CLAUDE_CONFIG_DIR:-~/.claude}/plans)",
+        "[deterministic] Produces explicit dependency waves given the multi-part nature of the work",
+        "[deterministic] States the retry/escalation circuit-breaker threshold for the run",
+        "[deterministic] States the commit policy (or 'stop at ready for review') rather than leaving it as an unfilled placeholder"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Plan a database migration to add a new nullable column to the users table across our three services.",
+      "expected_output": "Produces a plan whose orchestration block explicitly instructs the executing agent to use plain subagents only and never propose or spawn an agent team, regardless of what features are enabled in the environment.",
+      "files": [],
+      "expectations": [
+        "[deterministic] The plan's embedded orchestration section explicitly states not to propose or spawn an agent team, even if one is enabled in the environment",
+        "[deterministic] The plan names the authoritative build/test/lint gates for verifying the migration, not just 'run the tests'",
+        "[judgment] Sequences the three services' migrations with an explicit dependency order rather than implying they can run in one uncoordinated parallel wave if they share risk (e.g. a shared migration tool or ordering constraint)"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Make a plan for refactoring our auth module. It's a mess, no strong opinion on approach - just make it better.",
+      "expected_output": "Even with an underspecified request, produces a plan with a concrete, testable Definition of Done and asks a clarifying question first only if the ambiguity is genuinely blocking (for example, what 'better' means, or the scope boundary), rather than either guessing silently or writing a plan whose Definition of Done is just as vague as the prompt.",
+      "files": [],
+      "expectations": [
+        "[judgment] Either asks a clarifying question about what 'better' means / the scope boundary before planning, or states a concrete, testable Definition of Done rather than echoing the prompt's own vagueness",
+        "[deterministic] If it proceeds without asking, the resulting Definition of Done is stated as checkable conditions, not just 'the code is cleaner'"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Plan out adding dark mode to our settings page.",
+      "expected_output": "Produces a plan where every subagent-facing unit inlines its own absolute file paths and exact content/diff, with none of them instructing a subagent to open or consult the plan document itself.",
+      "files": [],
+      "expectations": [
+        "[deterministic] No unit's dispatched-prompt content tells a subagent to open, locate, or consult this plan or any other document to find its task",
+        "[deterministic] Each unit's content includes the absolute file path(s) it touches",
+        "[deterministic] The plan states a named working directory (a worktree by default, or the live checkout with a stated reason) that every unit's paths are relative/absolute to"
+      ]
+    }
+  ]
+}

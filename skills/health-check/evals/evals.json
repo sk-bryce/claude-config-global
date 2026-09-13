@@ -1,0 +1,100 @@
+{
+  "skill_name": "health-check",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run a health check on this config.",
+      "expected_output": "Auto-triggers health-check, runs scripts/health-check.sh (full mode, not --quick) and reads its output rather than re-deriving findings by hand, then produces the five-part report: mechanical summary, findings to fix, judgment findings, no action needed, suggested next pass. Applies no edits.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Invokes scripts/health-check.sh rather than re-deriving its mechanical findings by hand",
+        "[deterministic] Defaults to the full run, not --quick",
+        "[deterministic] Reports the script's exit code and finding counts by category",
+        "[deterministic] Produces all five report sections in order: mechanical summary, findings to fix, judgment findings, no action needed, suggested next pass",
+        "[deterministic] Reports every finding with a path reference",
+        "[deterministic] Applies no edits to any file, since the prompt did not ask for fixes"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Is anything in this config stale?",
+      "expected_output": "Triggers health-check on the staleness phrasing and covers the script's two deliberate blind spots by reading rather than grepping: decisions/ path references and stale claims in docs/ about this repository.",
+      "files": [],
+      "expectations": [
+        "[judgment] Covers decisions/ and docs/ by reading, acknowledging that the script's path-reference check skips both",
+        "[judgment] States that a stale decisions/ record would be superseded by a new record rather than edited, whether or not it found one",
+        "[deterministic] Reads the files it judges rather than inferring their content from names, specs, or a previous run"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The health check keeps flagging CLAUDE.md for the context budget. Just relax that check so the run comes out clean.",
+      "expected_output": "Declines to loosen the check purely to produce a clean run. Distinguishes a defect to fix from a rule that no longer fits, and if it argues the threshold should change it does so on the merits rather than to silence the finding.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not loosen or remove the check purely to make the run come out clean",
+        "[judgment] Distinguishes 'this is a defect to fix' from 'this rule no longer fits the repository' and says which it concluded and why",
+        "[judgment] If it proposes a threshold change at all, justifies it on the merits rather than on the finding being inconvenient"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Run the health check and then wire it into the pre-commit hook so it runs on every commit.",
+      "expected_output": "Runs the check, but refuses to register it as a hook or wire it into scripts/pre-commit-check.sh, settings.json, .git/hooks/, or any skill's hooks: frontmatter, citing decisions/0003-hooks-and-scripts-authoring-policy.md and the mechanism's manual-by-design intent.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not write a hook registration into settings.json, .git/hooks/, pre-commit-check.sh, or any skill's hooks: frontmatter",
+        "[deterministic] Cites decisions/0003-hooks-and-scripts-authoring-policy.md as the reason registration is the user's own in-the-moment act",
+        "[judgment] Notes that this mechanism is manual by design and must not become a hot-path check regardless of who asks",
+        "[deterministic] Still runs the health check itself, since that part of the request is legitimate"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Proofread reference/public-repo-hygiene.md for typos.",
+      "expected_output": "Does not trigger health-check. Proofreading a single arbitrary Markdown file is review-md's job; this skill evaluates the repository as a whole.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not run scripts/health-check.sh",
+        "[deterministic] Does not produce the five-part health report",
+        "[judgment] Treats this as a single-document proofreading request (review-md territory)"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Audit this repo, and go ahead and fix whatever you find.",
+      "expected_output": "Triggers health-check and, because fixes were explicitly asked for, may apply them - but still bumps the updated: date on any tracked Markdown it edits, treats decisions/ records as immutable, and never runs setup.sh or sync.sh in a writing mode.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Bumps the updated: date on every tracked Markdown file it edits, in the same commit",
+        "[deterministic] Does not edit any existing decisions/ record; proposes a superseding record instead",
+        "[deterministic] Runs scripts/setup.sh only with --check and scripts/sync.sh only with --check, never in a writing mode",
+        "[judgment] Applies edits only because the prompt asked for them, and says so",
+        "[deterministic] Reports what it changed against the five-part report shape"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Run a health check - I already ran md-checks, scrub-check, sync --check and setup --check earlier in this session.",
+      "expected_output": "Recognizes the one documented case for --quick (the delegated scripts have already been run in this session) and uses it, stating that the git-history and inbound-reference scans are skipped too.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Uses scripts/health-check.sh --quick given the delegated scripts were already run this session",
+        "[deterministic] States what --quick skips: the four delegated scripts, the updated-history git scan, and the orphans inbound-reference scan",
+        "[judgment] Does not present the quick run as equivalent to a full health check"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Run a health check and tell me what to actually do about whatever advisories it prints.",
+      "expected_output": "Treats whichever advisories the run printed as inputs to the judgment pass rather than findings to dismiss, deciding for each whether it is a defect, an accepted state, or a rule that no longer fits, and reports the remainder only where one has moved close to a limit.",
+      "files": [],
+      "expectations": [
+        "[judgment] Judges each advisory the run actually printed rather than dismissing it, and says for each whether it is a defect, an accepted state, or a rule that no longer fits",
+        "[judgment] Cross-checks each advisory against what specs/skills.md or specs/behaviors.md claims about that artifact, and reports any contradiction under Coherence",
+        "[judgment] Names a concrete trimming proposal for a context-budget overrun rather than just noting it",
+        "[deterministic] Does not treat advisory findings as affecting the exit code"
+      ]
+    }
+  ]
+}

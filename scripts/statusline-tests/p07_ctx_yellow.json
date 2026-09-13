@@ -1,0 +1,4 @@
+{"model": {"display_name": "Sonnet 5"},
+ "context_window": {"total_input_tokens": 119000, "total_output_tokens": 999, "used_percentage": 60,
+   "current_usage": {"cache_read_input_tokens": 110000, "cache_creation_input_tokens": 2000},
+   "context_window_size": 200000}}

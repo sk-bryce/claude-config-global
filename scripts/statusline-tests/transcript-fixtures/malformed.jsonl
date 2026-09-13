@@ -1,0 +1,4 @@
+{"type":"user","promptSource":"typed","message":{"content":"hi"}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read"}]}}
+not valid json at all
+{"type":"assistant","message":{"content":[{"type":"text","text":"done"}]}}

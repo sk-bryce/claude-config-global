@@ -1,0 +1,104 @@
+{
+  "skill_name": "skill-author",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I keep manually running terraform apply after eyeballing the plan for our staging environment - can you make me a skill that reviews the plan output and applies it if everything looks safe?",
+      "expected_output": "A proposed skill spec that flags the action as destructive (disable-model-invocation: true), gives a compliant 4-part description, and mentions checking for name collisions.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Sets disable-model-invocation: true in the proposed frontmatter because the skill can run terraform apply against real infrastructure",
+        "[deterministic] The proposed description starts with the exact phrase 'This skill should be used when the user asks to'",
+        "[deterministic] The proposed description includes 3 to 5 example trigger phrases in quotes",
+        "[deterministic] The proposed description ends with a scope statement (personal vs project)",
+        "[judgment] Explicitly explains why the action is considered destructive/dangerous, not just sets the flag silently",
+        "[deterministic] States that it checked (or would check) existing skill names under ~/.claude/skills/ for a collision before finalizing the name"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Can you make me a skill called review-md that checks Word documents for consistency issues?",
+      "expected_output": "Detects that review-md already exists as an unrelated Markdown-only skill and surfaces the naming collision as a question rather than silently overwriting or renaming.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Identifies that a skill named review-md already exists under ~/.claude/skills/",
+        "[judgment] Surfaces the naming collision as an explicit question/pause rather than silently finalizing a plan to overwrite or rename",
+        "[deterministic] Does not claim to have already created or overwritten the real review-md skill",
+        "[judgment] Does not silently pick a different name on the user's behalf without flagging the collision first"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I want a skill that, given an incident, gathers our recent deploys, error logs, and related past incidents into one timeline I can use to start a postmortem.",
+      "expected_output": "A proposed skill spec that flags the work as research-heavy (context: fork plus an agent value), with a compliant 4-part description.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Sets context: fork in the proposed frontmatter",
+        "[deterministic] Pairs context: fork with an explicit agent value (Explore, Plan, or general-purpose)",
+        "[deterministic] The proposed description starts with the exact phrase 'This skill should be used when the user asks to'",
+        "[deterministic] The proposed description includes 3 to 5 example trigger phrases in quotes",
+        "[judgment] Explains that the research-heavy / lots-of-intermediate-output nature of gathering deploys, logs, and incidents is why it's forked into a subagent"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Can you review this markdown file and check that the tool descriptions in the intro section are accurate and don't have typos?",
+      "expected_output": "Does not act as skill-author. The request is a proofreading pass over an existing Markdown document's prose ('descriptions' here means the document's own text, not SKILL.md frontmatter), which is review-md's domain, not skill authoring.",
+      "files": [],
+      "expectations": [
+        "[judgment] Does not propose new skill frontmatter, a skill name, or a description-budget check in response to this prompt",
+        "[judgment] Does not treat 'descriptions' in the prompt as SKILL.md description-field budget discipline",
+        "[deterministic] Does not claim to have created, scaffolded, or edited a skill in response to this prompt"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "We're restructuring the platform team and I need to write up the new skillset each engineer should have for their role - can you help me outline that?",
+      "expected_output": "Does not act as skill-author. 'Skillset' here refers to a person's professional abilities, not a Claude Code SKILL.md artifact, so this is an ordinary writing request outside this skill's domain.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not propose SKILL.md frontmatter, a skill name, or skill scaffolding in response to this prompt",
+        "[judgment] Does not treat 'skillset' as a request to author a Claude Code skill",
+        "[deterministic] Does not claim to have created or scaffolded a skill in response to this prompt"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "How do skill descriptions work, and what's the character budget I need to worry about?",
+      "expected_output": "Q&A mode: answers from references/skills.md directly - the 4-part description pattern and the 1% of context / 8,000-char fallback budget with the 1,536-char per-description cap - without creating, editing, or scaffolding anything.",
+      "files": [],
+      "expectations": [
+        "[deterministic] States the description budget as 1 percent of the context window with an 8,000-character fallback",
+        "[deterministic] States the per-description cap as 1,536 characters",
+        "[deterministic] Describes the 4-part description pattern (starts with 'This skill should be used when the user asks to', 3-5 quoted trigger phrases, file types/keywords, scope statement)",
+        "[deterministic] Does not create, edit, or scaffold any skill file in response to this prompt",
+        "[judgment] Explains that the budget is a shared pool across all personal skill descriptions, not a per-skill allowance"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Can you audit my personal skills for description-budget issues and make sure any destructive ones have disable-model-invocation set?",
+      "expected_output": "Audit mode: reports findings with path references for each personal skill under ~/.claude/skills/, checking description-budget pressure and the disable-model-invocation flag on destructive skills, without inventing new skills or applying any fix.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Reports findings for each SKILL.md found under ~/.claude/skills/, cited by path",
+        "[deterministic] Checks whether any destructive/side-effect skill in scope is missing disable-model-invocation: true",
+        "[judgment] Comments on description-budget pressure (individual and pool-wide) rather than only pass/fail per skill",
+        "[deterministic] Does not create a new skill or apply any fix during this pass",
+        "[deterministic] Ends with a findings summary rather than silently stopping after the checklist"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "My deploy-service skill is missing disable-model-invocation - can you add that?",
+      "expected_output": "Targeted-fix mode: edits only deploy-service's SKILL.md frontmatter to add disable-model-invocation: true, without re-scaffolding the skill or touching unrelated fields, then re-runs only the testing-gate items the change affects.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Edits the existing deploy-service SKILL.md in place rather than invoking the harness scaffolder to regenerate it",
+        "[deterministic] Sets disable-model-invocation: true and does not materially change unrelated frontmatter fields or body content",
+        "[judgment] Re-runs only the testing-gate items affected by this change (for example the manual test) rather than the full testing gate wholesale",
+        "[deterministic] Does not claim to have created a new skill in response to this prompt"
+      ]
+    }
+  ]
+}

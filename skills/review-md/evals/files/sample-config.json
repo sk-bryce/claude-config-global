@@ -1,0 +1,5 @@
+{
+  "note": "Non-Markdown fixture for the review-md negative eval case. Deliberately contains an obvious issue (a duplicated key would be a JSON error, so instead this uses a misleading value) to confirm review-md does not attempt a prose-review pass on a non-.md file.",
+  "retries": 3,
+  "retries_max": "three"
+}

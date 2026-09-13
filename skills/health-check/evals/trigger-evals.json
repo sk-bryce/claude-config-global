@@ -1,0 +1,18 @@
+[
+  {"query": "run a health check on this config repo, i haven't looked at it in about three weeks and i'm sure something has drifted", "should_trigger": true},
+  {"query": "is anything stale in here? i've been adding skills all week and i suspect the specs and the README have fallen behind", "should_trigger": true},
+  {"query": "audit this repo and go ahead and fix whatever you find, i trust you on the mechanical stuff", "should_trigger": true},
+  {"query": "can you check whether the docs still match what the scripts actually do? i renamed a couple of flags in scripts/sync.sh last month and never chased the references", "should_trigger": true},
+  {"query": "give the config a once-over before i push this branch to the public remote - mostly worried about coherence between specs/ and the actual skill files", "should_trigger": true},
+  {"query": "whats the state of this repo? i want the full audit, mechanical checks plus a judgment pass on whether the decisions/ records still reflect reality", "should_trigger": true},
+  {"query": "do a quick health check, i only have a couple of minutes so skip the slow stuff", "should_trigger": true},
+  {"query": "something feels off with the reference/ docs, can you go through and tell me what's inconsistent or orphaned", "should_trigger": true},
+  {"query": "proofread reference/public-repo-hygiene.md - i rewrote the middle section and want the prose checked, not the repo", "should_trigger": false},
+  {"query": "run shellcheck on scripts/setup.sh and tell me what it says", "should_trigger": false},
+  {"query": "check if my last commit accidentally included the .local files - just that, don't audit anything else", "should_trigger": false},
+  {"query": "health check on the production database please, connection pool has been flapping since the deploy", "should_trigger": false},
+  {"query": "is this repo's CLAUDE.md too long? i want an opinion on whether it's worth trimming, not a list of problems", "should_trigger": false},
+  {"query": "write a new skill for generating changelogs from git history, follow the conventions the other skills in here use", "should_trigger": false},
+  {"query": "add a pre-commit hook that runs the scrub check so i stop forgetting", "should_trigger": false},
+  {"query": "what does the eval-coverage advisory in scripts/health-check.sh actually check for? just explain the code, don't run it", "should_trigger": false}
+]

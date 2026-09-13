@@ -1,0 +1,18 @@
+[
+  {"query": "research how the major managed postgres providers handle connection pooling and write it up in docs/db/ - i want to compare rds proxy, supabase's pgbouncer setup, and neon", "should_trigger": true},
+  {"query": "i need a doc set on observability for the platform team - metrics, tracing, logging, and cost. can you build out docs/observability/ with a section on each?", "should_trigger": true},
+  {"query": "look into what changed in the OTel semantic conventions for http spans over the last year and write up the migration implications for us", "should_trigger": true},
+  {"query": "put together a written comparison of wasm runtimes for edge functions - wasmtime, wasmer, workerd - with sources, and drop it in docs/edge/runtimes.md", "should_trigger": true},
+  {"query": "we're evaluating whether to move off stripe. research the realistic alternatives for a marketplace with split payouts and write up what you find", "should_trigger": true},
+  {"query": "can you research and document the current state of passkey support across browsers and password managers? needs to be thorough, we're planning a rollout", "should_trigger": true},
+  {"query": "build me a documentation set on rust async runtimes, one file per runtime, with real benchmarks cited where they exist", "should_trigger": true},
+  {"query": "i need background on how other teams structure their incident postmortems - go find real published examples and write up the patterns", "should_trigger": true},
+  {"query": "whats the default timeout for the aws sdk v3 http client? quick answer is fine, i just need the number", "should_trigger": false},
+  {"query": "review docs/generative-ai/03-prompts-context-memory-and-caching.md - it's already written, i just want it checked for accuracy and dead links", "should_trigger": false},
+  {"query": "plan out the work for migrating our auth service to passkeys, break it into steps i can hand to someone", "should_trigger": false},
+  {"query": "look up whether `git worktree add` supports a detached head and show me the flag", "should_trigger": false},
+  {"query": "summarize this paper i already downloaded to ~/papers/raft.pdf, no need to search for anything", "should_trigger": false},
+  {"query": "read through the three docs in docs/edge/ and tell me if they contradict each other anywhere", "should_trigger": false},
+  {"query": "what did we decide about parallel research fanout? should be written down somewhere in decisions/", "should_trigger": false},
+  {"query": "fix the broken links in docs/db/pooling.md, i think two of the vendor pages moved", "should_trigger": false}
+]

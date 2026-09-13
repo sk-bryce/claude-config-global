@@ -1,0 +1,74 @@
+[
+  {
+    "query": "deep review this before I commit it - it's the retry wrapper in src/net/backoff.go that I rewrote last night, and I've been staring at it too long to see anything wrong with it anymore",
+    "should_trigger": true
+  },
+  {
+    "query": "ok honest question, is this a good idea? we're thinking about splitting the billing service out of the monolith because deploys keep blocking on it. nothing's built yet, it's just a plan",
+    "should_trigger": true
+  },
+  {
+    "query": "be critical about this, don't be nice: proposal is to require two approvals on every PR touching anything under infra/. i think it's right but i want the strongest case against it",
+    "should_trigger": true
+  },
+  {
+    "query": "i need a rigorous review of the capacity model in planning/2027-forecast.md before i take it to the steering group. assume every number in it is wrong until it proves otherwise",
+    "should_trigger": true
+  },
+  {
+    "query": "does this belong here? i put the retry/backoff logic straight into the payments handler in api/payments.go because that's where the timeouts were biting, but it feels like it's the wrong layer and i can't articulate why",
+    "should_trigger": true
+  },
+  {
+    "query": "is there a better way to do this? current plan is a nightly cron that dumps the whole users table to S3 so analytics can query it. it works but it's 40GB a night and growing",
+    "should_trigger": true
+  },
+  {
+    "query": "is this the best way to do this - we're thinking of enforcing the docs/adr/ template with a pre-commit hook that rejects any ADR missing the 'alternatives considered' section. simpler options welcome",
+    "should_trigger": true
+  },
+  {
+    "query": "does this serve its purpose? scripts/health-check.sh was added so we'd catch stale docs before publishing, but looking at the last three months of findings i'm not sure it's catching the things that actually went stale",
+    "should_trigger": true
+  },
+  {
+    "query": "does this provide value? we added a weekly 'metrics digest' email that goes to the whole eng org, it takes me an hour to assemble every friday and i genuinely can't tell if anyone reads it or if it changes any decision",
+    "should_trigger": true
+  },
+  {
+    "query": "can you review this doc for me? docs/onboarding/day-one.md - i think there's a typo in the accounts section and the tone is a bit stiff in places",
+    "should_trigger": false
+  },
+  {
+    "query": "review the changes on this branch vs main and tell me if anything looks broken before i open the PR",
+    "should_trigger": false
+  },
+  {
+    "query": "proofread the README, i rewrote the install section and want to make sure the commands are right and the links all resolve",
+    "should_trigger": false
+  },
+  {
+    "query": "run a health check on this config repo and tell me what's stale",
+    "should_trigger": false
+  },
+  {
+    "query": "my skill's description isn't triggering reliably - can you look at the frontmatter in skills/changelog/SKILL.md and suggest better trigger phrases?",
+    "should_trigger": false
+  },
+  {
+    "query": "quick sanity check, does `chmod 755` on a directory mean what i think it means or am i confusing it with 644",
+    "should_trigger": false
+  },
+  {
+    "query": "summarize what this python module does, i inherited it and there are no comments anywhere",
+    "should_trigger": false
+  },
+  {
+    "query": "i need to write up the 'alternatives considered and rejected' section for our ADR on the queue migration - can you draft it from the notes in docs/notes/queue-thread.md?",
+    "should_trigger": false
+  },
+  {
+    "query": "is there a better way to write this? `for i in range(len(items)): print(items[i])` feels clunky",
+    "should_trigger": false
+  }
+]

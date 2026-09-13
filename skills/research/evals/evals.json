@@ -1,0 +1,85 @@
+{
+  "skill_name": "research",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Research WebAssembly component model tooling and write docs about it.",
+      "expected_output": "Auto-triggers research, loads references/research-discipline.md before giving any research or writing guidance, and works skeleton-first (outline before content, one section at a time) with a progress file, staying inline rather than delegating a single self-contained topic.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Loads references/research-discipline.md before giving any research or writing guidance",
+        "[deterministic] Produces a skeleton/outline before writing section content",
+        "[deterministic] Records progress in a written progress file per the progress-file convention",
+        "[deterministic] Stays inline for this single self-contained topic rather than dispatching a subagent or fork",
+        "[deterministic] Ends the written document with a References section listing the sources actually used"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Create a docs/observability/ documentation set covering metrics, tracing, and logging - each is a big independent area and the raw research would be enormous.",
+      "expected_output": "Triggers research and, because the sub-topics are genuinely independent and the combined raw output would flood the context, dispatches each as a parallel Agent-tool fork (subagent_type: \"fork\") rather than fresh subagents or parallel researcher dispatches.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Recommends parallel Agent-tool forks (subagent_type: \"fork\") for the independent sub-topics, not fresh subagents",
+        "[deterministic] Does not dispatch more than one `researcher` subagent concurrently",
+        "[judgment] Gives each fork a self-contained sub-prompt naming its specific sub-topic and target file, rather than assuming the fork inherits the unstated plan for the other forks",
+        "[deterministic] Still builds the skeleton for the doc set before filling in section content"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "This research needs to stay off my current context entirely - it should not carry this conversation's history or my tool access. Research Rust async runtimes and write it up.",
+      "expected_output": "Recognizes the narrow scope case (isolated work should not carry the calling context's full history/tool access) as the one situation warranting the `researcher` subagent, and dispatches exactly one, framing it as a scope decision rather than a cost decision.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Selects the `researcher` subagent for this specific scope reason rather than a fork",
+        "[deterministic] Dispatches at most one `researcher` at a time",
+        "[judgment] Frames the choice as a scope decision, not a cost or session-size decision"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "What's the current stable version of PostgreSQL?",
+      "expected_output": "Does not trigger research. This is a quick single-fact lookup, for which a plain WebSearch call is cheaper than loading the research-discipline workflow.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not load references/research-discipline.md",
+        "[deterministic] Does not create a skeleton, progress file, or documentation set",
+        "[deterministic] Answers the question directly and briefly"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Review docs/generative-ai/03-prompts-context-memory-and-caching.md and tell me if anything reads badly.",
+      "expected_output": "Does not trigger research. Reviewing or editing already-written content is review-md's job, not this skill's.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not load references/research-discipline.md",
+        "[deterministic] Does not begin a research-and-write workflow",
+        "[judgment] Treats this as a Markdown review request (review-md territory) rather than a documentation-generation request"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Plan out how we're going to migrate the billing service off Stripe.",
+      "expected_output": "Does not trigger research. This is planning non-documentation work, which belongs to write-plan.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not load references/research-discipline.md",
+        "[deterministic] Does not produce a documentation skeleton or progress file",
+        "[judgment] Treats this as a planning request rather than a research-and-document request"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Look into the CRDT literature and write it up as a docs set. Keep an eye on my usage while you do it.",
+      "expected_output": "Triggers research and applies the usage-utilization check from references/research-discipline.md - the documented command and the default 90 percent halt threshold - rather than inventing an ad-hoc budget check.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Performs the usage-utilization check exactly as references/research-discipline.md specifies, rather than inventing its own",
+        "[deterministic] States the halt threshold it is working to (default 90 percent) rather than leaving it implicit",
+        "[judgment] States the halt-and-report behavior it will apply at the threshold, rather than only checking utilization once and continuing regardless of the reading"
+      ]
+    }
+  ]
+}

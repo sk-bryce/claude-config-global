@@ -1,0 +1,168 @@
+{
+  "skill_name": "deep-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Review this doc: evals/files/onboarding-note.md",
+      "expected_output": "review-md handles this as an ordinary Markdown proofread (the 'Acess' typo is the finding). deep-review does not fire: plain 'review this doc' carries no depth language, so the premise pass must not displace the requested proofread.",
+      "files": [
+        "evals/files/onboarding-note.md"
+      ],
+      "expectations": [
+        "[deterministic] Dispatches no Agent subagent with model opus for a premise pass",
+        "[deterministic] Flags the 'Acess' typo in the Accounts section",
+        "[deterministic] Does not emit a Proceed / Proceed with changes / Reconsider scope / Do not proceed verdict"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I'm going to rename the local variable `n` to `count` in the loop I just wrote. Is this a good idea?",
+      "expected_output": "The target is trivial and locally scoped, so the skill asks once whether to spend the full pass before writing any context brief, rather than silently spending a cold Opus dispatch on a variable rename.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Asks the user once whether to run the full pass, before writing a context brief, and stops there rather than supplying its own answer and continuing",
+        "[deterministic] Uses AskUserQuestion for that question, or asks in plain text if no interactive question tool is available",
+        "[deterministic] Dispatches no Agent subagent before the user answers",
+        "[judgment] Treats the rename as low-stakes and easily reversible rather than as a wide-impact change"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Is this a good idea? Renaming the local variable `n` to `count` in that loop. Just give me the quick take, I don't want the full deep pass on this one.",
+      "expected_output": "The user has declined the full pass up front. The skill answers briefly inline rather than dispatching, and rather than going silent.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Dispatches no Agent subagent",
+        "[deterministic] Gives a substantive inline answer to the rename question rather than only acknowledging the decline",
+        "[deterministic] Does not ask again whether to run the full pass after the user already declined it"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Is this a good idea? We're seeing connect timeouts against one slow dependency, so I want to change connect_timeout_seconds from 5 to 30 in evals/files/http-defaults.json. That file is the shared default for every outbound service call we make.",
+      "expected_output": "A one-line change, but the prompt states it is the shared default for every outbound call, so blast radius is wide. The skill runs the full pass rather than treating it as trivial, proving the confirm step keys on stakes rather than on size. The stated motivation fills the brief's Purpose field, so the context-brief gate does not block the dispatch.",
+      "files": [
+        "evals/files/http-defaults.json"
+      ],
+      "expectations": [
+        "[deterministic] Dispatches an Agent subagent with model opus for the judgment pass",
+        "[deterministic] Does not use subagent_type fork for that dispatch",
+        "[deterministic] States one of Proceed, Proceed with changes, Reconsider scope, or Do not proceed as an explicit verdict, whether it opens or closes with it",
+        "[deterministic] States the strongest argument against its own verdict immediately after the verdict and its reason",
+        "[judgment] Treats the change as wide-impact because it is the shared default, rather than as trivial because it is one line",
+        "[judgment] Raises a second-order effect of a longer connect timeout, such as slower failure detection or request pileup under an outage",
+        "[judgment] Fills each brief field it shows with a verbatim quote and a named source, rather than a paraphrase or gloss alone"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Give evals/files/sound-proposal.md a rigorous review.",
+      "expected_output": "Fires on 'rigorous review', a phrase the description enumerates verbatim, and the one the 2026-09-07 description repair recovered from 8/15 to 9/9. The proposal is genuinely sound - it states an observed problem, names three rejected alternatives with reasons, states its cost, and is single-line reversible - so the pass returns a clean Proceed without manufacturing objections.",
+      "files": [
+        "evals/files/sound-proposal.md"
+      ],
+      "expectations": [
+        "[deterministic] Dispatches an Agent subagent with model opus for the judgment pass",
+        "[deterministic] States the verdict Proceed or Proceed with changes, not Reconsider scope or Do not proceed",
+        "[deterministic] States the strongest argument against its own verdict immediately after the verdict and its reason",
+        "[judgment] Does not manufacture objections against a proposal that already names its alternatives, its cost, and its rollback path. Findings that are factually correct about the artifact are not manufactured, however many there are; this expectation fails only on invented, vague, or unfalsifiable objections",
+        "[judgment] Explicitly credits what holds up in the proposal rather than listing only faults"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Critique this approach: we're planning to fix flaky CI by automatically re-running any failed job twice before reporting it red.",
+      "expected_output": "Fires on 'critique this approach', which the description does not enumerate. The target is a claim in conversation with no artifact, which is in scope. The pass attacks the premise - auto-retry hides flakiness rather than fixing it - rather than the wording.",
+      "files": [],
+      "expectations": [
+        "[deterministic] States one of Proceed, Proceed with changes, Reconsider scope, or Do not proceed as an explicit verdict, whether it opens or closes with it",
+        "[judgment] Names a concrete alternative, including the option of doing nothing, and says why the proposal does or does not beat it",
+        "[judgment] Questions whether re-running failed jobs addresses the underlying cause of the flakiness or only masks the symptom"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Push back on this: I want to move all seven of our personal skills into a single combined skill file so there's only one thing to maintain.",
+      "expected_output": "The phrase 'push back on this' appears nowhere in the description and has no near-synonym in it, unlike 'be critical' or 'critique', which the description's 'rigorous, critical, or adversarial' clause anchors. This case tests whether the trigger fires on semantic generalization alone.",
+      "files": [],
+      "expectations": [
+        "[deterministic] States one of Proceed, Proceed with changes, Reconsider scope, or Do not proceed as an explicit verdict, whether it opens or closes with it",
+        "[judgment] Names at least one concrete cost of the consolidation, such as the loss of per-skill triggering or the description budget",
+        "[judgment] Argues about whether the consolidation is worth doing, rather than only about how to carry it out"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Be critical about this: I want every commit to this repo to run the full health check as a pre-commit hook.",
+      "expected_output": "Fires on 'be critical', which the description does not enumerate but which its 'rigorous, critical, or adversarial review' clause anchors lexically. The pass should reach the premise: a slow judgment pass on a hot path is the wrong layer for this check.",
+      "files": [],
+      "expectations": [
+        "[deterministic] States one of Proceed, Proceed with changes, Reconsider scope, or Do not proceed as an explicit verdict, whether it opens or closes with it",
+        "[judgment] Raises the fit question of whether a pre-commit hook is the right layer and the right time for this check",
+        "[judgment] Names a concrete alternative to the pre-commit hook rather than only objecting to it"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Deep review evals/files/cache-warmer.py.",
+      "expected_output": "A bare file with no surrounding context: nothing in the prompt or the repository states why it exists, what it is for, or what alternatives were already rejected. The context brief's Purpose field cannot be filled, so the skill refuses to dispatch and says which field is missing, rather than dispatching a thin brief with a caveat attached.",
+      "files": [
+        "evals/files/cache-warmer.py"
+      ],
+      "expectations": [
+        "[deterministic] Dispatches no Agent subagent while the brief is incomplete",
+        "[deterministic] Names Purpose as the context-brief field it cannot fill",
+        "[deterministic] Emits no verdict at all, neither from a dispatched pass nor inline, while Purpose is unfilled",
+        "[judgment] Stops or asks the user for the missing field rather than proceeding with a caveat about limited context",
+        "[deterministic] Asks for all four brief fields in a single question rather than field by field"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Should we even do this? I'm thinking of adding a second config repo just for machine-specific overrides, separate from the main one.",
+      "expected_output": "A substantive proposal with no artifact built yet. This is a high-value target rather than a low-stakes one, so it reaches the full pass and critiques the premise - whether a second repository is the right mechanism for machine-specific overrides - rather than any prose.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Dispatches an Agent subagent with model opus for the judgment pass",
+        "[deterministic] States one of Proceed, Proceed with changes, Reconsider scope, or Do not proceed as an explicit verdict, whether it opens or closes with it",
+        "[deterministic] States the strongest argument against its own verdict immediately after the verdict and its reason",
+        "[judgment] Does not treat the absence of an artifact as a reason to give a lighter or shorter pass",
+        "[judgment] Names a concrete alternative to a second repository, such as gitignored local override files in the existing one"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Deep review evals/files/rotate-logs.sh.",
+      "expected_output": "A second bare file with no surrounding context, deliberately one the skill body does not name. Nothing in the prompt or the repository states why it exists, what it is for, or what alternatives were already rejected, and the filename suggests a purpose the script does not confirm. The context brief's Purpose field cannot be filled, so the skill refuses to dispatch and says which field is missing, rather than dispatching a thin brief with a caveat attached. This case exists to show the brief-completeness gate holds on a target the skill has not been written against.",
+      "files": [
+        "evals/files/rotate-logs.sh"
+      ],
+      "expectations": [
+        "[deterministic] Dispatches no Agent subagent while the brief is incomplete",
+        "[deterministic] Names Purpose as the context-brief field it cannot fill",
+        "[deterministic] Emits no verdict at all, neither from a dispatched pass nor inline, while Purpose is unfilled",
+        "[judgment] Stops or asks the user for the missing field rather than proceeding with a caveat about limited context",
+        "[deterministic] Asks for all four brief fields in a single question rather than field by field"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Deep review evals/files/inventory-sync/sync_inventory.py.",
+      "expected_output": "The partial-context case, and the one closest to real work. Unlike evals 9 and 11 the target is NOT bare: it sits beside a README documenting usage and behaviour, a crontab fragment showing how it is invoked, a CHANGELOG, and a git history with two commits. A context search therefore SUCCEEDS and returns real material - it just never states why the thing exists or what would break without it. Constraints and Prior findings are genuinely fillable from that material, and the skill is instructed to fill every field it can before asking. Purpose is not: the README describes what the script does, which the skill's own rule says is never Purpose however accurate it is. The failure this case is built to catch is treating a found README as having answered Purpose - dispatching on a brief whose Purpose field is a behaviour summary in disguise. A blanket refusal that leaves the fillable fields empty is also wrong, and expectation 4 tests for it, so the case does not reward simply stopping on everything.",
+      "files": [
+        "evals/files/inventory-sync/sync_inventory.py",
+        "evals/files/inventory-sync/README.md",
+        "evals/files/inventory-sync/crontab.fragment",
+        "evals/files/inventory-sync/CHANGELOG.md"
+      ],
+      "expectations": [
+        "[deterministic] Dispatches no Agent subagent while the brief is incomplete",
+        "[deterministic] Names Purpose as the context-brief field it cannot fill, and does not treat the README's account of what the script does as having filled it",
+        "[deterministic] Emits no verdict at all, neither from a dispatched pass nor inline, while Purpose is unfilled",
+        "[judgment] Fills the brief fields the surrounding material does support rather than refusing across the board, and stops specifically on Purpose",
+        "[judgment] Fills each brief field it shows with a verbatim quote and a named source, rather than a paraphrase or gloss alone",
+        "[deterministic] Asks for all four brief fields in a single question rather than field by field"
+      ]
+    }
+  ]
+}

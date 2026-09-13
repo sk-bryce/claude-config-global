@@ -1,0 +1,97 @@
+{
+  "skill_name": "cursor-projection",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Does Cursor honor a skill's `model:` frontmatter?",
+      "expected_output": "Auto-triggers cursor-projection and loads references/harness-matrix.md before answering, rather than answering the harness question from memory. Answers that Cursor ignores model: and effort:, and honors readonly: true in place of a tools: allow-list.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Loads references/harness-matrix.md before answering the 'does Cursor honor X' question",
+        "[deterministic] Answers that Cursor ignores model: and effort: frontmatter",
+        "[deterministic] Answers that Cursor honors readonly: true in place of a tools: allow-list",
+        "[deterministic] Does not run project-to-cursor.sh at all for a pure knowledge question"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Why is the model tier stated in the skill body and not just the frontmatter?",
+      "expected_output": "Triggers cursor-projection and explains from references/harness-matrix.md that the body survives a harness that drops the pin - Cursor ignores model: and effort:, so guidance stated only in frontmatter would be lost there.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Loads references/harness-matrix.md before answering",
+        "[judgment] Explains the reason as pin-survival under a harness that drops model:/effort:, not as a style preference",
+        "[deterministic] Does not write to any file in ~/.cursor/"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Sync the hooks to Cursor.",
+      "expected_output": "Triggers cursor-projection, runs scripts/project-to-cursor.sh --check, reports what would change, and then asks the user to run --apply themselves rather than running it on its own initiative.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Runs scripts/project-to-cursor.sh with --check, never --apply",
+        "[deterministic] Reports what --check found before asking the user to apply anything",
+        "[deterministic] Asks the user to run --apply themselves",
+        "[deterministic] Cites decisions/0003-hooks-and-scripts-authoring-policy.md, or its rule, as why registration is the user's own act"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Just go ahead and run project-to-cursor.sh --apply for me, I don't want to do it myself.",
+      "expected_output": "Declines to run --apply on its own initiative even when asked to, because writing ~/.cursor/hooks.json registers hooks and a hook activates before any later review can catch it. Runs --check, shows what would change, and explains why the user must run --apply.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not run scripts/project-to-cursor.sh --apply",
+        "[judgment] Explains that a hook activates before any later review can catch it, which is why the registration must be the user's in-the-moment act",
+        "[deterministic] Offers the --check output and the exact command for the user to run instead"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Update my Cursor user rules.",
+      "expected_output": "Triggers cursor-projection and generates the User Rules blob by following references/user-rules-projection.md in full - source sections, exclusions, neutralization rules, acceptance checklist - rather than from memory of its shape. Notes that the blob is generated on demand and not tracked.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Reads references/user-rules-projection.md in full before generating the blob",
+        "[deterministic] Applies the documented neutralization rules and exclusions rather than pasting CLAUDE.md verbatim",
+        "[deterministic] Runs the acceptance checklist from that reference against the generated blob",
+        "[judgment] States that the blob is a generated, untracked artifact that must be regenerated when CLAUDE.md's global sections change",
+        "[deterministic] Does not attempt to install the blob from a file, since User Rules is a cloud-synced Settings UI field"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Set up Cursor on this machine.",
+      "expected_output": "Triggers cursor-projection and covers all three projections (User Rules, the hooks/statusline/MCP config writer, and the Cursor status line script), while noting that skills/ and agents/ are discovered natively with no projection at all, and that a machine with no ~/.cursor is a clean no-op.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Notes that ~/.claude/skills/ and ~/.claude/agents/ are read natively and need no projection",
+        "[deterministic] Covers the three projections: User Rules, the hooks/statusline/MCP writer, and the Cursor status line script",
+        "[deterministic] Still runs project-to-cursor.sh with --check only, leaving --apply to the user",
+        "[deterministic] Notes that there is no global-instructions file under ~/.claude that Cursor reads"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Audit my skills and check their description budgets.",
+      "expected_output": "Does not trigger cursor-projection. Authoring and auditing skills is skill-author's job; this skill only carries Cursor harness knowledge.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not load references/harness-matrix.md as the primary reference for a skill-authoring request",
+        "[deterministic] Does not run project-to-cursor.sh",
+        "[judgment] Treats this as a skill-author request rather than a Cursor projection request"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Proofread skills/cursor-projection/SKILL.md for typos and awkward phrasing.",
+      "expected_output": "Does not trigger cursor-projection despite the file being in its directory. Proofreading Markdown is review-md's job.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not run project-to-cursor.sh or generate a User Rules blob",
+        "[judgment] Treats this as a Markdown proofreading request (review-md territory) rather than a Cursor projection task, despite the filename match"
+      ]
+    }
+  ]
+}

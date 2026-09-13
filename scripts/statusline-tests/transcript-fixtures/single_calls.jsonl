@@ -1,0 +1,6 @@
+{"type":"user","promptSource":"typed","message":{"content":"look into this"}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read"}]}}
+{"type":"user","message":{"content":[{"type":"tool_result"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash"}]}}
+{"type":"user","message":{"content":[{"type":"tool_result"}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"done"}]}}

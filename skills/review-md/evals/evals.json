@@ -1,0 +1,165 @@
+{
+  "skill_name": "review-md",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Review this doc: evals/files/sample-doc.md",
+      "expected_output": "Report-only findings (typo 'usng', the dead runbook link, and the 403 vendor status link flagged as inconclusive rather than dropped), presented as a multi-select question, with nothing edited yet.",
+      "files": ["evals/files/sample-doc.md"],
+      "expectations": [
+        "[deterministic] Confirms the target is a .md file before proceeding",
+        "[deterministic] Flags the typo 'usng' in the deploy steps section",
+        "[deterministic] Flags the old-runbook link as broken (dead/unresolvable)",
+        "[judgment] Treats the httpstat.us/403 vendor status link as inconclusive rather than a confirmed-broken link, per the 403/429-is-not-confirmed-absence rule",
+        "[deterministic] Applies no edits to the file in this pass (plain 'review this doc' falls to the report-only fix policy)",
+        "[deterministic] Presents the findings as a multi-select question rather than a plain list",
+        "[deterministic] Ends with a summary of what was checked and found"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Review and fix evals/files/sample-doc.md",
+      "expected_output": "Applies the high-confidence fix (the 'usng' typo) automatically, and reports the lower-confidence link findings (dead link, inconclusive 403 link) via a multi-select question rather than guessing at those.",
+      "files": ["evals/files/sample-doc.md"],
+      "expectations": [
+        "[deterministic] Automatically corrects the 'usng' typo without asking first, because the prompt contains 'fix'",
+        "[judgment] Treats the broken-link and inconclusive-403-link findings as lower-confidence and reports them rather than silently resolving them",
+        "[deterministic] Presents the reported (unresolved) findings as a multi-select question",
+        "[deterministic] Ends with a summary distinguishing what was changed from what was queued for the user to choose from"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "In evals/files/sample-doc.md, fix the typo in the deploy steps section. Don't change anything else.",
+      "expected_output": "Applies exactly the named fix (the 'usng' typo) and nothing else - does not also touch the links, since the instruction was specific and itemized.",
+      "files": ["evals/files/sample-doc.md"],
+      "expectations": [
+        "[deterministic] Fixes only the 'usng' typo in the deploy steps section",
+        "[deterministic] Does not modify the Further reading links or any other section, since the instruction named one specific fix",
+        "[deterministic] Does not ask a multi-select question about unrelated findings when the instruction was this specific",
+        "[deterministic] Ends with a summary confirming the one requested change"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Can you review evals/files/sample-config.json for consistency issues?",
+      "expected_output": "review-md exits immediately without acting, since the target is not a .md file; the request should fall through to normal code/config review conduct instead.",
+      "files": ["evals/files/sample-config.json"],
+      "expectations": [
+        "[deterministic] Identifies that the target file is not Markdown (.json, not .md)",
+        "[deterministic] Does not apply the Markdown review checklist (accuracy/consistency/omissions/errors/fit-for-purpose) to this file",
+        "[deterministic] Does not produce a review-md-style findings summary or tracking-file update for this file",
+        "[deterministic] Stops without acting, rather than proceeding with a best-effort prose review"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Proofread evals/files/sample-doc.md - I especially want to know if any links are actually broken.",
+      "expected_output": "Distinguishes the dead runbook link (confirmed broken - unresolvable domain) from the 403 vendor status link (inconclusive, possibly bot-blocked, not confirmed absent), per the verification rules in the loaded document-generation reference.",
+      "files": ["evals/files/sample-doc.md"],
+      "expectations": [
+        "[deterministic] Reports the old-runbook link as broken/dead",
+        "[judgment] Does not report the httpstat.us/403 link as confirmed-broken; treats a 403 as inconclusive rather than proof of absence",
+        "[deterministic] Reports findings only (no auto-fix), since the prompt is 'proofread' without 'fix' or itemized instructions",
+        "[deterministic] Ends with a summary that separates confirmed-broken from inconclusive link findings"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Review evals/files/sample-doc.md again.",
+      "expected_output": "With the tracking-fixture.md decisions already recorded for this document (the typo marked intentional, the vendor status link marked deferred), this pass never re-flags the typo and skips the deferred link finding, surfacing only genuinely new findings (if any).",
+      "files": ["evals/files/sample-doc.md", "evals/files/tracking-fixture.md"],
+      "expectations": [
+        "[deterministic] Reads the document's existing section in review-tracking.md before reviewing",
+        "[deterministic] Does not re-flag the 'usng' typo, since it is recorded as [intentional]",
+        "[deterministic] Does not re-surface the vendor status 403 link finding, since it is recorded as [deferred]",
+        "[judgment] Still reports (or explicitly notes there are none) any findings not already covered by the intentional/deferred entries, rather than silently going quiet",
+        "[deterministic] Ends with a summary that reflects what was skipped due to prior tracking"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Do a full, fresh review of evals/files/sample-doc.md - I want to see everything again, including anything I previously dismissed.",
+      "expected_output": "Because the user asked for a 'full'/'fresh' review, review-md clears only this document's section in review-tracking.md before starting, so the previously-intentional typo and previously-deferred link finding are both re-surfaced this pass.",
+      "files": ["evals/files/sample-doc.md", "evals/files/tracking-fixture.md"],
+      "expectations": [
+        "[deterministic] Clears the evals/files/sample-doc.md section of review-tracking.md before starting this review, because the prompt asked for a full/fresh review",
+        "[deterministic] Does not clear or otherwise affect any other document's section in review-tracking.md",
+        "[deterministic] Re-surfaces the 'usng' typo finding this pass despite it having been previously marked intentional",
+        "[deterministic] Re-surfaces the vendor status 403 link finding this pass despite it having been previously marked deferred",
+        "[deterministic] Ends with a summary noting this was a full/fresh pass"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Can you review this PR and check the code for quality issues before I merge it?",
+      "expected_output": "Does not act as review-md. 'Review' here means a code/PR review, not a Markdown proofreading pass on a specific .md document, so this should fall through to normal code-review conduct instead.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not apply the Markdown review checklist (accuracy/consistency/omissions/errors/fit-for-purpose) in response to this prompt",
+        "[deterministic] Does not create or update review-tracking.md in response to this prompt",
+        "[judgment] Does not treat the generic word 'review' alone, applied to a PR/code change rather than a named .md document, as sufficient to trigger this skill"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Review everything in evals/files/doc-set/.",
+      "expected_output": "Detects multi-document mode from the directory target, fans out one per-document pass per file plus a cross-document synthesis pass, and reports per-document findings separately from across-the-set findings (the Node 18/20 contradiction, the one-vs-two-reviewer contradiction, the runbook/playbook drift, the duplicated Rolling back section) with nothing edited yet.",
+      "files": ["evals/files/doc-set/onboarding.md", "evals/files/doc-set/deploy.md"],
+      "expectations": [
+        "[deterministic] Resolves the directory to its contents and confirms every file inside is a .md file before proceeding",
+        "[deterministic] Runs in multi-document mode because the target is a directory, without asking which mode is wanted",
+        "[deterministic] Dispatches one Sonnet subagent per document concurrently, then one further Sonnet subagent for the cross-document pass",
+        "[deterministic] Flags the 'enviroment' typo in onboarding.md as a per-document finding",
+        "[deterministic] Reports the Node 20 vs Node 18 contradiction between the two documents as a cross-document finding",
+        "[deterministic] Reports the one-reviewer vs two-reviewer contradiction between the two documents as a cross-document finding",
+        "[judgment] Reports the 'runbook' (onboarding.md) vs 'Playbook' (deploy.md) naming as terminology drift across the set",
+        "[judgment] Reports the identical 'Rolling back' section appearing in both documents as redundant/duplicated coverage",
+        "[deterministic] Keeps per-document and cross-document findings in separate lists rather than merging them into one",
+        "[deterministic] Applies no edits in this pass (plain 'review' falls to the report-only fix policy)",
+        "[deterministic] Ends with a summary that separates per-document findings from findings across the set"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Review evals/files/doc-set/onboarding.md and evals/files/doc-set/deploy.md",
+      "expected_output": "Two files are named with no holistic-signaling language, so review-md asks once - as a choice between independent single-document passes and one holistic pass over the set - instead of silently picking a mode.",
+      "files": ["evals/files/doc-set/onboarding.md", "evals/files/doc-set/deploy.md"],
+      "expectations": [
+        "[deterministic] Asks once which mode is wanted, before dispatching any review pass",
+        "[deterministic] Presents the choice as independent single-document passes versus one holistic pass over the set",
+        "[judgment] Does not silently assume either mode, since several files were named with no holistic signal ('together', 'as a whole', etc.)",
+        "[deterministic] Does not dispatch the cross-document synthesis pass before the user has chosen a mode"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Review evals/files/doc-set/onboarding.md and evals/files/doc-set/deploy.md together and fix what you can - do these still agree with each other?",
+      "expected_output": "Holistic-signaling language ('together', 'do these still agree with each other') selects multi-document mode without asking; 'fix' means high-confidence fixes are applied, and because the contradictions span both files the summary names which files each fix touched and why.",
+      "files": ["evals/files/doc-set/onboarding.md", "evals/files/doc-set/deploy.md"],
+      "expectations": [
+        "[deterministic] Runs in multi-document mode without asking, because the prompt contains explicit holistic-signaling language",
+        "[deterministic] Applies the high-confidence per-document fix (the 'enviroment' typo in onboarding.md) automatically, because the prompt contains 'fix'",
+        "[judgment] Treats the Node-version and reviewer-count contradictions as findings needing a user decision (which document is correct is not high-confidence) rather than silently picking one value",
+        "[deterministic] For any cross-document fix it does apply, states which files were changed and why",
+        "[deterministic] Presents the remaining unresolved findings as a multi-select question",
+        "[deterministic] Ends with a summary separating per-document findings from findings across the set"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Review the docs in evals/files/doc-set/ as a whole again.",
+      "expected_output": "With set-tracking-fixture.md's decisions already recorded, this pass honors the set-level entries the same way it honors per-document ones: the duplicated Rolling back section is never re-raised, the runbook/playbook drift is skipped for this pass, and the onboarding typo is not re-flagged - leaving the two contradictions as the surviving cross-document findings.",
+      "files": ["evals/files/doc-set/onboarding.md", "evals/files/doc-set/deploy.md", "evals/files/set-tracking-fixture.md"],
+      "expectations": [
+        "[deterministic] Reads both the per-document sections and the set-level section of review-tracking.md before reviewing",
+        "[deterministic] Does not re-flag the 'enviroment' typo, since it is recorded as [intentional] under onboarding.md's section",
+        "[deterministic] Does not re-raise the duplicated 'Rolling back' section, since it is recorded as [intentional] under the set-level key",
+        "[deterministic] Does not re-surface the runbook/playbook drift this pass, since it is recorded as [deferred] under the set-level key",
+        "[deterministic] Still reports the Node-version and reviewer-count contradictions, which no tracking entry covers",
+        "[deterministic] Records any newly settled cross-document decision under the set-level key rather than inside either document's section",
+        "[deterministic] Ends with a summary reflecting what was skipped due to prior tracking, split into per-document and across-the-set findings"
+      ]
+    }
+  ]
+}

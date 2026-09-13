@@ -1,0 +1,188 @@
+Date: Thu, 3 Sep 2026 23:38:10 +0000
+Subject: [PATCH] Sharpen the three new eval sets and close two coherence gaps
+
+A value pass over the eval sets this branch authored, on gradeability rather
+than correctness. Three expectations were conditionals on states the eval
+never creates, so two judges would score the same transcript differently:
+research's usage-threshold halt, health-check's stale-decision-record case,
+and health-check's advisory case, whose expectations named the eval-coverage
+and orphans advisories that no longer fire - eval-coverage precisely because
+this branch authored the three missing sets. Each now grades what the
+transcript actually shows.
+
+Also splits a health-check expectation that asserted two things at once, and
+replaces an unfalsifiable cursor-projection expectation ("does not answer
+from memory") that duplicated the harness-matrix load check above it with the
+readonly: claim its expected_output already promised but never graded.
+
+Relabels three expectations from judgment to deterministic. Each is a binary
+fact about the transcript - whether an Agent call occurred, which
+subagent_type was passed, whether a sentence appears - and evals/README.md
+grades deterministic checks at 100 percent against judgment's 90 percent
+aggregate, so the label was scoring real misses leniently.
+
+Rewraps README.md's reference/ inventory, which the model-selection.md entry
+had turned into a run-on with the list and its parentheticals colliding.
+
+Moves specs/behaviors.md's Config Health Check eval note to the end of the
+section and states what now exists. It led the section, above Purpose, as the
+repository's only such note and the only behaviors.md section not opening
+with Registration, Decision, or Purpose - and it had gone stale, reading as
+though no negative-trigger test existed when specs/skills.md records one
+authored but unrun.
+---
+ README.md                                 | 13 ++++++-------
+ skills/cursor-projection/evals/evals.json |  4 ++--
+ skills/health-check/evals/evals.json      | 13 +++++++------
+ skills/research/evals/evals.json          |  6 +++---
+ specs/behaviors.md                        |  7 ++++---
+ 5 files changed, 22 insertions(+), 21 deletions(-)
+
+diff --git a/README.md b/README.md
+index e1f5a79..fae6d14 100644
+--- a/README.md
++++ b/README.md
+@@ -98,13 +98,12 @@ What it sets up:
+   (`skills.md`, `agents.md`, `behaviors.md`, `backlog.md`). Holds intent only, never copied
+   artifact content.
+ - `decisions/` - numbered, immutable Architecture Decision Records.
+-- `reference/` - internally-authored operational protocols artifacts draw on, including
+-  `spec-driven-architecture.md`,
+-  `subagent-orchestration.md`, `context-file-authoring.md`, `document-generation.md`,
+-  `research-discipline.md`, `model-selection.md` (the tier ladder, effort mechanics, and
+-  delegation-shape rules behind `CLAUDE.md`'s Subagents & Models section), and
+-  `public-repo-hygiene.md` (what must never enter a tracked file in
+-  this public-facing repo, and the neutral substitutes to use instead).
++- `reference/` - internally-authored operational protocols artifacts draw on:
++  `spec-driven-architecture.md`, `subagent-orchestration.md`, `context-file-authoring.md`,
++  `document-generation.md`, `research-discipline.md`, `model-selection.md` (the tier ladder,
++  effort mechanics, and delegation-shape rules behind `CLAUDE.md`'s Subagents & Models
++  section), and `public-repo-hygiene.md` (what must never enter a tracked file in this
++  public-facing repo, and the neutral substitutes to use instead).
+ - `docs/` - human-oriented notes and platform documentation (`features/`, `generative-ai/`,
+   `efficient-agentic-use/` - a six-chapter guide to cost-effective agentic tool use, with
+   harness and model-family appendices; `tui-ux/` - a six-chapter reference on terminal
+diff --git a/skills/cursor-projection/evals/evals.json b/skills/cursor-projection/evals/evals.json
+index 5710af1..a5ce907 100644
+--- a/skills/cursor-projection/evals/evals.json
++++ b/skills/cursor-projection/evals/evals.json
+@@ -9,7 +9,7 @@
+       "expectations": [
+         "[deterministic] Loads references/harness-matrix.md before answering the 'does Cursor honor X' question",
+         "[deterministic] Answers that Cursor ignores model: and effort: frontmatter",
+-        "[judgment] Does not answer from memory of the matrix's shape without reading it",
++        "[deterministic] Answers that Cursor honors readonly: true in place of a tools: allow-list",
+         "[deterministic] Does not run project-to-cursor.sh at all for a pure knowledge question"
+       ]
+     },
+@@ -69,7 +69,7 @@
+         "[deterministic] Notes that ~/.claude/skills/ and ~/.claude/agents/ are read natively and need no projection",
+         "[deterministic] Covers the three projections: User Rules, the hooks/statusline/MCP writer, and the Cursor status line script",
+         "[deterministic] Still runs project-to-cursor.sh with --check only, leaving --apply to the user",
+-        "[judgment] Notes that there is no global-instructions file under ~/.claude that Cursor reads"
++        "[deterministic] Notes that there is no global-instructions file under ~/.claude that Cursor reads"
+       ]
+     },
+     {
+diff --git a/skills/health-check/evals/evals.json b/skills/health-check/evals/evals.json
+index 0f54c8d..06d7e52 100644
+--- a/skills/health-check/evals/evals.json
++++ b/skills/health-check/evals/evals.json
+@@ -23,7 +23,7 @@
+       "expectations": [
+         "[deterministic] Triggers on the staleness phrasing rather than treating it as a generic question",
+         "[judgment] Covers decisions/ and docs/ by reading, acknowledging that the script's path-reference check skips both",
+-        "[judgment] Proposes a superseding decision record rather than an edit when a decisions/ record cites something now gone",
++        "[judgment] States that a stale decisions/ record would be superseded by a new record rather than edited, whether or not it found one",
+         "[deterministic] Reads the files it judges rather than inferring their content from names, specs, or a previous run"
+       ]
+     },
+@@ -70,7 +70,8 @@
+         "[deterministic] Bumps the updated: date on every tracked Markdown file it edits, in the same commit",
+         "[deterministic] Does not edit any existing decisions/ record; proposes a superseding record instead",
+         "[deterministic] Runs scripts/setup.sh only with --check and scripts/sync.sh only with --check, never in a writing mode",
+-        "[judgment] Applies edits only because the prompt asked for them, and still reports what it changed against the five-part report shape"
++        "[judgment] Applies edits only because the prompt asked for them, and says so",
++        "[deterministic] Reports what it changed against the five-part report shape"
+       ]
+     },
+     {
+@@ -86,12 +87,12 @@
+     },
+     {
+       "id": 8,
+-      "prompt": "Run a health check.",
+-      "expected_output": "Treats the orphans, eval-coverage, and context-budget advisories as inputs to the judgment pass rather than findings to dismiss, and reports the remaining advisories only where one has moved close to a limit.",
++      "prompt": "Run a health check and tell me what to actually do about whatever advisories it prints.",
++      "expected_output": "Treats whichever advisories the run printed as inputs to the judgment pass rather than findings to dismiss, deciding for each whether it is a defect, an accepted state, or a rule that no longer fits, and reports the remainder only where one has moved close to a limit.",
+       "files": [],
+       "expectations": [
+-        "[judgment] Judges each orphans advisory rather than dismissing it, deciding whether the file was superseded, never wired in, or is a standalone record",
+-        "[judgment] Cross-checks each eval-coverage advisory against what specs/skills.md claims about that skill's testing gate, and reports any contradiction under Coherence",
++        "[judgment] Judges each advisory the run actually printed rather than dismissing it, and says for each whether it is a defect, an accepted state, or a rule that no longer fits",
++        "[judgment] Cross-checks each advisory against what specs/skills.md or specs/behaviors.md claims about that artifact, and reports any contradiction under Coherence",
+         "[judgment] Names a concrete trimming proposal for a context-budget overrun rather than just noting it",
+         "[deterministic] Does not treat advisory findings as affecting the exit code"
+       ]
+diff --git a/skills/research/evals/evals.json b/skills/research/evals/evals.json
+index 36bd78e..f570fca 100644
+--- a/skills/research/evals/evals.json
++++ b/skills/research/evals/evals.json
+@@ -10,7 +10,7 @@
+         "[deterministic] Loads references/research-discipline.md before giving any research or writing guidance",
+         "[deterministic] Produces a skeleton/outline before writing section content",
+         "[deterministic] Records progress in a written progress file per the progress-file convention",
+-        "[judgment] Stays inline for this single self-contained topic rather than dispatching a subagent or fork",
++        "[deterministic] Stays inline for this single self-contained topic rather than dispatching a subagent or fork",
+         "[deterministic] Ends the written document with a References section listing the sources actually used"
+       ]
+     },
+@@ -32,7 +32,7 @@
+       "expected_output": "Recognizes the narrow scope case (isolated work should not carry the calling context's full history/tool access) as the one situation warranting the `researcher` subagent, and dispatches exactly one, framing it as a scope decision rather than a cost decision.",
+       "files": [],
+       "expectations": [
+-        "[judgment] Selects the `researcher` subagent for this specific scope reason rather than a fork",
++        "[deterministic] Selects the `researcher` subagent for this specific scope reason rather than a fork",
+         "[deterministic] Dispatches at most one `researcher` at a time",
+         "[judgment] Frames the choice as a scope decision, not a cost or session-size decision"
+       ]
+@@ -78,7 +78,7 @@
+       "expectations": [
+         "[deterministic] Performs the usage-utilization check exactly as references/research-discipline.md specifies, rather than inventing its own",
+         "[deterministic] States the halt threshold it is working to (default 90 percent) rather than leaving it implicit",
+-        "[judgment] Halts and reports rather than continuing if utilization crosses that threshold"
++        "[judgment] States the halt-and-report behavior it will apply at the threshold, rather than only checking utilization once and continuing regardless of the reading"
+       ]
+     }
+   ]
+diff --git a/specs/behaviors.md b/specs/behaviors.md
+index e4d70dc..38ca8f0 100644
+--- a/specs/behaviors.md
++++ b/specs/behaviors.md
+@@ -1,6 +1,6 @@
+ ---
+ created: 2026-07-26
+-updated: 2026-08-31
++updated: 2026-09-03
+ ---
+ 
+ # Behavior Specs
+@@ -773,8 +773,6 @@ live in `decisions/`; this file is the buildable intent.
+ 
+ ## Config Health Check
+ 
+-- No eval run backs this section; the skill's trigger phrasings have not been tested against a
+-  negative set.
+ - Purpose: give the repository a periodic self-evaluation that the commit gate structurally cannot
+   provide. `scripts/pre-commit-check.sh` sees only the staged bytes of one commit, so drift that no
+   single commit introduces - a skill with no spec section, a spec section naming an artifact that
+@@ -884,3 +882,6 @@ live in `decisions/`; this file is the buildable intent.
+     stand.
+   - A full run leaves `.health-check-stamp` holding today's date, the current HEAD, and the run's
+     finding count; a `--quick` run leaves it untouched; neither run stages or tracks it.
++- Testing gate partially closed: an eval set covering this skill's triggers and criteria was
++  authored 2026-09-01 at `skills/health-check/evals/evals.json`, but no run backs it yet; see
++  `evals/README.md` and the health-check section of `specs/skills.md`.
+-- 
+2.43.0
+

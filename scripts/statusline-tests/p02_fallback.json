@@ -1,0 +1,10 @@
+{
+  "version": "1.2.3", "cwd": "/nonexistent/workspace",
+  "model": {"display_name": "Sonnet 5"},
+  "context_window": {"total_input_tokens": 5000, "total_output_tokens": 500, "used_percentage": 2.5,
+    "current_usage": {"cache_read_input_tokens": 4000, "cache_creation_input_tokens": 200},
+    "context_window_size": 200000},
+  "cost": {"total_cost_usd": 1.10, "total_duration_ms": 130000},
+  "exceeds_200k_tokens": false,
+  "rate_limits": {"five_hour": null, "seven_day": null}
+}

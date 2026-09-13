@@ -1,0 +1,6 @@
+{"type":"user","promptSource":"typed","message":{"content":"read these three files"}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read"},{"type":"tool_use","name":"Read"},{"type":"tool_use","name":"Grep"}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"here is what I found"}]}}
+{"type":"user","promptSource":"typed","message":{"content":"thanks, one more thing"}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash"}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"done"}]}}

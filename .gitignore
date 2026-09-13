@@ -1,0 +1,38 @@
+/*
+!/.gitignore
+!/CLAUDE.md
+!/settings.json
+!/rules/
+!/skills/
+!/agents/
+!/commands/
+!/hooks/
+!/scripts/
+
+!/LICENSE
+!/README.md
+!/docs/
+!/reference/
+!/specs/
+!/decisions/
+!/evals/
+
+# .health-check-stamp (repository root) records this machine's last full scripts/health-check.sh
+# run - its date, the commit it ran against, and how many findings it produced - which
+# scripts/session-setup-check.sh reads to nudge when a run is overdue or left findings
+# unaddressed. It needs no rule here for the same reason as scrub-patterns.local below, and must
+# never gain a !/ line: "when did this machine last audit the tree" is per-machine state, and a
+# tracked stamp would tell every clone it had been audited because one of them had.
+
+# scrub-patterns.local (repository root) holds this machine's client and engagement patterns for
+# scripts/scrub-check.sh. It needs no rule here: the leading /* ignores every root entry that is
+# not explicitly whitelisted above, so it cannot be committed by accident. Never add a
+# !/scrub-patterns.local line - a tracked list of client names would be the exact leak that check
+# exists to prevent.
+
+# skills/<name>-workspace/ is where the skill-creator plugin writes eval run output: executor
+# transcripts and native grading JSON. Those can carry real machine state - an eval that runs a
+# --check against this machine pulls ~/.cursor MCP server names and absolute home paths straight
+# into the transcript. The whitelist above un-ignores everything under /skills/, so without this
+# rule a workspace is one `git add skills/` away from the public remote. Never add a ! line for it.
+skills/*-workspace/

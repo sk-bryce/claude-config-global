@@ -1,0 +1,8 @@
+{
+  "http": {
+    "connect_timeout_seconds": 5,
+    "read_timeout_seconds": 30,
+    "max_retries": 3,
+    "retry_on_status": [502, 503, 504]
+  }
+}
