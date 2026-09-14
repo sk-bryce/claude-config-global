@@ -1,4 +1,4 @@
-# claudeconf
+# Claude Config
 
 Personal agent config, skills, and more. Lives at `~/.claude` and targets Claude Code. See
 `skills/cursor-projection/SKILL.md` for how this config projects onto Cursor.

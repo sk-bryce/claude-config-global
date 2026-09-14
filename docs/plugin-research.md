@@ -1,13 +1,13 @@
 ---
 created: 2026-07-31
-updated: 2026-08-31
+updated: 2026-09-14
 ---
 
 # Plugin Research
 
 Research on the plugins and skill repos from this config's candidate list, recorded here as a
 point-in-time evaluation of what was on it. Done to answer, for each: does it overlap with what
-claudeconf already has, does it complement the current skills/agents (including the
+Claude Config already has, does it complement the current skills/agents (including the
 named-but-unbuilt backlog items in `specs/backlog.md`), what real value does it provide day to
 day, and does it help or hurt cost-efficient agentic tool use.
 
@@ -69,7 +69,7 @@ Installable two ways: the managed Claude Code plugin marketplace, via the termin
 install surface than the in-session `/plugin install` command used by most other repos in this
 document; confirm the exact current syntax before use), or `npx skills@latest add
 mattpocock/skills`, which copies editable files into a repo. Only the second path fits
-claudeconf's regenerate-from-spec model; the managed-plugin path would sit outside `specs/`
+Claude Config's regenerate-from-spec model; the managed-plugin path would sit outside `specs/`
 entirely and can't be hand-edited to fit house conventions.
 
 **Overlap.** `grill-me`/`grilling` does not duplicate `write-plan`/`execute-plan` - see below.
@@ -96,8 +96,8 @@ embedded-hardware shop gets only partial value from those specifically.
 **Cost-efficiency.** Grilling is deliberately one-question-at-a-time to avoid the rework cost of
 batched, ambiguous questions - a context-minimization design choice. `research` and
 `code-review` dispatch parallel sub-agents to keep contexts isolated, the same rationale
-claudeconf already applies with `Explore`/`runner`. Nothing here does explicit
-Sonnet/Opus/Haiku tier routing - that discipline is claudeconf's own, not imported.
+Claude Config already applies with `Explore`/`runner`. Nothing here does explicit
+Sonnet/Opus/Haiku tier routing - that discipline is Claude Config's own, not imported.
 
 **Red flags / other notes.** `git-guardrails-claude-code` is a real conflict: it's a skill that
 programmatically writes a `PreToolUse` hook into `settings.json` to block `git push`/
@@ -133,7 +133,7 @@ manifest - specialist behavior lives as per-skill prompt assets and scripts.
 `/plugin install compound-engineering`.
 
 **Overlap.** `ce-brainstorm` + `ce-plan` + `ce-work` conceptually duplicate `write-plan`/
-`execute-plan`, but as one monolithic loop rather than claudeconf's two separable,
+`execute-plan`, but as one monolithic loop rather than Claude Config's two separable,
 spec-governed skills. `ce-doc-review` loosely overlaps `review-md`. No analog to
 `skill-author`.
 
@@ -158,7 +158,7 @@ cross-model peer CLI call) could get expensive if adopted as-is.
 
 **Red flags / other notes.** No auto-executing hooks (the manifest has no `hooks` field).
 `ce-compound` documents ambient "auto-invoke triggers" on phrases like "that worked"/"it's
-fixed" - this cuts against claudeconf's "skill named = skill invoked" discipline and would need
+fixed" - this cuts against Claude Config's "skill named = skill invoked" discipline and would need
 to be disabled or rewritten as explicit-invoke-only if adopted. The cross-model adversarial peer
 in `ce-code-review` shells out to another provider's CLI - review that specifically before
 enabling. Recommendation: study the `ce-compound` schema and `ce-code-review` reviewer-roster
@@ -191,7 +191,7 @@ Antigravity, Codex, Gemini CLI, Copilot CLI, Kimi, OpenCode, Pi.
 
 **Overlap.** `writing-plans`/`executing-plans`/`subagent-driven-development`/
 `dispatching-parallel-agents` overlap `write-plan`/`execute-plan` directly, with no awareness
-of claudeconf's model-tier discipline or its specific subagents - installing both would create
+of Claude Config's model-tier discipline or its specific subagents - installing both would create
 two competing planning regimes. `writing-skills` overlaps `skill-author`.
 `requesting-code-review`/`receiving-code-review` have no current equivalent.
 
@@ -208,12 +208,12 @@ reference material into `reference/`, not adopting wholesale.
 
 **Cost-efficiency.** Adds a small constant tax (roughly 3 KB / ~700 tokens) injected every
 session/compact regardless of whether it's needed that session. `dispatching-parallel-agents`
-does practice good context isolation, matching claudeconf's own fork/`Explore` philosophy. No
+does practice good context isolation, matching Claude Config's own fork/`Explore` philosophy. No
 model-tier routing or caching guidance - it assumes a single agent throughout.
 
 **Red flags / other notes.** `using-superpowers` uses absolutist, hard-override language ("YOU
 DO NOT HAVE A CHOICE... not negotiable") forcing skill invocation before any response - this
-conflicts with claudeconf's more measured trigger discipline. Default phone-home telemetry
+conflicts with Claude Config's more measured trigger discipline. Default phone-home telemetry
 (fetches a logo/version from Prime Radiant's site via `brainstorming`'s visual companion,
 opt-out via an env var) and a commercial upsell footer. Maintainers explicitly do not accept
 community skill contributions, so despite the open license this is a single-vendor-controlled
@@ -314,7 +314,7 @@ concept is worth stealing on its own; the rest is not.
 
 **Cost-efficiency.** No visible model-tier routing across its 14 agents, and 10+ parallel points
 across 5 phases with iterative loop-until-green retries suggests high token burn relative to
-claudeconf's lean, tiered skills. Likely costly rather than cost-neutral.
+Claude Config's lean, tiered skills. Likely costly rather than cost-neutral.
 
 **Red flags / other notes.** `plugin.json` and the README badge claim MIT, but there is no
 `LICENSE` file at the repo root (404) - a real inconsistency to resolve before trusting the
@@ -452,16 +452,16 @@ not captured during research and isn't stated here rather than guessed. Installe
 distribution/sync mechanism, not authored guidance or an orchestration workflow.
 
 **Complement.** Nothing maps to the named backlog items - it's plumbing, not capability. Its
-only relevant angle is cross-tool skill portability, but claudeconf already solves Claude Code/
+only relevant angle is cross-tool skill portability, but Claude Config already solves Claude Code/
 Cursor dual-read through its own spec-driven generation pipeline (`specs/` -> generated
 `skills/`/`agents/`), which is more deliberate and reviewable than an npx sync step.
 
 **Real-world value.** Low for this repo specifically. It would matter if pulling third-party
-skills into a non-Claude-Code agent, but claudeconf hand-curates and generates its own skills
+skills into a non-Claude-Code agent, but Claude Config hand-curates and generates its own skills
 rather than importing external ones.
 
 **Cost-efficiency.** Neutral to mildly positive if used - it implements progressive disclosure
-(skills loaded on demand via `read`, not dumped into context), the same discipline claudeconf
+(skills loaded on demand via `read`, not dumped into context), the same discipline Claude Config
 already follows. No model-tier routing or caching behavior of its own.
 
 **Red flags / other notes.** Staleness (6.5 months, no commits) is the main one. `install`
@@ -515,6 +515,6 @@ distinct alternatives to anything in the main 8. Both articles flagged Ralph Loo
 Chrome DevTools MCP, and Claude-Mem/Remember as either promising-but-risky or explicitly not
 recommended, worth knowing if those categories come up separately.
 
-None of the appendix items were checked against claudeconf's specific overlap/complement/
+None of the appendix items were checked against Claude Config's specific overlap/complement/
 red-flag criteria the way the main 8 were - anything here that looks worth pursuing should get
 the same treatment before adoption.
