@@ -1,6 +1,6 @@
 ---
 created: 2026-07-26
-updated: 2026-09-12
+updated: 2026-09-14
 ---
 
 # Behavior Specs
@@ -248,17 +248,41 @@ buildable intent.
   (confirmed against Claude Code's permissions docs), so a deny rule like
   `Bash(git push --force:*)` blocks `git push --force` but not `git push origin main --force` -
   the flag has moved out of prefix position. This hook closes that gap for the same command set
-  already covered by the prefix-based deny rules, by tokenizing the command after the git
-  subcommand instead of matching a fixed prefix.
+  already covered by the prefix-based deny rules, by locating the git invocation anywhere in the
+  command string and matching its flags by token rather than by position.
+- Prefix dependence was itself a bypass (found and fixed 2026-09-13). The first implementation
+  inspected a command only if its string began literally with `git <subcommand>`, which left every
+  rule in this section avoidable by moving the git call off the front of the string. Measured
+  against that implementation, `cd repo && git push --force`, `git -C repo push --force`,
+  `git -c k=v push --force`, `true; git reset --hard`, `GIT_DIR=x git branch -D main` and
+  `(git stash drop)` all passed unguarded; of ten realistic forms tried, only the bare
+  `git push --force ...` one was caught. The segment model under Shape replaces that, and the
+  acceptance criteria below pin each of those forms so the regression cannot return silently.
 - Shape: one `PreToolUse` hook, matcher `Bash`, reading `.tool_input.command` from stdin (same
   shape `filter-verbose-output.sh` uses). Strips quoted substrings (commit messages, etc.) before
   matching, so a flag-shaped token inside quoted text can't false-positive and a real flag placed
-  after a quoted argument isn't missed either way. Denies, regardless of flag position:
+  after a quoted argument isn't missed either way.
+- Finding the git invocation: after quote-stripping, the command is split on shell separators
+  (`;` `&&` `||` `|` `&`, subshell parens, and newlines) and each segment is inspected
+  independently, so a git call that is not the first command in the string is still seen. Within a
+  segment, leading environment assignments (`GIT_DIR=... git ...`) and git's own pre-subcommand
+  global options (`-C <path>`, `-c <k>=<v>`, `--git-dir=`, `--work-tree=`, `--no-pager`, ...) are
+  skipped to find the real subcommand; options taking a separate value consume two tokens. Each
+  segment is then normalized to a canonical `git <subcommand> <args>` string and run through one
+  shared rule set, so the rules below are written once and apply to every form. Two ordering
+  details are load-bearing: quotes are stripped *before* the split, so a separator inside a commit
+  message cannot manufacture a bogus segment; and file-descriptor redirections (`2>&1`, `>&2`,
+  `&>log`) are removed *before* the split, because their `&` would otherwise cut a command in half
+  and strand any flag that followed it. Over-splitting is safe - it can only yield segments that
+  fail the `git` test - so the split is deliberately blunt.
+- Denies, regardless of flag position and of where the git call sits in the command string:
   - The canonical five from the assistant's own Git Safety Protocol: `git push --force`/`-f`
-    (including `--force-with-lease`); `git reset --hard`; `git checkout` targeting a bare `.`;
-    `git restore` targeting a bare `.` (unless `--staged` is used without `--worktree`, which only
-    unstages); `git clean -f`/`--force` (including combined short-flag clusters like `-fd`); and
-    `git branch -D` (or `--delete` combined with `--force`/`-f`).
+    (including `--force-with-lease`, and a leading `+` on any refspec - git's documented per-ref
+    equivalent of `--force`, as in `git push origin +main` or
+    `git push origin +refs/tags/x:refs/tags/x`); `git reset --hard`; `git checkout` targeting a
+    bare `.`; `git restore` targeting a bare `.` (unless `--staged` is used without `--worktree`,
+    which only unstages); `git clean -f`/`--force` (including combined short-flag clusters like
+    `-fd`); and `git branch -D` (or `--delete` combined with `--force`/`-f`).
   - Beyond the canonical five, at the repository owner's request: `git commit
     --no-verify`/`-n`/`--no-gpg-sign`; `git rebase -i`/`--interactive`; `git push --delete` or a
     `:<branch>` delete refspec (removes a remote branch - `git push` has no documented `-d` short
@@ -278,17 +302,52 @@ buildable intent.
   - `permissions.deny` in `settings.json` covers a subset of the same commands as a second,
     independent layer for their fixed-position forms - the two mechanisms overlap by design
     rather than one superseding the other.
-  Fails open (no output, exit 0) on missing `jq` or unparsable input, matching
+- Fails open (no output, exit 0) on missing `jq` or unparsable input, matching
   `filter-verbose-output.sh`'s precedent for the same tradeoff - a broken hook must never block a
   legitimate tool call, and `permissions.deny`'s fixed-position rules still apply independently
-  either way.
+  either way. The cost of that choice is that a *broken* guard and a *working* guard are
+  indistinguishable on every allowed command: both emit nothing and exit 0. Two defects during the
+  2026-09-13 rewrite each disabled the whole script this way and were caught only by running the
+  cases below, not by reading the code - an unterminated final segment that a bare `read` discarded
+  (so any command containing no separator was never inspected at all), and a whitespace-anchored
+  fast-path test that missed `git` preceded by a paren. Any change here must be exercised against
+  the acceptance criteria below - the allow cases as much as the deny cases - before it is
+  committed; reading the regexes is not sufficient evidence. Note the standing weakness: unlike
+  `scripts/statusline-tests/`, no harness for this script is tracked in the repo, so each run
+  rebuilds one from the criteria below. That is why those criteria are written as concrete,
+  runnable command strings rather than prose.
 - Known limitation (accepted): regex-based matching on the command string, not a real shell
-  parser, so an adversarial rewrite (command substitution, an alias, a wrapper script) is not
-  guaranteed to be caught. This raises the bar over prefix-only matching; it is not a sandbox.
+  parser, so an adversarial rewrite is not guaranteed to be caught - command substitution, an
+  alias, a wrapper script, a git invocation assembled from variables, or one hidden inside
+  `bash -c "..."`, whose quoted body this script strips before matching. This raises the bar over
+  prefix-only matching; it is not a sandbox.
 - Acceptance criteria (all verified by a standalone test harness run against the script directly,
-  not just read for plausibility - 30 cases, 0 false positives/negatives):
+  not just read for plausibility - 59 cases as of 2026-09-14: 34 deny, 21 allow, and 4
+  robustness cases, with 0 false positives/negatives):
   - `git push origin main --force` (and the `-f` form) is denied, not just the prefix form
     `git push --force`.
+  - Position of the git call does not matter. Each of these is denied: `cd repo && git push
+    --force upstream main`; `true; git reset --hard HEAD~1`; `git status | head && git clean -fd`;
+    `(git stash drop)`; and the same commands written across multiple lines rather than joined by
+    a separator.
+  - Git's pre-subcommand global options are skipped rather than defeating the match:
+    `git -C repo push --force origin main`, `git -c user.name=x push --force origin main`,
+    `git --no-pager -C repo push -f origin main`, and `git -C repo -c user.name=x push --force
+    origin main` are all denied. `git -C repo status` and `git -C repo -c user.name=x status`
+    remain allowed.
+  - A leading environment assignment does not defeat the match: `GIT_DIR=/tmp/x git branch -D
+    main` is denied.
+  - A leading `+` on a refspec is denied as a force-update: `git push upstream +main`,
+    `git push upstream +refs/tags/v0.1.4:refs/tags/v0.1.4`, and `git -C repo push upstream
+    +v0.1.4`. `git push upstream HEAD:main` (a normal explicit refspec, colon mid-token) stays
+    allowed.
+  - A redirection does not split a command out from its own flags: `git push --force upstream main
+    2>&1 | tee /tmp/log` is denied.
+  - A command containing no shell separator at all is still inspected - this is the no-trailing-
+    newline case that silently disabled every rule once, so a bare `git push --force upstream
+    main` denial is itself a standing regression test, not a formality.
+  - Non-git commands that merely mention a guarded flag stay allowed: `cat notes.md | grep 'git
+    push --force'`, `echo 'git push --force' >> notes.txt`.
   - `git clean -fd`/`-df` and `git branch --delete --force` are denied via their combined/split
     flag forms, not just the single-flag forms already in `permissions.deny`.
   - `git checkout -- .` and `git checkout HEAD -- .` are denied via the bare-`.` target, not just
@@ -307,8 +366,11 @@ buildable intent.
   - A non-destructive git command (`git push origin main`, `git checkout main`, `git checkout -b
     newbranch`, `git branch -d`, `git rebase main`, `git clean -n`, `git gc --prune=now`) and any
     non-`git` Bash command pass through with no output and exit 0.
-  - Missing `jq` or an unparsable stdin payload exits 0 with no output rather than blocking the
-    call.
+  - Robustness cases, all exiting 0 with no output rather than blocking the call: `jq` genuinely
+    absent from `PATH` (verified against a stub `PATH` holding `bash`/`sed`/`cat` but no `jq`, on
+    a command the guard would otherwise deny - not by unsetting `PATH` wholesale, which removes
+    `bash` too and tests nothing); an unparsable stdin payload; empty stdin; and a payload whose
+    `tool_name` is not `Bash`.
 
 ---
 
