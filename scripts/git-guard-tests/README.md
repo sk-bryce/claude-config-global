@@ -56,7 +56,11 @@ adding the criterion there and the case here.
 - Git's own pre-subcommand global options (`-C`, `-c`, `--no-pager`, and combinations) skipped
   rather than mistaken for the subcommand, with the matching allow cases so the skip does not
   become a blanket pass.
-- Leading environment assignments (`GIT_DIR=... git ...`).
+- Leading environment assignments (`GIT_DIR=... git ...`) and command wrappers that take a command
+  as their argument (`env`, `time`, `sudo`, `nohup`, `command`, `xargs`, ...), including the two
+  interleaved, with allow cases so the skip does not become a blanket pass. The one wrapper form
+  that is *not* covered (`xargs -n 1 git ...`, where the option's value is not a dash-token) is
+  asserted as `allow` so the limitation reads as a known gap rather than as coverage.
 - Redirections (`2>&1`) not splitting a command away from its own flags.
 - The rest of the guarded set: bare-dot `checkout`/`restore`, remote-branch deletion, `clean`
   flag clusters, `branch -D`, `stash drop`/`clear`, `filter-branch`, `reflog expire --all`,
@@ -77,5 +81,5 @@ at one that denies everything and every allow case should fail:
 
 ```sh
 printf '#!/usr/bin/env bash\nexit 0\n' > /tmp/nullguard.sh
-scripts/git-guard-tests/run.sh /tmp/nullguard.sh      # expect: ~40 failures, exit 1
+scripts/git-guard-tests/run.sh /tmp/nullguard.sh      # expect: ~48 failures, exit 1
 ```

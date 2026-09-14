@@ -116,6 +116,23 @@ assert allow "git -C repo -c user.name=x status"
 label "leading environment assignments are skipped"
 assert deny "GIT_DIR=/tmp/x git branch -D main"
 
+label "command wrappers that take a command as their argument are skipped"
+assert deny "time git push --force origin main"
+assert deny "env git push --force origin main"
+assert deny "env FOO=1 git push --force origin main"
+assert deny "sudo git push --force origin main"
+assert deny "nohup git reset --hard HEAD~1"
+assert deny "echo main | xargs git push --force origin"
+assert deny "command git branch -D feature"
+assert deny "env -i GIT_DIR=/tmp/x git stash drop"
+assert allow "time git status"
+assert allow "env git status"
+assert allow "sudo apt-get install git"
+# Not covered: a wrapper option whose value is not a dash-token hides the git call. Asserted as
+# `allow` so the limitation is visible here rather than mistaken for coverage; see the guard's
+# header comment.
+assert allow "xargs -n 1 git push --force origin"
+
 label "a leading + on a refspec is a force-update"
 assert deny "git push upstream +main"
 assert deny "git push upstream +refs/tags/v0.1.4:refs/tags/v0.1.4"

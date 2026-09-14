@@ -265,7 +265,9 @@ buildable intent.
 - Finding the git invocation: after quote-stripping, the command is split on shell separators
   (`;` `&&` `||` `|` `&`, subshell parens, and newlines) and each segment is inspected
   independently, so a git call that is not the first command in the string is still seen. Within a
-  segment, leading environment assignments (`GIT_DIR=... git ...`) and git's own pre-subcommand
+  segment, leading environment assignments (`GIT_DIR=... git ...`), command wrappers that take a
+  command as their argument (`env`, `time`, `sudo`, `nohup`, `command`, `exec`, `xargs`, `nice`,
+  `ionice`, `stdbuf`, along with their own dash-options), and git's own pre-subcommand
   global options (`-C <path>`, `-c <k>=<v>`, `--git-dir=`, `--work-tree=`, `--no-pager`, ...) are
   skipped to find the real subcommand; options taking a separate value consume two tokens. Each
   segment is then normalized to a canonical `git <subcommand> <args>` string and run through one
@@ -321,10 +323,12 @@ buildable intent.
   parser, so an adversarial rewrite is not guaranteed to be caught - command substitution, an
   alias, a wrapper script, a git invocation assembled from variables, or one hidden inside
   `bash -c "..."`, whose quoted body this script strips before matching. This raises the bar over
-  prefix-only matching; it is not a sandbox.
+  prefix-only matching; it is not a sandbox. In the same family: a command wrapper whose own
+  argument is not a dash-flag hides the git call from the wrapper skip above, so `xargs -n 1 git
+  push --force origin` falls through where the bare `xargs git push --force origin` is caught.
 - Acceptance criteria, each pinned by a correspondingly labeled group in the tracked suite
   `scripts/git-guard-tests/run.sh` and verified by running that suite against the script rather
-  than reading it for plausibility (79 cases as of 2026-09-14, 0 false positives/negatives). The
+  than reading it for plausibility (91 cases as of 2026-09-14, 0 false positives/negatives). The
   suite is the authority for what holds; this list is the rationale for why those things are
   asserted, and the two are meant to stay in step - a new rule means a criterion here and a case
   there. The suite is itself checked against stubs that deny nothing and deny everything, so that
@@ -342,6 +346,13 @@ buildable intent.
     remain allowed.
   - A leading environment assignment does not defeat the match: `GIT_DIR=/tmp/x git branch -D
     main` is denied.
+  - A command wrapper in front of the git call does not defeat the match: `time git push --force
+    origin main`, `env git push --force origin main`, `env FOO=1 git push --force origin main`,
+    `sudo git push --force origin main`, `nohup git reset --hard HEAD~1`, `command git branch -D
+    feature`, `env -i GIT_DIR=/tmp/x git stash drop`, and `echo main | xargs git push --force
+    origin` are all denied. `time git status`, `env git status`, and `sudo apt-get install git`
+    remain allowed - skipping a wrapper only exposes what follows it to the same `git` test, so it
+    cannot turn a non-git command into a deny.
   - A leading `+` on a refspec is denied as a force-update: `git push upstream +main`,
     `git push upstream +refs/tags/v0.1.4:refs/tags/v0.1.4`, and `git -C repo push upstream
     +v0.1.4`. `git push upstream HEAD:main` (a normal explicit refspec, colon mid-token) stays

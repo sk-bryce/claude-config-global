@@ -145,8 +145,9 @@ What it sets up:
     flags (force-push, including a `+` refspec prefix; `reset --hard`, `clean -f`, `branch -D`,
     `commit --no-verify`, `rebase -i`) regardless of where the flag falls on the command line, and
     regardless of where the git call sits in the command string - each segment of a compound
-    command is inspected, and git's own pre-subcommand options are skipped, so `cd repo && git
-    push --force` and `git -C repo push --force` are caught too. Closes the gap
+    command is inspected, and leading environment assignments, command wrappers (`env`, `time`,
+    `sudo`, `xargs`, ...) and git's own pre-subcommand options are skipped, so `cd repo && git
+    push --force`, `git -C repo push --force` and `time git push --force` are caught too. Closes the gap
     `permissions.deny`'s prefix-only matching leaves open - see `specs/behaviors.md`'s Destructive
     Git Guard section. `git-guard-tests/` holds its assertion suite, which has its own README and
     should be run after any change to the script: because the guard fails open, a broken one and a

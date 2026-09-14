@@ -40,7 +40,9 @@
 # is split on shell separators (`;` `&&` `||` `|` `&` and subshell parens) and every resulting
 # segment is inspected independently, so `cd /repo && git push --force` and `true; git reset
 # --hard` are caught exactly as the bare forms are. Within a segment, leading environment
-# assignments (`GIT_DIR=... git ...`) and git's own pre-subcommand global options (`-C <path>`,
+# assignments (`GIT_DIR=... git ...`), command wrappers that take a command as their argument
+# (`env`, `time`, `sudo`, `nohup`, `command`, `exec`, `xargs`, `nice`, `ionice`, `stdbuf`, with
+# their own dash-options), and git's own pre-subcommand global options (`-C <path>`,
 # `-c <k>=<v>`, `--git-dir=`, `--work-tree=`, `--no-pager`, ...) are skipped to find the real
 # subcommand, so `git -C /repo push --force` is caught too. Each segment is normalized to a
 # canonical `git <subcommand> <args>` string and run through one shared rule set, so the rules
@@ -58,6 +60,9 @@
 # adversarial rewrite (command substitution, an alias, a wrapper script, a git invocation built
 # from variables, or one hidden inside `bash -c "..."` whose quoted body this script strips) is
 # not guaranteed to be caught. This raises the bar over prefix-only matching; it is not a sandbox.
+# A wrapper whose own arguments are not dash-flags hides the git call from the wrapper skip above
+# (`xargs -n 1 git push --force`: the bare `1` is not recognized as an option's value), so that form
+# falls through as well.
 # `git push` has no documented `-d` short form for `--delete` (unlike `git branch -d/-D`), so only
 # `--delete` and the `:<branch>` delete-refspec form are matched for remote-branch deletion. A
 # bare `git gc --prune=now` (without a preceding `git reflog expire --all --expire=now`) is not
@@ -167,9 +172,23 @@ while IFS= read -r segment || [[ -n "$segment" ]]; do
   # Trim leading whitespace.
   seg="${segment#"${segment%%[![:space:]]*}"}"
 
-  # Drop leading environment assignments: `GIT_DIR=/tmp/x git branch -D main`.
-  while [[ "$seg" =~ ^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+(.*)$ ]]; do
-    seg="${BASH_REMATCH[1]}"
+  # Drop whatever stands between the start of the segment and the git call: leading environment
+  # assignments (`GIT_DIR=/tmp/x git branch -D main`) and command wrappers that take a command as
+  # their argument (`env git ...`, `time git ...`, `xargs git push --force`). The two can interleave
+  # (`env FOO=1 git ...`), so this loops until the front of the segment stops changing. Stripping a
+  # wrapper can only ever expose a git call that would otherwise have been missed; it cannot cause a
+  # false deny, because whatever follows a wrapper still has to pass the `git` test below.
+  while :; do
+    before="$seg"
+    while [[ "$seg" =~ ^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+(.*)$ ]]; do
+      seg="${BASH_REMATCH[1]}"
+    done
+    if [[ "$seg" =~ ^(sudo|env|time|nohup|command|exec|xargs|nice|ionice|stdbuf)([[:space:]]+-[^[:space:]]+)*[[:space:]]+(.*)$ ]]; then
+      seg="${BASH_REMATCH[3]}"
+    fi
+    if [[ "$seg" == "$before" ]]; then
+      break
+    fi
   done
 
   [[ "$seg" =~ ^git([[:space:]]|$) ]] || continue
