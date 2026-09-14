@@ -1,31 +1,62 @@
 # Claude Config
 
-Personal agent config, skills, and more. Lives at `~/.claude` and targets Claude Code. See
-`skills/cursor-projection/SKILL.md` for how this config projects onto Cursor.
+A personal Claude Code configuration: global rules, skills, subagents, hooks, and reference docs,
+all under one directory (`~/.claude`). Published so the reasoning behind these choices is
+reusable, even if the settings themselves are tuned for someone else.
 
-This repo uses a spec-anchored architecture: intent lives in `specs/`, generated artifacts are
-committed and regenerated from those specs, decisions are recorded in `decisions/`, and persistent
-governing context lives in `CLAUDE.md` plus `reference/`. See
-`reference/spec-driven-architecture.md` for the rationale and operating model, and
-`decisions/0001-adopt-spec-driven-config-architecture.md` for the decision.
+## What's here and why you might care
 
-## About this repo
+If you're just browsing, the parts worth a look are:
 
-This repo is published as a reference rather than as a product. It is not a framework, a plugin,
-or a starter template, and it carries no support, versioning, or stability guarantee: files
-change when the workflow behind them changes, and nothing here is built to be installed
-wholesale.
+- **`CLAUDE.md`** - the global rules file. One example of what a fairly opinionated, fairly
+  mature CLAUDE.md looks like: working style, response style, git conventions, subagent/model
+  selection rules, and a mechanism for surviving context compaction. Tuned to one person's habits
+  - read it for the *shape* of the rules, not as something to install verbatim.
+- **`skills/` and `agents/`** - working examples of Claude Code skills and subagent definitions,
+  each with real triggers and real constraints rather than toy demonstrations. `reference/layout.md`
+  describes what each one does.
+- **`decisions/`** - numbered Architecture Decision Records explaining why this config is shaped
+  the way it is (why hooks require in-the-moment human registration, why Cursor projection is a
+  skill rather than a script, why research fan-out is restricted, and more).
+- **`docs/`** - standalone long-form guides that don't depend on the rest of the config, including
+  a from-zero-to-advanced generative AI and LLM primer, a cost-effective agentic tool use guide, a
+  terminal UI design reference, a DIY cyberdeck build guide, and research write-ups on context
+  rot, progressive disclosure, and the third-party plugin/skill ecosystem. These are useful on
+  their own even if you never touch the config itself.
+- **`reference/spec-driven-architecture.md`** - the operating model this whole repo follows:
+  intent lives in `specs/`, generated or hand-authored artifacts are checked against it, and
+  `decisions/` records why. Read this before proposing changes to how the repo itself works.
 
-Two things to know before borrowing from it. Several of the scripts under `scripts/` are
-registered as hooks and as the status line, which means they run automatically on every matching
-tool call, edit, or render - read any of them in full before registering one yourself, and see
+This repo is published as a reference, not a product. It is not a framework, a plugin, or a
+starter template, and it carries no support, versioning, or stability guarantee - files change
+when the workflow behind them changes, and nothing here is built to be installed wholesale.
+
+One thing to know before borrowing from it: several scripts under `scripts/` are registered as
+hooks and as the status line, meaning they run automatically on every matching tool call, edit, or
+render. Read any script in full before registering it yourself - see
 `decisions/0003-hooks-and-scripts-authoring-policy.md` for the review bar this repo holds itself
-to. The Layout section below gives each script's actual registration state; several are
-deliberately left unregistered. And the rules in `CLAUDE.md` are tuned to one person's habits;
-the reasoning is the transferable part, not the settings themselves.
+to, and `reference/layout.md` for each script's actual registration state (several are
+deliberately left unregistered).
 
-Licensed under the MIT License, except `docs/`, which is licensed under CC BY 4.0. See the
-License section at the end of this file.
+Licensed under the MIT License, except `docs/`, which is licensed under CC BY 4.0 - see
+[License](#license) below.
+
+## Using this as your own config
+
+To actually run Claude Code against this configuration:
+
+1. Clone the repo to `~/.claude`, or point `CLAUDE_CONFIG_DIR` at wherever you put it.
+2. Run `scripts/setup.sh` (see [Setup After Cloning](#setup-after-cloning) below) to install the
+   local-only state a clone can't carry: git hook registrations, your own scrub patterns, and the
+   fixtures that self-test them.
+3. Read `CLAUDE.md` and decide what to keep. Its rules encode one person's preferences - trim,
+   replace, or rewrite freely; the ADRs in `decisions/` explain the reasoning behind the parts
+   that aren't obviously arbitrary.
+4. Skim `reference/layout.md` for what each skill, subagent, and hook script actually does before
+   relying on any of them, since several are opinionated in ways that won't suit every workflow.
+
+From there, day-to-day use is just using Claude Code - the skills and subagents in this config
+activate on their own triggers (described in each `SKILL.md` and agent file) or by name.
 
 ## Setup After Cloning
 
@@ -87,216 +118,31 @@ What it sets up:
 
 ## Layout
 
-- `CLAUDE.md` - global agent configuration (constitution/steering), loaded by Claude Code at user
-  scope and the hand-maintained source of truth for global rules, including a Canary/Compact
-  Instructions verification mechanism for the compaction/summarization survival gap - see
-  `decisions/0006-global-config-compaction-verification.md`.
-- `settings.json` - Claude Code settings (including the Markdown hooks and the `statusLine`
-  key pointing at `scripts/statusline.sh`) for this config directory. See
-  `skills/cursor-projection/SKILL.md` for the Cursor counterparts of these.
-- `specs/` - per-artifact intent and acceptance criteria; the source a regeneration reads
-  (`skills.md`, `agents.md`, `behaviors.md`, `rules.md`, `backlog.md`). Holds intent only, never
-  copied artifact content.
+- `CLAUDE.md` - global agent configuration, loaded by Claude Code at user scope.
+- `settings.json` - Claude Code settings: hooks, the status line, and related config.
+- `specs/` - per-artifact intent and acceptance criteria that generated or checked artifacts are
+  measured against (`skills.md`, `agents.md`, `behaviors.md`, `rules.md`, `backlog.md`).
 - `decisions/` - numbered, immutable Architecture Decision Records.
-- `reference/` - internally-authored operational protocols artifacts draw on:
-  `spec-driven-architecture.md`, `subagent-orchestration.md`, `context-file-authoring.md`,
-  `document-generation.md`, `research-discipline.md`, `model-selection.md` (the tier ladder,
-  effort mechanics, and delegation-shape rules behind `CLAUDE.md`'s Subagents & Models
-  section), and `public-repo-hygiene.md` (what must never enter a tracked file in this
-  public-facing repo, and the neutral substitutes to use instead).
-- `docs/` - human-oriented notes and platform documentation (`features/`, `generative-ai/`,
-  `efficient-agentic-use/` - a six-chapter guide to cost-effective agentic tool use, with
-  harness and model-family appendices; `tui-ux/` - a six-chapter reference on terminal
-  interface design, accessibility, and the Go/Rust/Python TUI framework ecosystems;
-  `cyberdecks/` - a five-part guide to the DIY cyberdeck hobby, from etymology and history
-  through a component-by-component build guide), plus `plugin-research.md` (evaluation of a set
-  of third-party plugin and skill repos, ranked by recommendation strength),
-  `context-rot.md` (a citation-graded survey of the long-context-degradation research literature,
-  including where Claude specifically has and hasn't been measured),
-  `progressive-disclosure.md` (traces progressive disclosure from its 1980s HCI origins through
-  its 2025-2026 use in Anthropic's Agent Skills architecture, flagging where the evidence for
-  agent use is still thin), and `multi-account-claude-code.md` (setup and pitfalls for running two
-  or more Claude accounts on one machine via `CLAUDE_CONFIG_DIR`, on both macOS and Linux, with
-  the undocumented macOS Keychain service-name scoping in an appendix).
-- `scripts/` - scripts for the mechanical (deterministic) config outputs (`sync.sh`), the hook
-  logic a registration points at (below), and the `statusLine` command script (`statusline.sh`,
-  registered via the `statusLine` key in `settings.json`; `statusline-tests/` holds that script's
-  fixtures, structural assertions, and its own README; see `skills/cursor-projection/SKILL.md` for
-  the status line counterpart); model-generated where useful and
-  reviewed before commit, with hook registration requiring the user's explicit, in-the-moment
-  direction each time (see `decisions/0003-hooks-and-scripts-authoring-policy.md`). Hook logic, by
-  registration state:
-  - `md-ledger-append.sh` (`PostToolUse`) and `md-deferred-checks.sh` (`Stop`) - the registered
-    pair. `md-ledger-append.sh` records each edited Markdown file to a per-session ledger;
-    `md-deferred-checks.sh` drains that ledger at the end of each agent loop and invokes
-    `markdownlint-hook.sh`, `md-checks.sh`, and `link-recheck-hook.sh` once per distinct file in
-    the ledger, so those three run once per agent-loop stop rather than once per edit.
-    - `md-checks.sh` - the deterministic, offline mechanical checks over a Markdown file
-      (placeholders, CLAUDE.md typography compliance, skipped heading levels, relative link targets
-      that do not resolve, same-file anchors with no matching heading). Silent for a clean file,
-      never edits anything, always exits 0. Also invoked directly by the `review-md` skill, so one
-      implementation serves both the hook path and the review path.
-    - `link-recheck-hook.sh` - the only network-touching check. Probes References-section links in
-      parallel, prints nothing when every link resolves, and self-gates on a freshness window keyed
-      to the document's URL set, so a repeat run makes no network call at all.
-  - `filter-verbose-output.sh` (`PreToolUse`, matcher `Bash`) - registered.
-  - `destructive-git-guard.sh` (`PreToolUse`, matcher `Bash`, ordered before
-    `filter-verbose-output.sh` in the same matcher block) - registered. Catches destructive git
-    flags (force-push, including a `+` refspec prefix; `reset --hard`, `clean -f`, `branch -D`,
-    `commit --no-verify`, `rebase -i`) regardless of where the flag falls on the command line, and
-    regardless of where the git call sits in the command string - each segment of a compound
-    command is inspected, and leading environment assignments, command wrappers (`env`, `time`,
-    `sudo`, `xargs`, ...) and git's own pre-subcommand options are skipped, so `cd repo && git
-    push --force`, `git -C repo push --force` and `time git push --force` are caught too. Closes the gap
-    `permissions.deny`'s prefix-only matching leaves open - see `specs/behaviors.md`'s Destructive
-    Git Guard section. `git-guard-tests/` holds its assertion suite, which has its own README and
-    should be run after any change to the script: because the guard fails open, a broken one and a
-    working one look identical on every allowed command.
-  - `health-check.sh` - logic only, deliberately NOT registered and meant to stay that way: the
-    full-tree mechanical half of the periodic self-evaluation, run by hand rather than on any hook
-    path. Checks JSON validity of every tracked `*.json`, that every command `settings.json` points
-    at exists and is tracked, `created:`/`updated:` frontmatter (presence, ordering, and no future
-    dates), skill description budgets, spec coverage in both directions, README coverage, script
-    executable bits, `bash -n` and shebangs, a skill's or subagent's `name:` against its own path,
-    `decisions/` numbering, backticked repo-internal path references in prose, and unbumped
-    `updated:` dates in the working tree; advisory scans cover eval coverage, always-loaded context
-    budget, unreferenced artifacts, and `updated:` dates trailing a file's last commit. Delegates to
-    `md-checks.sh`, `scrub-check.sh`, `sync.sh --check`, and `setup.sh --check` rather than
-    reimplementing them. Read-only apart from `.health-check-stamp`, a gitignored marker recording
-    the last full run's date, commit, and finding count so `session-setup-check.sh` can nudge when a
-    run is overdue or left findings unaddressed; exits non-zero on findings. See the Health check
-    section below, and `specs/behaviors.md`'s Config Health Check section.
-  - `read-only-plan-guard.sh` - logic only, deliberately NOT registered; activating it needs that
-    same explicit direction and the snippet to do it lives in `skills/write-plan/SKILL.md`.
-  - `pre-commit-check.sh` - registered as `.git/hooks/pre-commit` (a git hook, not a Claude
-    Code lifecycle hook - see `specs/behaviors.md`'s Pre-commit Drift Check section for why
-    that's a different risk class). Runs four read-only checks: `settings.json` JSON validity,
-    `sync.sh --check` projection drift, `scrub-check.sh --staged` over the staged content, and
-    `scrub-check.sh --test` to confirm scrub-check's own patterns are still firing. Takes
-    `--repo <dir>` naming the checkout being committed to, which every registration passes, so a
-    repository wanting the same gate borrows this script rather than copying it and carries no more
-    than its own hand-written `.git/hooks/pre-commit`. The gate may inspect a borrowed repository
-    but never execute anything out of one, so the leak checks and the JSON check travel there and
-    the projection check does not - nor does it run in a linked worktree, where it would compare
-    machine-level artifacts against a checkout that never installs them. Local-only; not tracked by
-    git, so it needs reinstalling on a fresh clone - see Setup After Cloning above.
-  - `session-setup-check.sh` (`SessionStart`) - warns at session start about two things: this
-    machine's setup being incomplete, so a missing pre-commit registration surfaces before the
-    commit that needed it (`setup.sh --check`), and the health check being overdue or having left
-    findings unaddressed, read from `.health-check-stamp`. The two are independent and compose into
-    one message. Registered twice: bare on `startup|resume` for the full warning, and
-    with `--context-only` on `clear|compact`, which re-tells Claude (both events wipe its copy of
-    the note) without re-nagging the user who saw it minutes ago. `fork` is left unregistered since
-    it inherits context. Silent on a healthy machine, silent for sessions outside this repo, and
-    silent in a replicated profile with no repository. Emits JSON rather than plain text because
-    `SessionStart` stdout goes to Claude's context, not to the terminal - see `specs/behaviors.md`'s
-    Session Setup Check section.
-  - `setup.sh` - brings a fresh clone or a new machine to the state cloning cannot produce: the
-    git hook registrations, `scrub-patterns.local`, and `scrub-test.local`. Idempotent, never
-    overwrites a hook it did not write, and `--check` reports what is missing without changing
-    anything. Human-run only, per `decisions/0003-hooks-and-scripts-authoring-policy.md` - it
-    registers hooks. See Setup After Cloning above.
-  - `scrub-check.sh` - detects content unsuited to a public remote in tracked files: absolute home
-    paths and their projects-path spellings, the local username and hostname, session UUIDs, email
-    addresses, and credential-shaped tokens. `--repo <dir>` scans a different checkout instead,
-    while still reading `scrub-patterns.local` and `scrub-test.local` from this repository's main
-    checkout - they describe a person and a machine rather than a repository, and being gitignored
-    they do not exist in a linked worktree. Read-only, exits non-zero on findings, silent when
-    clean. Bare, it audits every tracked file in the working tree (`--all` says the same thing
-    explicitly, and explicit paths check just those). The commit gate passes `--staged`, which
-    checks the bytes about to be committed rather than the working tree - the difference between
-    blocking a leak and waving it through, since a secret staged and then tidied out of the working
-    tree still passes. A third mode, `--test`, is the commit gate's self-test: it scans the
-    gitignored `scrub-test.local` and fails unless every fixture line there triggers at least
-    one warning, catching a pattern that has silently stopped matching before it lets something
-    real through. Carries no sensitive values itself - machine literals are derived at run time and
-    client-specific patterns come from the gitignored `scrub-patterns.local`, whose absence (like
-    `scrub-test.local`'s, for `--test`) is a hard error (exit 2) rather than a silent skip. Policy
-    in `reference/public-repo-hygiene.md`, rationale in
-    `decisions/0009-public-repo-hygiene-as-an-always-on-rule.md`.
-  - `replicate.sh` - mirrors shared config (`skills/`, `agents/`, `scripts/`, `commands/`, `rules/`,
-    `hooks/`, `reference/`, `decisions/`, `settings.json`, and a managed copy of this repo's
-    `CLAUDE.md`) into one or more other `CLAUDE_CONFIG_DIR` directories, e.g. a second account's
-    config dir, passed as arguments - see the file's own header for usage and install steps. Registered as the `post-commit`, `post-merge`, and `post-rewrite` hooks, which
-    take the target dir(s) from `.git/hooks/replicate-targets.sh` (which accounts exist is
-    per-machine state, not committed to the repo), so every commit to `main` in the main working
-    tree - and every pull that brings one in from another machine - replicates automatically. The
-    script itself skips quietly on a linked worktree or any other branch, since
-    `git rev-parse --show-toplevel` (which `replicate-targets.sh` uses to locate it) resolves
-    per-worktree. Local-only; not tracked by git, so it needs
-    reinstalling (with its target dir(s)) on a fresh clone, same as `pre-commit-check.sh`. A
-    target's CLAUDE.md is a copy rather than a symlink or an `@`-import - see the file's own
-    comments for why, including which of `CLAUDE.md`'s own pointers that leaves unresolvable in a
-    target. `mkdir`-locked (no `flock` on macOS) so overlapping runs can't rsync into the same
-    target at once; a run that fails partway logs which target may now have a mix of old and new
-    config, rather than staying silent about it.
-- `evals/` - the repo-wide eval run procedure, thresholds, and results log; per-artifact test
-  cases stay co-located under each skill's own `evals/` directory, split into `evals.json`
-  (behavioral, run by the plugin's grader) and `trigger-evals.json` (did the skill fire, run by the
-  plugin's `run_loop.py`). The two cannot be combined: see `evals/README.md`.
-- `skills/` - personal agent skills:
-  - `skill-author` - create, audit, or explain agent skills; hands off to `skill-creator` for
-    scaffolding and evals.
-  - `review-md` - proofread a single Markdown document, tracking settled/deferred findings in
-    `review-tracking.md`.
-  - `write-plan` - plan a multi-step piece of work into a self-contained, agent-executable
-    Markdown plan file (auto-invocable). Ships a filled-in example under `examples/`.
-  - `execute-plan` - execute an already-written plan by dispatching its units to subagents, with
-    the escalation ladder, a circuit breaker, and a Definition-of-Done gate (manual invocation
-    only). Both plan skills share the orchestration protocol in `reference/subagent-orchestration.md`.
-  - `health-check` - the judgment half of the periodic self-evaluation (Opus tier). Runs
-    `scripts/health-check.sh`, triages its findings, then assesses cross-document coherence,
-    staleness, and whether each artifact still earns its place. Read-only by default; proposes
-    changes rather than applying them. See `specs/skills.md`'s health-check section.
-  - `research` - auto-invocable; loads the skeleton-first/progress-file/usage-check research
-    discipline (`references/research-discipline.md`) into whichever context is doing a
-    research-heavy documentation-generation task, and states the delegation decision (inline by
-    default; parallel `Agent` forks for independent sub-topics; the `researcher` subagent only
-    for the narrow-tool-contract case - session size alone is not a valid trigger). Deliberately
-    has no `context: fork` pin -
-    see `decisions/0008-avoid-parallel-research-fanout.md`.
-  - `cursor-projection` - the single home for Cursor knowledge in this config, including the
-    harness fact base, the `CLAUDE.md`-to-User-Rules projection procedure, the status line
-    implementation, and the config writer that projects hooks, status line, and MCP config into
-    `~/.cursor/`. See `decisions/0005-cursor-projection-as-a-skill.md`.
-  - `deep-review` - the premise-level questions other reviews leave unasked, of code, a document,
-    a plan, or an in-conversation idea (Opus tier): is it actually useful, does it belong here, is
-    there a better way, does it serve its stated purpose, and what does it rest on - each answered
-    by name, closing with an explicit verdict. Auto-invocable on explicit premise or depth language
-    only ("deep review", "be critical", "is this a good idea", "does this belong here", "does this
-    provide value", "is there a better way"), so plain "review this doc" still falls to
-    `review-md`. Runs its judgment pass on a dispatched
-    Opus subagent when the caller is below that tier, rather than relying on the frontmatter pin,
-    which is known not to hold; at Opus the dispatch folds inline. The reason behind each
-    dispatch parameter lives in `skills/deep-review/references/dispatch.md`. See
-    `specs/skills.md`'s deep-review section.
-- `agents/` - personal subagent definitions:
-  - `Explore` - read-only search agent pinned to Haiku at high effort, replacing the built-in
-    `Explore` after it stopped defaulting to Haiku. Searches any file tree (code, documentation,
-    config, loose files), git or not, with separate tactics for code and prose. Returns
-    `path:line` references under a bounded output budget rather than file contents, so the caller
-    spends its own context only on what matters. Starts cold by design; see the file's
-    dispatch-brief contract. Its `tools:` allow-list is paired with `readonly: true` so the
-    constraint holds where a coarser permission model is all that is available; see
-    `skills/cursor-projection/references/harness-matrix.md` for how the `haiku` pin and `effort`
-    project onto other harnesses.
-  - `runner` - Haiku-tier command runner for verbose output (test suites, builds, linters, log or
-    metric pulls, large diffs), so that output is billed once inside the subagent instead of
-    riding along in the caller's context on every later turn. Reports only failures plus a
-    one-line pass/fail summary, quoting error text verbatim; never edits source.
-  - `executor` - Sonnet-tier mechanical implementer for one fully-specified plan step: the
-    file(s), the exact change, and a verification command, all supplied in the dispatch. No scope
-    widening; halts and reports rather than guessing when a step is ambiguous. Intended for the
-    prescriptive units `write-plan` produces and `execute-plan` dispatches.
-  - `researcher` - Sonnet-tier research-and-write worker for one self-contained documentation
-    topic, used only when its raw WebSearch/WebFetch output would flood the caller's own
-    context. Works incrementally (skeleton first, then section by section) with progress
-    tracked in a written file, and checks account usage utilization periodically, halting to
-    report rather than continuing once it crosses a caller-set threshold. No `Agent`/`Task`
-    tool, so it cannot fan out further, and is never dispatched more than one at a time - see
-    `decisions/0008-avoid-parallel-research-fanout.md` for why.
+- `reference/` - internally-authored protocols on spec-driven architecture, subagent
+  orchestration, context-file authoring, document generation, research discipline, model
+  selection, and public-repo hygiene, plus `layout.md` - this repo's full inventory of every
+  script, skill, and subagent.
+- `docs/` - human-oriented notes and standalone platform/technical guides; see
+  [What's here and why you might care](#whats-here-and-why-you-might-care) above.
+- `scripts/` - hook logic, the status line script, and the deterministic sync/check tooling:
+  `destructive-git-guard.sh`, `filter-verbose-output.sh`, `health-check.sh`,
+  `link-recheck-hook.sh`, `markdownlint-hook.sh`, `md-checks.sh`, `md-deferred-checks.sh`,
+  `md-ledger-append.sh`, `pre-commit-check.sh`, `read-only-plan-guard.sh`, `replicate.sh`,
+  `scrub-check.sh`, `session-setup-check.sh`, `setup.sh`, `statusline.sh`, `sync.sh`. See
+  `reference/layout.md` for what each script does and its registration state.
+- `evals/` - the repo-wide eval run procedure, thresholds, and results log; see `evals/README.md`.
+- `skills/` - personal agent skills (`skill-author`, `review-md`, `write-plan`, `execute-plan`,
+  `health-check`, `research`, `cursor-projection`, `deep-review`).
+- `agents/` - personal subagent definitions (`Explore`, `runner`, `executor`, `researcher`).
 
-This list will grow as commands and hooks are added.
+`reference/layout.md` has the full version of this list: every script's registration state and
+rationale, and a longer description of each skill and subagent. This list will grow as commands
+and hooks are added.
 
 ## Regenerating and checking drift
 
@@ -322,7 +168,7 @@ while this walks the whole tracked tree and can afford to be slow.
 
 ```
 scripts/health-check.sh            # every check
-scripts/health-check.sh --quick    # skip the delegated scripts and the git-history scan
+scripts/health-check.sh --quick    # skip the delegated scripts and both history scans
 ```
 
 It prints findings as `<path>:<line> - <description>` grouped under `== <category> ==` headers,
@@ -341,8 +187,8 @@ so a full run records its date, the commit it ran against, and its finding count
 start when either of two things is true:
 
 ```
-Config health check was last run 12 days ago (2026-08-12), 3 commits back - a run is due.
-Config health check was last run 3 days ago (2026-08-21), and left 5 findings unaddressed - a run is due.
+Config health check was last run 12 days ago (2026-09-02), 3 commits back - a run is due. Run scripts/health-check.sh, or ask for the health-check skill for the full review.
+Config health check was last run 3 days ago (2026-09-11), and left 5 findings unaddressed - a run is due. Run scripts/health-check.sh, or ask for the health-check skill for the full review.
 ```
 
 - **Overdue** - more than 7 days since the last run. Stretched to 30 when HEAD has not moved, the
@@ -358,7 +204,7 @@ Config health check was last run 3 days ago (2026-08-21), and left 5 findings un
 `--quick` deliberately does not stamp - it skips the delegated scripts and both history scans, so
 letting it reset the clock would buy a week of silence for a fraction of the check. The nudge is
 advisory in both directions: it never runs the check, and it tells Claude not to run one unprompted,
-since a 16-second full-tree pass and its findings have no business landing in an unrelated session.
+since a slow full-tree pass and its findings have no business landing in an unrelated session.
 
 ## License
 
