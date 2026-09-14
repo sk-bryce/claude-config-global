@@ -1,6 +1,6 @@
 ---
 created: 2026-07-27
-updated: 2026-09-13
+updated: 2026-09-14
 ---
 
 # Evals: Repo-Wide Run Procedure
@@ -546,7 +546,8 @@ exists to force.
     findings. Negatives clean, 9 of 9 at 0 fires. No prior measurement of this exact 9-phrase
     description exists to compare against; this run is now that baseline figure.
     **Behavioral (unaffected by the trigger correction):** all 12 cases, with-skill only, executors
-    at Sonnet, graded by the dispatching agent against `agents/grader.md`. Deterministic 27/31
+    at Sonnet, graded by the dispatching agent against the grader agent definition that ships
+    with the skill-creator plugin. Deterministic 27/31
     (87.1%), judgment 15/16 (93.75%). Two real misses, evals 8 and 10, both the same cause: the
     Purpose-gate rule that correctly blocks dispatch on a bare fixture file (evals 9, 11, 12 all
     pass 4/4) also blocks a legitimate in-conversation "should we do this?" proposal when it lacks
