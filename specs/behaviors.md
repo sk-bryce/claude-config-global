@@ -312,18 +312,23 @@ buildable intent.
   (so any command containing no separator was never inspected at all), and a whitespace-anchored
   fast-path test that missed `git` preceded by a paren. Any change here must be exercised against
   the acceptance criteria below - the allow cases as much as the deny cases - before it is
-  committed; reading the regexes is not sufficient evidence. Note the standing weakness: unlike
-  `scripts/statusline-tests/`, no harness for this script is tracked in the repo, so each run
-  rebuilds one from the criteria below. That is why those criteria are written as concrete,
-  runnable command strings rather than prose.
+  committed; reading the regexes is not sufficient evidence. The tracked suite at
+  `scripts/git-guard-tests/run.sh` is what to run, and its exit status is the gate. Note also what
+  this argues about the fail-open choice: both defects exited 0 through the script's *normal*
+  path, not an error path, so a fail-closed-on-error policy would have caught neither. Tests, not
+  the failure mode, are the control that covers this class of defect.
 - Known limitation (accepted): regex-based matching on the command string, not a real shell
   parser, so an adversarial rewrite is not guaranteed to be caught - command substitution, an
   alias, a wrapper script, a git invocation assembled from variables, or one hidden inside
   `bash -c "..."`, whose quoted body this script strips before matching. This raises the bar over
   prefix-only matching; it is not a sandbox.
-- Acceptance criteria (all verified by a standalone test harness run against the script directly,
-  not just read for plausibility - 59 cases as of 2026-09-14: 34 deny, 21 allow, and 4
-  robustness cases, with 0 false positives/negatives):
+- Acceptance criteria, each pinned by a correspondingly labeled group in the tracked suite
+  `scripts/git-guard-tests/run.sh` and verified by running that suite against the script rather
+  than reading it for plausibility (79 cases as of 2026-09-14, 0 false positives/negatives). The
+  suite is the authority for what holds; this list is the rationale for why those things are
+  asserted, and the two are meant to stay in step - a new rule means a criterion here and a case
+  there. The suite is itself checked against stubs that deny nothing and deny everything, so that
+  it is known to be capable of failing in both directions:
   - `git push origin main --force` (and the `-f` form) is denied, not just the prefix form
     `git push --force`.
   - Position of the git call does not matter. Each of these is denied: `cd repo && git push

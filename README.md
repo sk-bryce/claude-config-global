@@ -148,7 +148,9 @@ What it sets up:
     command is inspected, and git's own pre-subcommand options are skipped, so `cd repo && git
     push --force` and `git -C repo push --force` are caught too. Closes the gap
     `permissions.deny`'s prefix-only matching leaves open - see `specs/behaviors.md`'s Destructive
-    Git Guard section.
+    Git Guard section. `git-guard-tests/` holds its assertion suite, which has its own README and
+    should be run after any change to the script: because the guard fails open, a broken one and a
+    working one look identical on every allowed command.
   - `health-check.sh` - logic only, deliberately NOT registered and meant to stay that way: the
     full-tree mechanical half of the periodic self-evaluation, run by hand rather than on any hook
     path. Checks JSON validity of every tracked `*.json`, that every command `settings.json` points
