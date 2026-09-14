@@ -167,7 +167,7 @@ while IFS= read -r f; do TRACKED_MD+=("$f"); done < <(git ls-files '*.md')
 fm_exempt() {
   case "$1" in
     CLAUDE.md|README.md) return 0 ;;
-    scripts/statusline-tests/README.md) return 0 ;;
+    scripts/*-tests/README.md) return 0 ;;   # a test dir's own README, not a tracked document
     evals/runs/*.md) return 0 ;;
     skills/*/evals/files/*) return 0 ;;
     *) return 1 ;;
