@@ -34,26 +34,36 @@ section.
   (`skills.md`, `agents.md`, `behaviors.md`, `rules.md`, `backlog.md`). Holds intent only, never
   copied artifact content.
 - `decisions/` - numbered, immutable Architecture Decision Records.
-- `reference/` - internally-authored operational protocols artifacts draw on:
+- `reference/` - internally-authored operational protocols that artifacts draw on:
   `spec-driven-architecture.md`, `subagent-orchestration.md`, `context-file-authoring.md`,
   `document-generation.md`, `research-discipline.md`, `model-selection.md` (the tier ladder,
   effort mechanics, and delegation-shape rules behind `CLAUDE.md`'s Subagents & Models
   section), `public-repo-hygiene.md` (what must never enter a tracked file in this
   public-facing repo, and the neutral substitutes to use instead), and this file.
-- `docs/` - human-oriented notes and platform documentation (`features/`, `generative-ai/`,
-  `efficient-agentic-use/` - a six-chapter guide to cost-effective agentic tool use, with
-  harness and model-family appendices; `tui-ux/` - a six-chapter reference on terminal
-  interface design, accessibility, and the Go/Rust/Python TUI framework ecosystems;
-  `cyberdecks/` - a five-part guide to the DIY cyberdeck hobby, from etymology and history
-  through a component-by-component build guide), plus `plugin-research.md` (evaluation of a set
-  of third-party plugin and skill repos, ranked by recommendation strength),
-  `context-rot.md` (a citation-graded survey of the long-context-degradation research literature,
-  including where Claude specifically has and hasn't been measured),
-  `progressive-disclosure.md` (traces progressive disclosure from its 1980s HCI origins through
-  its 2025-2026 use in Anthropic's Agent Skills architecture, flagging where the evidence for
-  agent use is still thin), and `multi-account-claude-code.md` (setup and pitfalls for running two
-  or more Claude accounts on one machine via `CLAUDE_CONFIG_DIR`, on both macOS and Linux, with
-  the undocumented macOS Keychain service-name scoping in an appendix).
+- `docs/` - human-oriented notes and platform documentation. Multi-chapter guides:
+  - `features/` - how two specific Claude Code features actually behave: `goal.md` on `/goal` as a
+    session-scoped Stop hook with a natural-language predicate, and `skills.md` on the skill
+    triggering system and description optimization.
+  - `generative-ai/` - a seven-chapter primer taking a reader from fundamentals through models and
+    inference, prompts and caching, agents and harnesses, retrieval, and security, with appendices.
+  - `efficient-agentic-use/` - a six-chapter guide to cost-effective agentic tool use, with
+    harness and model-family appendices.
+  - `tui-ux/` - a six-chapter reference on terminal interface design, accessibility, and the
+    Go/Rust/Python TUI framework ecosystems.
+  - `cyberdecks/` - a five-part guide to the DIY cyberdeck hobby, from etymology and history
+    through a component-by-component build guide.
+
+  Standalone documents:
+  - `plugin-research.md` - evaluation of a set of third-party plugin and skill repos, ranked by
+    recommendation strength.
+  - `context-rot.md` - a citation-graded survey of the long-context-degradation research
+    literature, including where Claude specifically has and hasn't been measured.
+  - `progressive-disclosure.md` - traces progressive disclosure from its 1980s HCI origins through
+    its 2025-2026 use in Anthropic's Agent Skills architecture, flagging where the evidence for
+    agent use is still thin.
+  - `multi-account-claude-code.md` - setup and pitfalls for running two or more Claude accounts on
+    one machine via `CLAUDE_CONFIG_DIR`, on both macOS and Linux, with the undocumented macOS
+    Keychain service-name scoping in an appendix.
 - `scripts/` - scripts for the mechanical (deterministic) config outputs (`sync.sh`), the hook
   logic a registration points at (below), and the `statusLine` command script (`statusline.sh`,
   registered via the `statusLine` key in `settings.json`; `statusline-tests/` holds that script's
@@ -81,22 +91,29 @@ section.
       to the document's URL set, so a repeat run makes no network call at all.
   - `filter-verbose-output.sh` (`PreToolUse`, matcher `Bash`) - registered.
   - `destructive-git-guard.sh` (`PreToolUse`, matcher `Bash`, ordered before
-    `filter-verbose-output.sh` in the same matcher block) - registered. Catches destructive git
-    operations (`push --force`/`-f`/`--force-with-lease`, a leading `+` refspec, or a
-    `--delete`/`:branch` delete refspec; `reset --hard`; `clean -f`/`--force`, including combined
-    clusters like `-fd`; `branch -D` or `--delete --force`; `commit --no-verify`/`-n`/
-    `--no-gpg-sign`; `rebase -i`/`--interactive`; `checkout`/`restore` targeting a bare `.`
-    (`restore --staged` without `--worktree` is exempt, since unstaging alone doesn't discard
-    working-tree edits); `stash drop`/`clear`; `filter-branch`; and `reflog expire --all` combined
-    with `--expire=now`/`--expire-unreachable=now`) regardless of where the flag falls on the
-    command line, and regardless of where the git call sits in the command string - each segment of a compound
-    command is inspected, and leading environment assignments, command wrappers (`env`, `time`,
-    `sudo`, `xargs`, ...) and git's own pre-subcommand options are skipped, so `cd repo && git
-    push --force`, `git -C repo push --force` and `time git push --force` are caught too. Closes the gap
-    `permissions.deny`'s prefix-only matching leaves open - see `specs/behaviors.md`'s Destructive
-    Git Guard section. `git-guard-tests/` holds its assertion suite, which has its own README and
-    should be run after any change to the script: because the guard fails open, a broken one and a
-    working one look identical on every allowed command.
+    `filter-verbose-output.sh` in the same matcher block) - registered. The operations it catches:
+    - `push --force`/`-f`/`--force-with-lease`, a leading `+` refspec, or a `--delete`/`:branch`
+      delete refspec
+    - `reset --hard`
+    - `clean -f`/`--force`, including combined clusters like `-fd`
+    - `branch -D` or `--delete --force`
+    - `commit --no-verify`/`-n`/`--no-gpg-sign`
+    - `rebase -i`/`--interactive`
+    - `checkout`/`restore` targeting a bare `.` (`restore --staged` without `--worktree` is exempt,
+      since unstaging alone doesn't discard working-tree edits)
+    - `stash drop`/`clear`
+    - `filter-branch`
+    - `reflog expire --all` combined with `--expire=now`/`--expire-unreachable=now`
+
+    Position does not matter: the flag is found wherever it falls on the command line, and the git
+    call is found wherever it sits in the command string, since each segment of a compound command
+    is inspected. Leading environment assignments, command wrappers (`env`, `time`, `sudo`,
+    `xargs`, ...) and git's own pre-subcommand options are skipped, so `cd repo && git push
+    --force`, `git -C repo push --force`, and `time git push --force` are all caught. This closes
+    the gap `permissions.deny`'s prefix-only matching leaves open - see `specs/behaviors.md`'s
+    Destructive Git Guard section. `git-guard-tests/` holds its assertion suite, which has its own
+    README and should be run after any change to the script: because the guard fails open, a broken
+    one and a working one look identical on every allowed command.
   - `health-check.sh` - logic only, deliberately NOT registered and meant to stay that way: the
     full-tree mechanical half of the periodic self-evaluation, run by hand rather than on any hook
     path. Checks JSON validity of every tracked `*.json`, that every command `settings.json` points
@@ -109,8 +126,10 @@ section.
     `md-checks.sh`, `scrub-check.sh`, `sync.sh --check`, and `setup.sh --check` rather than
     reimplementing them. Read-only apart from `.health-check-stamp`, a gitignored marker recording
     the last full run's date, commit, and finding count so `session-setup-check.sh` can nudge when a
-    run is overdue or left findings unaddressed; exits non-zero on findings. See README.md's Health
-    check section, and `specs/behaviors.md`'s Config Health Check section.
+    run is overdue or left findings unaddressed; exits non-zero on findings. The stamp records the
+    finding count, not just the date, because otherwise a run that turned up nine problems and was
+    then ignored would reset the clock exactly as a clean one did. See README.md's Health check
+    section, and `specs/behaviors.md`'s Config Health Check section.
   - `read-only-plan-guard.sh` - logic only, deliberately NOT registered; activating it needs that
     same explicit direction and the snippet to do it lives in `skills/write-plan/SKILL.md`.
   - `pre-commit-check.sh` - registered as `.git/hooks/pre-commit` (a git hook, not a Claude
@@ -162,14 +181,19 @@ section.
   - `replicate.sh` - mirrors shared config (`skills/`, `agents/`, `scripts/`, `commands/`, `rules/`,
     `hooks/`, `reference/`, `decisions/`, `settings.json`, and a managed copy of this repo's
     `CLAUDE.md`) into one or more other `CLAUDE_CONFIG_DIR` directories, e.g. a second account's
-    config dir, passed as arguments - see the file's own header for usage and install steps. Registered as the `post-commit`, `post-merge`, and `post-rewrite` hooks, which
+    config dir, passed as arguments - see the file's own header for usage and install steps.
+    Registered as the `post-commit`, `post-merge`, and `post-rewrite` hooks, which
     take the target dir(s) from `.git/hooks/replicate-targets.sh` (which accounts exist is
     per-machine state, not committed to the repo), so every commit to `main` in the main working
-    tree - and every pull that brings one in from another machine - replicates automatically. The
-    script itself skips quietly on a linked worktree or any other branch, since
-    `git rev-parse --show-toplevel` (which `replicate-targets.sh` uses to locate it) resolves
-    per-worktree. Local-only; not tracked by git, so it needs
-    reinstalling (with its target dir(s)) on a fresh clone, same as `pre-commit-check.sh`. A
+    tree - and every pull that brings one in from another machine - replicates automatically. Each
+    path syncs exactly once: `post-rewrite` ignores its `amend` invocation (already covered by
+    `post-commit`), and `post-commit` stands down while a rebase is replaying commits through it.
+    `replicate-targets.sh` guards on its own emptiness rather than letting the hooks call
+    `replicate.sh` with no arguments, which would print the script's usage message after every
+    commit and pull. The script itself skips quietly on a linked worktree or any other branch,
+    since `git rev-parse --show-toplevel` (which `replicate-targets.sh` uses to locate it) resolves
+    per-worktree. Local-only; not tracked by git, so it needs reinstalling (with its target dir(s))
+    on a fresh clone, same as `pre-commit-check.sh`. A
     target's CLAUDE.md is a copy rather than a symlink or an `@`-import - see the file's own
     comments for why, including which of `CLAUDE.md`'s own pointers that leaves unresolvable in a
     target. `mkdir`-locked (no `flock` on macOS) so overlapping runs can't rsync into the same
@@ -181,14 +205,15 @@ section.
   plugin's `run_loop.py`). The two cannot be combined: see `evals/README.md`.
 - `skills/` - personal agent skills:
   - `skill-author` - create, audit, or explain agent skills; hands off to `skill-creator` for
-    scaffolding and evals.
+    scaffolding and evals. See `specs/skills.md`'s skill-author section.
   - `review-md` - proofread a single Markdown document, tracking settled/deferred findings in
-    `review-tracking.md`.
+    `review-tracking.md`. See `specs/skills.md`'s review-md section.
   - `write-plan` - plan a multi-step piece of work into a self-contained, agent-executable
     Markdown plan file (auto-invocable). Ships a filled-in example under `examples/`.
   - `execute-plan` - execute an already-written plan by dispatching its units to subagents, with
     the escalation ladder, a circuit breaker, and a Definition-of-Done gate (manual invocation
-    only). Both plan skills share the orchestration protocol in `reference/subagent-orchestration.md`.
+    only). Both plan skills share the orchestration protocol in
+    `reference/subagent-orchestration.md`.
   - `health-check` - the judgment half of the periodic self-evaluation (Opus tier). Runs
     `scripts/health-check.sh`, triages its findings, then assesses cross-document coherence,
     staleness, and whether each artifact still earns its place. Read-only by default; proposes
@@ -198,12 +223,13 @@ section.
     research-heavy documentation-generation task, and states the delegation decision (inline by
     default; parallel `Agent` forks for independent sub-topics; the `researcher` subagent only
     for the narrow-tool-contract case - session size alone is not a valid trigger). Deliberately
-    has no `context: fork` pin -
-    see `decisions/0008-avoid-parallel-research-fanout.md`.
+    has no `context: fork` pin - see `decisions/0008-avoid-parallel-research-fanout.md` and
+    `specs/skills.md`'s research section.
   - `cursor-projection` - the single home for Cursor knowledge in this config, including the
     harness fact base, the `CLAUDE.md`-to-User-Rules projection procedure, the status line
     implementation, and the config writer that projects hooks, status line, and MCP config into
-    `~/.cursor/`. See `decisions/0005-cursor-projection-as-a-skill.md`.
+    `~/.cursor/`. See `decisions/0005-cursor-projection-as-a-skill.md` and `specs/skills.md`'s
+    cursor-projection section.
   - `deep-review` - the premise-level questions other reviews leave unasked, of code, a document,
     a plan, or an in-conversation idea (Opus tier): is it actually useful, does it belong here, is
     there a better way, does it serve its stated purpose, and what does it rest on - each answered

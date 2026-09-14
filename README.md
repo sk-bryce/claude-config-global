@@ -1,28 +1,27 @@
 # Claude Config
 
 A personal Claude Code configuration: global rules, skills, subagents, hooks, and reference docs,
-all under one directory (`~/.claude`). Published so the reasoning behind these choices is
-reusable, even if the settings themselves are tuned for someone else.
+all under one directory (`~/.claude`). Published so others can reuse the reasoning behind these
+choices, even though the settings themselves are tuned to one person's workflow.
 
 ## What's here and why you might care
 
 If you're just browsing, the parts worth a look are:
 
-- **`CLAUDE.md`** - the global rules file. One example of what a fairly opinionated, fairly
-  mature CLAUDE.md looks like: working style, response style, git conventions, subagent/model
-  selection rules, and a mechanism for surviving context compaction. Tuned to one person's habits
-  - read it for the *shape* of the rules, not as something to install verbatim.
-- **`skills/` and `agents/`** - working examples of Claude Code skills and subagent definitions,
-  each with real triggers and real constraints rather than toy demonstrations. `reference/layout.md`
-  describes what each one does.
+- **`CLAUDE.md`** - the global rules file: working style, response style, git conventions,
+  subagent and model selection, and a mechanism for surviving context compaction. Read it for the
+  shape of the rules, not as something to install verbatim.
+- **`skills/` and `agents/`** - the Claude Code skills and subagent definitions this config runs
+  on day to day. `reference/layout.md` describes what each one does.
 - **`decisions/`** - numbered Architecture Decision Records explaining why this config is shaped
   the way it is (why hooks require in-the-moment human registration, why Cursor projection is a
   skill rather than a script, why research fan-out is restricted, and more).
 - **`docs/`** - standalone long-form guides that don't depend on the rest of the config, including
   a from-zero-to-advanced generative AI and LLM primer, a cost-effective agentic tool use guide, a
-  terminal UI design reference, a DIY cyberdeck build guide, and research write-ups on context
-  rot, progressive disclosure, and the third-party plugin/skill ecosystem. These are useful on
-  their own even if you never touch the config itself.
+  terminal UI design reference, a DIY cyberdeck build guide, a guide to running several Claude
+  accounts on one machine, and research write-ups on context rot, progressive disclosure, and the
+  third-party plugin/skill ecosystem. These are useful on their own even if you never touch the
+  config itself.
 - **`reference/spec-driven-architecture.md`** - the operating model this whole repo follows:
   intent lives in `specs/`, generated or hand-authored artifacts are checked against it, and
   `decisions/` records why. Read this before proposing changes to how the repo itself works.
@@ -87,34 +86,29 @@ What it sets up:
    them run.
 2. **`scrub-patterns.local`** (repository root, gitignored). The client, engagement, and
    internal-hostname patterns only you know - one extended regex per line, `#` for comments.
-   `scrub-check.sh` **refuses to run** without this file rather than passing quietly, because its
-   built-in coverage (structural shapes plus literals derived from this machine) is the kind of
-   partial coverage that looks adequate right up until a client name reaches a public remote. An
-   empty file is a valid answer and means "I have no such tokens"; a missing file is an unanswered
-   question. It needs no `.gitignore` rule: the leading `/*` there ignores every root entry not
-   explicitly whitelisted, so it cannot be committed by accident.
+   `scrub-check.sh` **refuses to run** without this file rather than passing quietly. Its built-in
+   coverage is structural shapes plus literals derived from this machine, so it cannot know your
+   client names; without them a clean scan would mean nothing. An empty file is a valid answer and
+   means "I have no such tokens"; a missing file is an unanswered question. It needs no
+   `.gitignore` rule: the leading `/*` there ignores every root entry not explicitly whitelisted,
+   so it cannot be committed by accident.
 3. **`scrub-test.local`** (repository root, gitignored, same mechanism as above). Fixture lines
    known to match one of the patterns above, used by `scrub-check.sh --test` to prove they still
    fire rather than having silently stopped matching. Its absence is a hard error for `--test` the
    same way `scrub-patterns.local`'s absence is for the default scan, and for the same reason.
 4. **`.git/hooks/post-commit`, `post-merge`, and `post-rewrite`** -> `scripts/replicate.sh`, which
-   mirrors this config into other `CLAUDE_CONFIG_DIR` profiles. Three hooks because replication has
-   to follow content onto a machine, not just off the one that wrote it: with `post-commit` alone, a
-   commit authored on another machine arrives here by pull and this machine's other profiles stay
-   stale until it happens to commit something itself. Git has no post-pull hook, so `git pull` is
-   caught by the two hooks its integration step fires - `post-merge` for the merge (fast-forwards
-   included), `post-rewrite` for `--rebase`. Each path syncs exactly once: `post-rewrite` ignores
-   its `amend` invocation (already covered by `post-commit`), and `post-commit` stands down while a
-   rebase is replaying commits through it.
+   mirrors this config into other `CLAUDE_CONFIG_DIR` profiles. Three hooks rather than one,
+   because replication has to follow content onto a machine, not just off the one that wrote it.
+   `post-commit` alone would miss a commit that arrives by `git pull`, leaving this machine's other
+   profiles stale. Git has no post-pull hook, so `post-merge` catches the merge (fast-forwards
+   included) and `post-rewrite` catches `--rebase`. Each path syncs exactly once; see
+   `reference/layout.md` for how the overlap between them is suppressed.
 5. **`.git/hooks/replicate-targets.sh`**, the target list all three hooks exec. `setup.sh` prompts
-   for the target directories, since which accounts exist is per-machine state it cannot invent, and
-   keeps them in one file so a target is added or removed in one place rather than three. Giving no
-   targets is a valid answer and still installs everything - the list simply guards on its own
-   emptiness - so that a missing hook always means "setup was never run" rather than the ambiguous
-   "maybe there was nothing to replicate". That guard is deliberate: `replicate.sh` with zero
-   arguments prints its usage message, which would otherwise appear after every commit and pull. A
-   `post-commit` left over from before this file existed, with its targets hardcoded, is migrated
-   automatically.
+   for the target directories, since which accounts exist is per-machine state it cannot invent.
+   Keeping them in one file means a target is added or removed in one place rather than three.
+   Giving no targets is a valid answer and still installs everything: the list guards on its own
+   emptiness, so a missing hook always means setup was never run. A `post-commit` left over from
+   before this file existed, with its targets hardcoded, is migrated automatically.
 
 ## Layout
 
@@ -141,8 +135,7 @@ What it sets up:
 - `agents/` - personal subagent definitions (`Explore`, `runner`, `executor`, `researcher`).
 
 `reference/layout.md` has the full version of this list: every script's registration state and
-rationale, and a longer description of each skill and subagent. This list will grow as commands
-and hooks are added.
+rationale, and a longer description of each skill and subagent.
 
 ## Regenerating and checking drift
 
@@ -177,7 +170,7 @@ artifacts, historical `updated:` drift - marked and excluded from the exit code.
 failures, 1 means at least one check failed, 2 means a usage or environment error. It never edits,
 stages, or registers anything.
 
-For the half a regex cannot do - is this still coherent, what has gone stale, does each artifact
+For what a regex cannot judge - is this still coherent, what has gone stale, does each artifact
 still earn its place - invoke the `health-check` skill, which runs the script and then reviews what
 it found.
 
@@ -191,20 +184,18 @@ Config health check was last run 12 days ago (2026-09-02), 3 commits back - a ru
 Config health check was last run 3 days ago (2026-09-11), and left 5 findings unaddressed - a run is due. Run scripts/health-check.sh, or ask for the health-check skill for the full review.
 ```
 
-- **Overdue** - more than 7 days since the last run. Stretched to 30 when HEAD has not moved, the
-  working tree is clean, and that run was clean: an idle tree earns a longer leash, never silence,
-  because `scrub-patterns.local`, `.git/hooks/`, `settings.local.json`, on-disk
+- **Overdue** - more than 7 days since the last run, stretched to 30 when HEAD has not moved, the
+  working tree is clean, and that run was clean. An idle tree gets a longer grace period, not
+  indefinite silence: `scrub-patterns.local`, `.git/hooks/`, `settings.local.json`, on-disk
   permission bits, and the working-tree diff all feed checks here, and none of them lives in a
   commit.
-- **Unaddressed findings** - the last run reported findings and is at least 3 days old. Without
-  this, a run that turned up nine problems and was then ignored reset the clock exactly as a clean
-  one did. The three-day grace period is there so the nudge is not nagging you about findings you
-  are in the middle of fixing.
+- **Unaddressed findings** - the last run reported findings and is at least 3 days old. The three
+  day delay keeps the nudge quiet while you are still working through what the last run found.
 
 `--quick` deliberately does not stamp - it skips the delegated scripts and both history scans, so
 letting it reset the clock would buy a week of silence for a fraction of the check. The nudge is
 advisory in both directions: it never runs the check, and it tells Claude not to run one unprompted,
-since a slow full-tree pass and its findings have no business landing in an unrelated session.
+since a slow full-tree pass and its findings should not land in an unrelated session.
 
 ## License
 
