@@ -139,6 +139,15 @@
 #   missing_no_org   - macOS + scoped entry absent + no oauthAccount (never logged in under this
 #                       profile) -> expected-absent, not an error: still no usage call, but no
 #                       error row either
+#   error_row_wrap   - the same hard error rendered at a narrow width and at a wide one. Claude
+#                       Code clips each line it is given at the terminal width and offers no wrap
+#                       setting, so statusline.sh folds this row itself: the narrow render must
+#                       break onto gutter-indented continuation lines with nothing over the
+#                       width, the wide render must stay on one line, and rejoining the narrow
+#                       one must reproduce the wide one exactly - a fold that dropped the tail
+#                       (the service name is in it) would otherwise look like a tidy short row.
+#                       Every case in this section pins CCSTATUS_COLUMNS, so what the fold does
+#                       cannot depend on the terminal the suite happens to run in
 #   configdir_unset  - CLAUDE_CONFIG_DIR unset (the default account) -> the bare Keychain entry,
 #                       since there is no profile to scope by
 #   non_macos        - uname reports Linux + CLAUDE_CONFIG_DIR set -> that profile's
@@ -411,6 +420,11 @@ FAKECURL
   run_cred_case() {
     local configdir="$1" capture_file="$2" case_cache_root="$3" out_file="$4" uname_s="${5:-Darwin}"
     local home_override="${6:-}"
+    # Pinned rather than inherited: statusline.sh wraps the error row to the terminal width, and
+    # without this the rendering - and every assertion below that reads the message - would depend
+    # on how wide the window running the suite happens to be. 80 is statusline.sh's own fallback,
+    # which is wide enough that the wording assertions read naturally; the wrap case overrides it.
+    local columns="${7:-80}"
     (
       if [[ -n "$configdir" ]]; then
         export CLAUDE_CONFIG_DIR="$configdir"
@@ -426,6 +440,7 @@ FAKECURL
       export FAKE_UNAME_S="$uname_s"
       export XDG_CACHE_HOME="$case_cache_root"
       export CURL_CAPTURE_FILE="$capture_file"
+      export CCSTATUS_COLUMNS="$columns"
       bash "$statusline" < "$cred_stdin" > "$out_file" 2>&1
     )
   }
@@ -433,6 +448,19 @@ FAKECURL
   # Asserts on the token the fake curl was actually called with; "<none>" means no call happened.
   cred_token_used() {
     cat "$1" 2>/dev/null || printf '<none>'
+  }
+
+  # The error row may be folded across several lines (see statusline.sh's err_indent block), so
+  # these two read it back as a block and as the single message it was folded from. ANSI codes are
+  # stripped with a printf-built ESC rather than sed's \x1b, which BSD sed does not understand.
+  # The row is always last, so "from the first `error >` line to EOF" is exactly the block.
+  error_block_lines() {
+    sed -e "s/$(printf '\033')\[[0-9;]*m//g" "$1" | awk '/^error +>/ { f = 1 } f { print }'
+  }
+  error_message_of() {
+    error_block_lines "$1" \
+      | sed -e '1s/^error *> *//' -e '2,$s/^ *//' \
+      | awk '{ printf "%s%s", (NR == 1 ? "" : " "), $0 } END { if (NR) print "" }'
   }
 
   check_cred() {
@@ -458,7 +486,7 @@ or the bare entry" "SCOPED_TOKEN_A" "$(cred_token_used "$cred_root/cap_a")"
   run_cred_case "$config_c" "$cred_root/cap_c" "$cred_root/cache_c" "$cred_root/out_c"
   check_cred "macOS + missing scoped entry + oauthAccount present attempts no usage call" \
     "<none>" "$(cred_token_used "$cred_root/cap_c")"
-  if grep -q "$(scoped_service_for "$config_c")" "$cred_root/out_c"; then
+  if error_message_of "$cred_root/out_c" | grep -q "$(scoped_service_for "$config_c")"; then
     echo "PASS: missing scoped entry renders the error row naming the expected service"
   else
     echo "FAIL: missing scoped entry did not render an error row naming the expected service"
@@ -495,12 +523,49 @@ or the bare entry" "SCOPED_TOKEN_A" "$(cred_token_used "$cred_root/cap_a")"
   run_cred_case "$config_d" "$cred_root/cap_d" "$cred_root/cache_d" "$cred_root/out_d"
   check_cred "macOS + missing scoped entry + no oauthAccount attempts no usage call" \
     "<none>" "$(cred_token_used "$cred_root/cap_d")"
-  if grep -q "not found - withholding" "$cred_root/out_d"; then
+  if error_message_of "$cred_root/out_d" | grep -q "not found - withholding"; then
     echo "FAIL: missing scoped entry with no oauthAccount rendered an error row, expected silence"
     structural_fail=1
   else
     echo "PASS: missing scoped entry with no oauthAccount renders no error row"
   fi
+
+  # The fold itself, rendered twice from the same hard error: once at a width too narrow to hold
+  # the message and once at a width that holds it whole. Comparing the two is what makes this a
+  # real check - the expected message is never written down here, so it cannot drift from the
+  # wording in statusline.sh or from the temp CLAUDE_CONFIG_DIR path baked into it, and a fold
+  # that silently dropped the tail would still have to differ from the unfolded render to escape.
+  # Both use their own cache roots, so they can't pad the cache-separation count at the end.
+  # narrow_cols is too tight for the message; wide_cols holds it whole. The gutter is
+  # ROW_LABEL_WIDTH + the " > " divider, and statusline.sh keeps a further column for the left
+  # padding the harness draws the row in - hence the -1 in the line-length bound. Both derived
+  # here rather than written out per assertion, so widening a case can't leave a stale bound
+  # silently passing behind it.
+  narrow_cols=60
+  wide_cols=400
+  gutter_indent="$(printf '%*s' 10 '')"
+  run_cred_case "$config_c" "$cred_root/cap_narrow" "$cred_root/cache_narrow" \
+    "$cred_root/out_narrow" "Darwin" "" "$narrow_cols"
+  run_cred_case "$config_c" "$cred_root/cap_wide" "$cred_root/cache_wide" \
+    "$cred_root/out_wide" "Darwin" "" "$wide_cols"
+  narrow_lines="$(error_block_lines "$cred_root/out_narrow" | wc -l | tr -d ' ')"
+  check_cred "a narrow terminal folds the error row onto continuation lines" \
+    "yes" "$([[ "$narrow_lines" -gt 1 ]] && echo yes || echo no)"
+  check_cred "a wide terminal leaves the error row on one line" \
+    "1" "$(error_block_lines "$cred_root/out_wide" | wc -l | tr -d ' ')"
+  check_cred "folding the error row loses none of the message" \
+    "$(error_message_of "$cred_root/out_wide")" "$(error_message_of "$cred_root/out_narrow")"
+  check_cred "no folded line runs past the terminal width" "0" \
+    "$(error_block_lines "$cred_root/out_narrow" \
+       | awk -v max="$((narrow_cols - 1))" 'length > max { c++ } END { print c + 0 }')"
+  # Continuation lines must hang under the message, not restart under the label, where they would
+  # read as unlabeled rows of their own. Written with index/substr rather than an awk interval
+  # like /^ {10}/, which the awk macOS ships is not guaranteed to understand.
+  check_cred "continuation lines are indented to the gutter" "0" \
+    "$(error_block_lines "$cred_root/out_narrow" \
+       | awk -v ind="$gutter_indent" \
+         'NR > 1 && (index($0, ind) != 1 || substr($0, length(ind) + 1, 1) == " ") { c++ }
+          END { print c + 0 }')"
 
   # macOS + CLAUDE_CONFIG_DIR unset (the default account): the bare machine-wide Keychain entry,
   # since there is no profile to scope by.
@@ -536,7 +601,7 @@ or the bare entry" "SCOPED_TOKEN_A" "$(cred_token_used "$cred_root/cap_a")"
     echo "FAIL: no credential anywhere did not render 'usage n/a' on the limits row"
     structural_fail=1
   fi
-  if grep -q "withholding" "$cred_root/out_na"; then
+  if error_message_of "$cred_root/out_na" | grep -q "withholding"; then
     echo "FAIL: no credential anywhere rendered the withheld error row, expected silence"
     structural_fail=1
   else

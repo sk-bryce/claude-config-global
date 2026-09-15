@@ -32,6 +32,11 @@
 # row are just joined with SEP as-is, unpadded. Unset (the default) or any value other than "0"
 # keeps the fully-aligned behavior described above.
 #
+# CCSTATUS_COLUMNS=<n> overrides the terminal width the error row at the bottom wraps to (see
+# term_width for why that width has to be discovered rather than read off the payload). Unset (the
+# default) asks the controlling terminal and falls back to 80 when there is none; every other row
+# ignores it, since only the error row carries free text long enough to need wrapping.
+#
 # Per decisions/0003-hooks-and-scripts-authoring-policy.md, this file's logic may be
 # model-generated and is reviewed in full before commit; wiring it up via the "statusLine" key in
 # settings.json is a separate, human step (not done by this script).
@@ -292,6 +297,21 @@ ROW_LIMITS_BASE="$WHITE"
 ROW_LABEL_WIDTH=7
 pad_label() {
   printf '%-*s' "$ROW_LABEL_WIDTH" "$1"
+}
+
+# Terminal width, used only by the wrapped error row at the bottom of this script. It has to be
+# discovered rather than read: the statusLine JSON payload carries no width field (checked against
+# the CLI's payload builder), and this script's stdout is a pipe, so `tput cols` answers terminfo's
+# 80 rather than the real terminal. Asking the controlling terminal directly is the one reading
+# that is actually right; 80 is the fallback when there is no tty to ask (a non-interactive render,
+# or the test harness). CCSTATUS_COLUMNS outranks both - statusline-tests/run.sh pins it so its
+# wrap assertions don't depend on the terminal the suite happens to run in.
+term_width() {
+  local cols="${CCSTATUS_COLUMNS-}"
+  [[ "$cols" =~ ^[0-9]+$ ]] || cols="$(stty size </dev/tty 2>/dev/null | cut -d' ' -f2)"
+  [[ "$cols" =~ ^[0-9]+$ ]] || cols="${COLUMNS-}"
+  [[ "$cols" =~ ^[0-9]+$ ]] || cols=80
+  printf '%s' "$cols"
 }
 
 input="$(cat)"
@@ -1525,11 +1545,34 @@ for i in "${!active_labels[@]}"; do
 done
 
 # Standalone error row: deliberately outside the vsync/column-alignment machinery above (it's a
-# message, not column data) and always the last line, so a credential-resolution problem this
-# account cares about (see get_usage_token's comment) can never be missed among the normal rows or
-# mistaken for a normal-looking limits value. Empty means no error - nothing extra is printed.
+# message, not column data) and always the last thing printed, so a credential-resolution problem
+# this account cares about (see get_usage_token's comment) can never be missed among the normal
+# rows or mistaken for a normal-looking limits value. Empty means no error - nothing printed.
 if [[ -n "$USAGE_TOKEN_ERROR" ]]; then
-  printf '%b\n' "${BOLD}${BRED}$(pad_label error)${RESET}${ROW_SEP}${BOLD}${BRED}${USAGE_TOKEN_ERROR}${RESET}"
+  # Wrapped here rather than left to the harness: Claude Code renders one terminal row per line
+  # this script prints and clips each at the terminal width, with no wrap setting of its own, so a
+  # message this long (the Keychain one runs past 200 characters) loses its tail - including the
+  # service name that makes it actionable. Continuation lines are indented to the gutter the label
+  # occupies, so the message reads as one hanging block rather than as extra unlabeled rows.
+  # `fold -s` breaks on spaces and counts bytes, so a multibyte character in CLAUDE_CONFIG_DIR's
+  # path can only leave a line short of the width, never overflow it.
+  err_gutter=$((ROW_LABEL_WIDTH + 3))               # label + ROW_SEP's " > "
+  err_width=$(($(term_width) - err_gutter - 1))     # -1 for the statusLine left padding
+  # Floor: an absurdly narrow terminal would otherwise hand fold a zero or negative width, which
+  # it rejects outright - and an error row that prints nothing is the one outcome worse than a
+  # clipped one. Lines can then run past the terminal, which is the old behavior and still better.
+  ((err_width < 20)) && err_width=20
+  err_indent="$(printf '%*s' "$err_gutter" '')"
+  err_first=1
+  while IFS= read -r err_line; do
+    err_line="${err_line% }"                        # fold -s leaves the space it broke on
+    if ((err_first)); then
+      printf '%b\n' "${BOLD}${BRED}$(pad_label error)${RESET}${ROW_SEP}${BOLD}${BRED}${err_line}${RESET}"
+      err_first=0
+    else
+      printf '%b\n' "${err_indent}${BOLD}${BRED}${err_line}${RESET}"
+    fi
+  done < <(printf '%s\n' "$USAGE_TOKEN_ERROR" | fold -s -w "$err_width")
 fi
 
 exit 0

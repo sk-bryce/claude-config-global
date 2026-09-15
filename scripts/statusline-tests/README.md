@@ -39,6 +39,10 @@ instead, since window size and `used_percentage` are payload fields rather than 
 CCSTATUS_VSYNC=0 ./run.sh       # unaligned-columns rendering
 ```
 
+`CCSTATUS_COLUMNS` is the other knob `statusline.sh` reads, but there is no reason to pass it here:
+the credential cases set it themselves so the error row's wrapping cannot depend on the width of
+the terminal running the suite, and no other row uses it.
+
 Each fixture's purpose is documented in `run.sh`'s header comment. Read the printed output by
 eye - color tiers, item presence/omission, formatting - against the expectations listed there.
 Exit status is 0 when the structural checks pass and 1 when any fails; the rendered fixtures never
@@ -83,6 +87,18 @@ macOS `CLAUDE_CONFIG_DIR`-scoped Keychain lookup, its two missing-entry outcomes
 when this profile has logged in, silence when it hasn't), the unset-`CLAUDE_CONFIG_DIR` default,
 the file-based non-macOS path, the no-credential-anywhere case that must read `usage n/a` rather
 than `usage withheld`, and cache-directory separation across accounts.
+
+That same section also covers the error row's wrapping, since the credential hard error is the one
+message long enough to need it. Claude Code renders one terminal row per line the status line
+prints and clips each at the terminal width, offering no wrap setting of its own, so
+`statusline.sh` folds that row itself onto continuation lines indented to the gutter. The check
+renders the same hard error twice - once at a width too narrow to hold the message, once at a width
+that holds it whole - and asserts that the narrow render folds, keeps every line inside the width,
+hangs its continuation lines under the message rather than under the label, and rejoins to exactly
+the wide one. The expected message is never written down here: it is read off the wide render, so
+it cannot drift from the wording in `statusline.sh` or from the temp `CLAUDE_CONFIG_DIR` path baked
+into it, and a fold that quietly dropped the tail would have to differ from the unfolded render to
+escape.
 
 ## Regression-checking a future edit
 
