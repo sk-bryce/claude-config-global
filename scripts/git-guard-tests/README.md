@@ -65,17 +65,22 @@ adding the criterion there and the case here.
 - The rest of the guarded set: bare-dot `checkout`/`restore`, remote-branch deletion, `clean`
   flag clusters, `branch -D`, `stash drop`/`clear`, `filter-branch`, `reflog expire --all`,
   `commit --no-verify`/`--no-gpg-sign`, `rebase -i`.
-- Config overrides that reproduce a denied flag: `commit.gpgsign` set false and `core.hooksPath`
-  set at all, in every form the collector understands (`-c k=v`, `-ck=v`, `--config-env=`, paired
-  `GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n`). Paired with allow cases for `commit.gpgsign=true`, an
-  unrelated key, and the near-miss key `commit.gpgsignoff`, so the match stays exact. Two further
-  cases pin the collector rather than a rule - a glob character in a config value, and a segment
-  with no config tokens at all - each alongside a guarded command that must still be denied,
-  because both failure modes break the scan for every later rule rather than for themselves.
-- `git config` writes of the same two keys, at every scope and in both the classic flag forms and
+- Tag signing: `git tag --no-sign` in both flag positions and behind a `cd` or `-C`, since it is
+  the one flag that overrides a true `tag.gpgsign` for a single invocation. The allow cases beside
+  it carry the scope decision: `-a`/`-s`/`-l`/bare `git tag` pass, and so do `git tag -d` and
+  `git tag -f`, which are deliberately out of scope rather than missed.
+- Config overrides that reproduce a denied flag: `commit.gpgsign` or `tag.gpgsign` set false and
+  `core.hooksPath` set at all, in every form the collector understands (`-c k=v`, `-ck=v`,
+  `--config-env=`, paired `GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n`). Paired with allow cases for
+  `commit.gpgsign=true`, an unrelated key, and the near-miss key `commit.gpgsignoff`, so the match
+  stays exact. Two further cases pin the collector rather than a rule - a glob character in a
+  config value, and a segment with no config tokens at all - each alongside a guarded command that
+  must still be denied, because both failure modes break the scan for every later rule rather than
+  for themselves.
+- `git config` writes of the same three keys, at every scope and in both the classic flag forms and
   the `set`/`unset` subcommand forms, plus `--unset`/`--unset-all`. The paired allow cases matter
   more than usual here: the key and value are read positionally, so an off-by-one would turn every
-  `git config --get` into a deny and make the guard intolerable to work alongside. Four of them
+  `git config --get` into a deny and make the guard intolerable to work alongside. Five of them
   put a scope flag *after* the key (`git config --get core.hooksPath --global`), which is the
   shape that actually produced that false positive once - a read whose key is the last token does
   not exercise the value slot at all.

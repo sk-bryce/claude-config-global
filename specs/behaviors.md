@@ -284,7 +284,7 @@ buildable intent.
   config rules. That pass exists because those rules read a config value positionally rather than
   matching a token in place, so stripping a quoted value left the slot empty and
   `git config commit.gpgsign "false"` read as a valueless read and was allowed. It is confined to
-  those two rules precisely because its input still carries quoted contents: the rules match two
+  those two rules precisely because its input still carries quoted contents: the rules match three
   fixed key names, which a commit message cannot reach, whereas any other rule could be tripped by
   flag-shaped text inside a quoted argument.
 - Denies, regardless of flag position and of where the git call sits in the command string:
@@ -296,7 +296,10 @@ buildable intent.
     which only unstages); `git clean -f`/`--force` (including combined short-flag clusters like
     `-fd`); and `git branch -D` (or `--delete` combined with `--force`/`-f`).
   - Beyond the canonical five, at the repository owner's request: `git commit
-    --no-verify`/`-n`/`--no-gpg-sign`; `git rebase -i`/`--interactive`; `git push --delete` or a
+    --no-verify`/`-n`/`--no-gpg-sign`; `git tag --no-sign` (git's documented per-invocation
+    override of `tag.gpgsign`, which with no `-a`/`-m` puts an unsigned *lightweight* tag back on
+    the table - the tag-side twin of `--no-gpg-sign`, and the reason the config rules below are
+    not enough on their own); `git rebase -i`/`--interactive`; `git push --delete` or a
     `:<branch>` delete refspec (removes a remote branch - `git push` has no documented `-d` short
     form for `--delete`, unlike `git branch -d/-D`, so only `--delete` and the colon-refspec form
     are matched); `git stash drop`/`clear` (permanently deletes stashed changes); `git
@@ -305,38 +308,43 @@ buildable intent.
     rely on).
   - A pre-subcommand config override that reproduces one of those flags, matched regardless of
     subcommand: `commit.gpgsign` set to a false value (`false`/`0`/`no`/`off`/empty, key matched
-    case-insensitively) is the documented equivalent of `--no-gpg-sign`, and `core.hooksPath` set
+    case-insensitively) is the documented equivalent of `--no-gpg-sign`, `tag.gpgsign` set to a
+    false value is the documented equivalent of `git tag --no-sign`, and `core.hooksPath` set
     at all is the documented equivalent of `--no-verify`. Matched in all of `-c k=v`, `-ck=v`,
     `--config-env=k=VAR` (denied on the key alone - the value lives in an environment variable the
     guard cannot read, and a one-shot indirection of exactly this key has no legitimate use), and
     paired `GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n` environment assignments. Applied regardless of
-    subcommand rather than only on `commit`: `git -c commit.gpgsign=false status` has no
+    subcommand rather than only on `commit`/`tag`: `git -c commit.gpgsign=false status` has no
     legitimate use either, and enumerating every subcommand the setting bites would be a list to
     keep in step with git rather than a rule. Not matched: `GIT_CONFIG_PARAMETERS` (the collector
     keys on the *name* of an environment assignment, and that variable carries its settings as a
     payload inside its value rather than as a `<key>=<value>` assignment of its own; quote-stripping
     was the earlier reason and no longer applies, since the dequoted pass above preserves the
-    payload) and a separate `git config commit.gpgsign false` run before a later `git commit` -
-    the guard sees one command at a time and holds no state between calls. Server-side branch
-    protection requiring signed commits is the only non-bypassable enforcement; this rule closes
-    the ordinary one-liner, not the determined case.
-  - `git config` *writing* either of those same two keys: `commit.gpgsign` set to
-    `false`/`0`/`no`/`off`, `core.hooksPath` set to anything, or an unset of either -
+    payload) and a separate `git config commit.gpgsign false` (or its `tag.gpgsign` twin) run before
+    a later `git commit`/`git tag` - the guard sees one command at a time and holds no state
+    between calls. Server-side branch protection requiring signed commits is the only
+    non-bypassable enforcement; this rule closes the ordinary one-liner, not the determined
+    case.
+  - `git config` *writing* any of those same three keys: `commit.gpgsign` or `tag.gpgsign` set to
+    `false`/`0`/`no`/`off`, `core.hooksPath` set to anything, or an unset of any of them -
     `--unset`/`--unset-all` and git's newer `unset` subcommand alike (unsetting at the scope where
-    signing is enabled leaves later commits unsigned, so it is a write, not a read). Matched at any
-    scope (`--global`, `--local`, `--file`) and in both the classic flag forms and the
-    `get`/`set`/`unset`/`list` subcommand forms, since the key and value are read positionally
-    rather than matched in place. Reads are deliberately left alone: `git config --get
+    signing is enabled leaves later commits or tags unsigned, so it is a write, not a read).
+    Matched at any scope (`--global`, `--local`, `--file`) and in both the classic flag forms
+    and the `get`/`set`/`unset`/`list` subcommand forms, since the key and value are read
+    positionally rather than matched in place. Reads are deliberately left alone: `git config --get
     commit.gpgsign`, `git config get commit.gpgsign` and `git config --list` all pass, and so does
     a read whose key is not the last token (`git config --get core.hooksPath --global`), because
     the value slot is checked for a dash-flag before it is treated as a value. A guard that blocks
     routine inspection gets switched off. Not matched: `--remove-section`, which could drop a
-    whole `[commit]` section - a section-level rule would have to model which keys a section
-    contains, and the ordinary bypass this closes is the key-level one.
+    whole `[commit]` or `[tag]` section - a section-level rule would have to model which keys a
+    section contains, and the ordinary bypass this closes is the key-level one.
   - Deliberately not guarded: a bare `git gc --prune=now` (without a preceding `git reflog expire
     --all --expire=now`) - gc respects reflog-referenced objects by default, so its risk is
-    secondary to and smaller than the reflog-expire case that is guarded. `rm -rf` (named in the
-    same safety protocol) is out of scope for this script entirely - it is not a git command, and
+    secondary to and smaller than the reflog-expire case that is guarded. On the tag side, only
+    the signing bypass is guarded: `git tag -d`/`--delete` and `git tag -f`/`--force` stay
+    allowed, because a local tag is cheap to recreate and neither one is the setting this rule
+    backs. `rm -rf` (named in the same safety protocol) is out of scope for this script
+    entirely - it is not a git command, and
     unlike a force-push it has a high legitimate-use rate (`rm -rf node_modules`, `rm -rf dist`),
     so guarding it well needs to distinguish "risky target" from "routine cleanup" - a separate,
     harder design problem than flag-position matching, deserving its own script and its own
@@ -417,6 +425,15 @@ buildable intent.
     `git stash list`/`show` are allowed.
   - `git reflog expire --all --expire=now` is denied in either argument order; `git reflog expire
     --expire=now` alone (no `--all`) and `git reflog show` are allowed.
+  - `git tag --no-sign v1.0.0` is denied in either flag position and behind a `cd`, a `-C`, or a
+    config override (`git -c tag.gpgsign=false tag v1.0.0`); `git tag`, `git tag -l`,
+    `git tag -a v1.0.0 -m ...`, `git tag -s ...`, `git tag -d v1.0.0` and `git tag -f v1.0.0`
+    stay allowed.
+  - `tag.gpgsign` is matched everywhere `commit.gpgsign` is: `git config tag.gpgsign false` at any
+    scope, `git config set tag.gpgsign no`, `--unset`/`--unset-all`/`unset` of it, the quoted-value
+    form, and every config-override spelling (`-c`, `-c<k>=<v>`, `--config-env=`, paired
+    `GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n`). `git config --get tag.gpgsign`,
+    `git config --get tag.gpgsign --global` and `git config --global tag.gpgsign true` stay allowed.
   - A commit message or stash message containing flag-shaped text (e.g. `git commit -m 'fix -n
     flag handling'`, `git stash push -m 'clear old test data'`) is not denied.
   - A non-destructive git command (`git push origin main`, `git checkout main`, `git checkout -b

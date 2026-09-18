@@ -29,6 +29,11 @@
       "Bash(git config --global commit.gpgsign false:*)",
       "Bash(git config --local commit.gpgsign false:*)",
       "Bash(git config --unset commit.gpgsign:*)",
+      "Bash(git tag --no-sign:*)",
+      "Bash(git config tag.gpgsign false:*)",
+      "Bash(git config --global tag.gpgsign false:*)",
+      "Bash(git config --local tag.gpgsign false:*)",
+      "Bash(git config --unset tag.gpgsign:*)",
       "Bash(git config core.hooksPath:*)",
       "Bash(git rebase -i:*)"
     ]

@@ -27,11 +27,14 @@
 #   - git clean -f/--force (including combined short-flag clusters like -fd)
 #   - git branch -D, or --delete combined with --force/-f
 #   - git commit --no-verify/-n/--no-gpg-sign
-#   - git config writing commit.gpgsign to a false value or core.hooksPath to anything, and
-#     --unset/--unset-all/`unset` of either key (a read such as `git config --get commit.gpgsign`
-#     is left alone, including when a scope flag trails the key)
+#   - git tag --no-sign (overrides tag.gpgsign for one tag, producing an unsigned - and with no
+#     -a/-m, lightweight - tag)
+#   - git config writing commit.gpgsign or tag.gpgsign to a false value, or core.hooksPath to
+#     anything, and --unset/--unset-all/`unset` of any of those keys (a read such as
+#     `git config --get commit.gpgsign` is left alone, including when a scope flag trails the key)
 #   - a pre-subcommand config override that reproduces one of those flags: commit.gpgsign set to
-#     a false value (the documented equivalent of --no-gpg-sign) or core.hooksPath set at all
+#     a false value (the documented equivalent of --no-gpg-sign), tag.gpgsign set to a false value
+#     (the documented equivalent of git tag --no-sign), or core.hooksPath set at all
 #     (the documented equivalent of --no-verify), supplied via `-c k=v`, `-ck=v`,
 #     `--config-env=k=VAR`, or GIT_CONFIG_KEY_n/GIT_CONFIG_VALUE_n environment assignments
 #   - git rebase -i/--interactive
@@ -62,7 +65,7 @@
 # segment. The two config rules are the exception and run a second time over a copy with the quote
 # characters removed but their contents kept: they read a value positionally, so stripping it
 # outright made `git config commit.gpgsign "false"` look like a valueless read. That second pass is
-# confined to those two rules, which match two fixed key names a commit message cannot reach; see
+# confined to those two rules, which match three fixed key names a commit message cannot reach; see
 # scan_segments' mode comment. Every other command falls through silently (exit 0, no output). Fails open (no output,
 # exit 0) on missing jq or unparsable input - a broken hook must never block a legitimate tool
 # call; see filter-verbose-output.sh's header comment for the same accepted tradeoff.
@@ -78,15 +81,17 @@
 # assignment, and that variable carries its settings as a payload inside its value rather than as a
 # `<key>=<value>` assignment of its own. (Before the dequoted pass above existed, the payload did
 # not survive quote-stripping either; that is no longer the reason.) `git config commit.gpgsign
-# false` run as its own command, before a later `git commit`, is likewise not matched - the guard
-# sees one command at a time and holds no state between calls. Server-side branch protection is the
-# only non-bypassable enforcement for signing; this rule closes the ordinary one-liner, not the
-# determined case.
+# false` (or the tag.gpgsign equivalent) run as its own command, before a later `git commit` or
+# `git tag`, is likewise not matched - the guard sees one command at a time and holds no state
+# between calls. Server-side branch protection is the only non-bypassable enforcement for signing;
+# this rule closes the ordinary one-liner, not the determined case.
 # `git push` has no documented `-d` short form for `--delete` (unlike `git branch -d/-D`), so only
 # `--delete` and the `:<branch>` delete-refspec form are matched for remote-branch deletion. A
 # bare `git gc --prune=now` (without a preceding `git reflog expire --all --expire=now`) is not
 # guarded - gc respects reflog-referenced objects by default, so its risk is secondary to and
-# smaller than the reflog-expire case that is guarded.
+# smaller than the reflog-expire case that is guarded. On the tag side only the signing bypass is
+# guarded: `git tag -d`/`--delete` and `git tag -f`/`--force` are deliberately left alone, because
+# a local tag is cheap to recreate and neither one is the setting this guard backs.
 
 set -euo pipefail
 
@@ -131,17 +136,21 @@ classify_config_write() {
 
   for ((i = 2; i < ${#t[@]}; i++)); do
     key="${t[$i],,}"
-    [[ "$key" == "commit.gpgsign" || "$key" == "core.hookspath" ]] || continue
+    [[ "$key" == "commit.gpgsign" || "$key" == "tag.gpgsign" || "$key" == "core.hookspath" ]] || continue
 
     # An --unset removes the setting outright. With signing enabled only at the scope being
-    # unset, that leaves later commits unsigned, so it counts as a write, not a read. `git config
-    # unset <key>` is git's newer subcommand spelling of the same operation and is matched too.
+    # unset, that leaves later commits (or tags) unsigned, so it counts as a write, not a read.
+    # `git config unset <key>` is git's newer subcommand spelling of the same operation and is
+    # matched too.
     if [[ "$scan" =~ (^|[[:space:]])--unset(-all)?([[:space:]]|$) ]] || [[ "${t[2]:-}" == "unset" ]]; then
-      if [[ "$key" == "commit.gpgsign" ]]; then
-        printf '%s' "destructive-git-guard: unsetting commit.gpgsign via git config removes the signing setting and can leave later commits unsigned; it is denied, the same as --no-gpg-sign."
-      else
-        printf '%s' "destructive-git-guard: unsetting core.hooksPath via git config changes which hooks run and is denied, the same as --no-verify."
-      fi
+      case "$key" in
+        commit.gpgsign)
+          printf '%s' "destructive-git-guard: unsetting commit.gpgsign via git config removes the signing setting and can leave later commits unsigned; it is denied, the same as --no-gpg-sign." ;;
+        tag.gpgsign)
+          printf '%s' "destructive-git-guard: unsetting tag.gpgsign via git config removes the tag-signing setting and can leave later tags unsigned - and, for a bare \`git tag <name>\`, lightweight rather than annotated; it is denied, the same as git tag --no-sign." ;;
+        *)
+          printf '%s' "destructive-git-guard: unsetting core.hooksPath via git config changes which hooks run and is denied, the same as --no-verify." ;;
+      esac
       return 0
     fi
 
@@ -153,6 +162,15 @@ classify_config_write() {
       case "${val,,}" in
         false|0|no|off)
           printf '%s' "destructive-git-guard: git config commit.gpgsign false disables commit signing for every later commit and is denied, the same as --no-gpg-sign."
+          return 0 ;;
+      esac
+      return 0
+    fi
+
+    if [[ "$key" == "tag.gpgsign" ]]; then
+      case "${val,,}" in
+        false|0|no|off)
+          printf '%s' "destructive-git-guard: git config tag.gpgsign false disables tag signing for every later tag - and makes a bare \`git tag <name>\` lightweight rather than annotated - and is denied, the same as git tag --no-sign."
           return 0 ;;
       esac
       return 0
@@ -198,6 +216,10 @@ classify() {
     if [[ "$scan" =~ (^|[[:space:]])(--no-verify([[:space:]]|$)|-n([[:space:]]|$)|--no-gpg-sign([[:space:]]|$)) ]]; then
       deny_reason="destructive-git-guard: git commit --no-verify/-n/--no-gpg-sign is denied regardless of flag position."
     fi
+  elif [[ "$scan" =~ ^git[[:space:]]+tag([[:space:]]|$) ]]; then
+    if [[ "$scan" =~ (^|[[:space:]])--no-sign([[:space:]]|$) ]]; then
+      deny_reason="destructive-git-guard: git tag --no-sign overrides tag.gpgsign for this one tag, producing an unsigned - and, with no -a/-m, lightweight - tag; it is denied, the same as git commit --no-gpg-sign."
+    fi
   elif [[ "$scan" =~ ^git[[:space:]]+rebase([[:space:]]|$) ]]; then
     if [[ "$scan" =~ (^|[[:space:]])(-i([[:space:]]|$)|--interactive([[:space:]]|$)) ]]; then
       deny_reason="destructive-git-guard: git rebase -i/--interactive is denied regardless of flag position."
@@ -239,7 +261,7 @@ classify() {
 # status` has no legitimate use either, and enumerating every subcommand the setting bites would be
 # a list to keep in step with git rather than a rule.
 classify_config() {
-  local cfg="$1" tok key val n k v t2
+  local cfg="$1" tok key val n k v t2 noun equiv
   local -a pairs=() raw=()
 
   # Nothing collected: return before touching an empty array, which is an unbound-variable error
@@ -274,17 +296,26 @@ classify_config() {
     key="${tok%%=*}"
     val="${tok#*=}"
     case "${key,,}" in
-      commit.gpgsign)
+      commit.gpgsign | tag.gpgsign)
+        # Both signing keys take the same shape, so they share one branch; only the noun and the
+        # flag each one is equivalent to differ.
+        if [[ "${key,,}" == "tag.gpgsign" ]]; then
+          noun="tag"
+          equiv="git tag --no-sign"
+        else
+          noun="commit"
+          equiv="--no-gpg-sign"
+        fi
         # @env marks a --config-env key whose value sits in an environment variable this script
         # cannot read. Deny rather than guess: a one-shot indirection of exactly this key is not
-        # something a legitimate commit needs.
+        # something a legitimate commit or tag needs.
         if [[ "$val" == "@env" ]]; then
-          printf '%s' "destructive-git-guard: git --config-env=commit.gpgsign=VAR hides the signing setting in an environment variable and is denied, the same as --no-gpg-sign."
+          printf '%s' "destructive-git-guard: git --config-env=${key}=VAR hides the signing setting in an environment variable and is denied, the same as ${equiv}."
           return 0
         fi
         case "${val,,}" in
           false|0|no|off|"")
-            printf '%s' "destructive-git-guard: setting commit.gpgsign to a false value via a config override produces an unsigned commit and is denied, the same as --no-gpg-sign."
+            printf '%s' "destructive-git-guard: setting ${key} to a false value via a config override produces an unsigned ${noun} and is denied, the same as ${equiv}."
             return 0 ;;
         esac ;;
       core.hookspath)
@@ -313,8 +344,8 @@ dequoted="$(printf '%s' "$cmd" | tr -d "\"'")"
 # deletes the value outright and leaves the slot looking empty - which the read-vs-write test then
 # reads as a read. Without this pass, `git config commit.gpgsign "false"` and
 # `git -c "commit.gpgsign=false" commit` are both allowed. The pass is restricted to the config
-# rules precisely because its input still contains quoted contents: those rules match two fixed key
-# names, so a commit message cannot reach them, whereas every other rule could be tripped by
+# rules precisely because its input still contains quoted contents: those rules match three fixed
+# key names, so a commit message cannot reach them, whereas every other rule could be tripped by
 # flag-shaped text inside a quoted argument.
 scan_segments() {
   local text="$1" mode="$2"
