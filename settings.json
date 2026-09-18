@@ -25,6 +25,11 @@
       "Bash(git reflog expire --all --expire=now:*)",
       "Bash(git commit --no-verify:*)",
       "Bash(git commit --no-gpg-sign:*)",
+      "Bash(git config commit.gpgsign false:*)",
+      "Bash(git config --global commit.gpgsign false:*)",
+      "Bash(git config --local commit.gpgsign false:*)",
+      "Bash(git config --unset commit.gpgsign:*)",
+      "Bash(git config core.hooksPath:*)",
       "Bash(git rebase -i:*)"
     ]
   },

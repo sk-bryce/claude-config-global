@@ -27,6 +27,13 @@
 #   - git clean -f/--force (including combined short-flag clusters like -fd)
 #   - git branch -D, or --delete combined with --force/-f
 #   - git commit --no-verify/-n/--no-gpg-sign
+#   - git config writing commit.gpgsign to a false value or core.hooksPath to anything, and
+#     --unset/--unset-all/`unset` of either key (a read such as `git config --get commit.gpgsign`
+#     is left alone, including when a scope flag trails the key)
+#   - a pre-subcommand config override that reproduces one of those flags: commit.gpgsign set to
+#     a false value (the documented equivalent of --no-gpg-sign) or core.hooksPath set at all
+#     (the documented equivalent of --no-verify), supplied via `-c k=v`, `-ck=v`,
+#     `--config-env=k=VAR`, or GIT_CONFIG_KEY_n/GIT_CONFIG_VALUE_n environment assignments
 #   - git rebase -i/--interactive
 #   - git checkout targeting a bare `.` (discards uncommitted changes)
 #   - git restore targeting a bare `.`, unless --staged is used without --worktree (unstaging
@@ -63,6 +70,12 @@
 # A wrapper whose own arguments are not dash-flags hides the git call from the wrapper skip above
 # (`xargs -n 1 git push --force`: the bare `1` is not recognized as an option's value), so that form
 # falls through as well.
+# GIT_CONFIG_PARAMETERS is not matched: git requires its payload to be quoted, and this script
+# strips quoted substrings before matching, so nothing usable survives. `git config commit.gpgsign
+# false` run as its own command, before a later `git commit`, is likewise not matched - the guard
+# sees one command at a time and holds no state between calls. Server-side branch protection is the
+# only non-bypassable enforcement for signing; this rule closes the ordinary one-liner, not the
+# determined case.
 # `git push` has no documented `-d` short form for `--delete` (unlike `git branch -d/-D`), so only
 # `--delete` and the `:<branch>` delete-refspec form are matched for remote-branch deletion. A
 # bare `git gc --prune=now` (without a preceding `git reflog expire --all --expire=now`) is not
@@ -89,6 +102,62 @@ stripped="$(printf '%s' "$cmd" | sed -E "s/'[^']*'//g" | sed -E 's/"[^"]*"//g')"
 # made per segment below. A stricter test here can only ever cause a false negative - an earlier
 # revision anchored on whitespace and so missed `(git stash drop)`, where `git` follows a paren.
 [[ "$stripped" == *git* ]] || exit 0
+
+# `git config` write rules. Takes the canonical "git config <args>" string and echoes a deny reason
+# or nothing. Separate from classify()'s regex rules because `git config` puts the key and its value
+# in two adjacent tokens, so the value has to be read positionally rather than matched in place.
+# Reads (`git config --get commit.gpgsign`, `git config --list`) are left alone: only a write, or an
+# unset that removes the setting, changes what the next commit does. Both git's classic flag forms
+# and its newer `get`/`set`/`unset`/`list` subcommand forms are handled.
+classify_config_write() {
+  local scan="$1" i key val
+  local -a t=()
+  read -r -a t <<< "$scan" || true
+
+  # Read selectors, tested before anything else. Without this, `git config --get core.hooksPath
+  # --global` reads `--global` as the key's value and denies a pure read: the scope flag happens to
+  # sit in the slot the value is read from. An --unset never coexists with a read selector, so
+  # returning here cannot swallow a write.
+  if [[ "$scan" =~ (^|[[:space:]])--(get|get-all|get-regexp|get-urlmatch|list)([[:space:]]|$) ]] ||
+    [[ "${t[2]:-}" == "get" || "${t[2]:-}" == "list" ]]; then
+    return 0
+  fi
+
+  for ((i = 2; i < ${#t[@]}; i++)); do
+    key="${t[$i],,}"
+    [[ "$key" == "commit.gpgsign" || "$key" == "core.hookspath" ]] || continue
+
+    # An --unset removes the setting outright. With signing enabled only at the scope being
+    # unset, that leaves later commits unsigned, so it counts as a write, not a read. `git config
+    # unset <key>` is git's newer subcommand spelling of the same operation and is matched too.
+    if [[ "$scan" =~ (^|[[:space:]])--unset(-all)?([[:space:]]|$) ]] || [[ "${t[2]:-}" == "unset" ]]; then
+      if [[ "$key" == "commit.gpgsign" ]]; then
+        printf '%s' "destructive-git-guard: unsetting commit.gpgsign via git config removes the signing setting and can leave later commits unsigned; it is denied, the same as --no-gpg-sign."
+      else
+        printf '%s' "destructive-git-guard: unsetting core.hooksPath via git config changes which hooks run and is denied, the same as --no-verify."
+      fi
+      return 0
+    fi
+
+    # No token after the key, or a dash-flag rather than a value: a read, not a write.
+    val="${t[$((i + 1))]:-}"
+    [[ -n "$val" && "$val" != -* ]] || return 0
+
+    if [[ "$key" == "commit.gpgsign" ]]; then
+      case "${val,,}" in
+        false|0|no|off)
+          printf '%s' "destructive-git-guard: git config commit.gpgsign false disables commit signing for every later commit and is denied, the same as --no-gpg-sign."
+          return 0 ;;
+      esac
+      return 0
+    fi
+
+    printf '%s' "destructive-git-guard: git config core.hooksPath redirects the repository's hooks away from the checked-in ones and is denied, the same as --no-verify."
+    return 0
+  done
+
+  return 0
+}
 
 # Rule set. Takes one canonical "git <subcommand> <args>" string, echoes a deny reason or nothing.
 classify() {
@@ -143,6 +212,8 @@ classify() {
     if [[ "$scan" =~ (^|[[:space:]])(drop|clear)([[:space:]]|$) ]]; then
       deny_reason="destructive-git-guard: git stash drop/clear permanently deletes stashed changes and is denied."
     fi
+  elif [[ "$scan" =~ ^git[[:space:]]+config([[:space:]]|$) ]]; then
+    deny_reason="$(classify_config_write "$scan")"
   elif [[ "$scan" =~ ^git[[:space:]]+filter-branch([[:space:]]|$) ]]; then
     deny_reason="destructive-git-guard: git filter-branch rewrites repository history and is denied."
   elif [[ "$scan" =~ ^git[[:space:]]+reflog([[:space:]]|$) ]]; then
@@ -154,6 +225,69 @@ classify() {
   fi
 
   printf '%s' "$deny_reason"
+}
+
+# Config-override rule set. Takes the space-separated pre-subcommand config assignments collected
+# for one segment (`k=v` tokens from -c/--config-env, plus leading environment assignments) and
+# echoes a deny reason or nothing. Applied regardless of subcommand: `git -c commit.gpgsign=false
+# status` has no legitimate use either, and enumerating every subcommand the setting bites would be
+# a list to keep in step with git rather than a rule.
+classify_config() {
+  local cfg="$1" tok key val n k v t2
+  local -a pairs=() raw=()
+
+  # Nothing collected: return before touching an empty array, which is an unbound-variable error
+  # under `set -u` on bash < 4.4 and would abort the whole script under `set -e`.
+  # `return 0`, not a bare `return`: the caller assigns this function's output in a command
+  # substitution, so a nonzero status would propagate to the assignment and `set -e` would abort
+  # the script mid-scan - failing closed and silently, the one thing this guard must never do.
+  [[ -n "${cfg//[[:space:]]/}" ]] || return 0
+
+  # Split with `read -r -a` rather than an unquoted `for tok in $cfg`: word splitting is wanted
+  # here, pathname expansion is not, and a config value may legitimately contain a glob character.
+  read -r -a raw <<< "$cfg" || true
+
+  for tok in "${raw[@]}"; do
+    if [[ "$tok" =~ ^GIT_CONFIG_KEY_([0-9]+)=(.*)$ ]]; then
+      # GIT_CONFIG_KEY_n names the key; its value lives in the separately-assigned
+      # GIT_CONFIG_VALUE_n, so pair them by index rather than reading either alone.
+      n="${BASH_REMATCH[1]}"
+      k="${BASH_REMATCH[2]}"
+      v=""
+      for t2 in "${raw[@]}"; do
+        [[ "$t2" == "GIT_CONFIG_VALUE_${n}="* ]] && v="${t2#GIT_CONFIG_VALUE_"${n}"=}"
+      done
+      pairs+=("$k=$v")
+    else
+      pairs+=("$tok")
+    fi
+  done
+
+  for tok in "${pairs[@]}"; do
+    [[ "$tok" == *=* ]] || continue
+    key="${tok%%=*}"
+    val="${tok#*=}"
+    case "${key,,}" in
+      commit.gpgsign)
+        # @env marks a --config-env key whose value sits in an environment variable this script
+        # cannot read. Deny rather than guess: a one-shot indirection of exactly this key is not
+        # something a legitimate commit needs.
+        if [[ "$val" == "@env" ]]; then
+          printf '%s' "destructive-git-guard: git --config-env=commit.gpgsign=VAR hides the signing setting in an environment variable and is denied, the same as --no-gpg-sign."
+          return 0
+        fi
+        case "${val,,}" in
+          false|0|no|off|"")
+            printf '%s' "destructive-git-guard: setting commit.gpgsign to a false value via a config override produces an unsigned commit and is denied, the same as --no-gpg-sign."
+            return 0 ;;
+        esac ;;
+      core.hookspath)
+        printf '%s' "destructive-git-guard: overriding core.hooksPath redirects the repository's hooks away from the checked-in ones and is denied, the same as --no-verify."
+        return 0 ;;
+    esac
+  done
+
+  return 0
 }
 
 deny_reason=""
@@ -172,6 +306,11 @@ while IFS= read -r segment || [[ -n "$segment" ]]; do
   # Trim leading whitespace.
   seg="${segment#"${segment%%[![:space:]]*}"}"
 
+  # Pre-subcommand config assignments seen while walking to the git subcommand. Collected rather
+  # than discarded: `-c commit.gpgsign=false` is the documented equivalent of a flag this guard
+  # already denies, so the skip loops below must hand these on instead of dropping them.
+  cfgtoks=""
+
   # Drop whatever stands between the start of the segment and the git call: leading environment
   # assignments (`GIT_DIR=/tmp/x git branch -D main`) and command wrappers that take a command as
   # their argument (`env git ...`, `time git ...`, `xargs git push --force`). The two can interleave
@@ -180,8 +319,9 @@ while IFS= read -r segment || [[ -n "$segment" ]]; do
   # false deny, because whatever follows a wrapper still has to pass the `git` test below.
   while :; do
     before="$seg"
-    while [[ "$seg" =~ ^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+(.*)$ ]]; do
-      seg="${BASH_REMATCH[1]}"
+    while [[ "$seg" =~ ^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)[[:space:]]+(.*)$ ]]; do
+      cfgtoks+=" ${BASH_REMATCH[1]}"
+      seg="${BASH_REMATCH[2]}"
     done
     if [[ "$seg" =~ ^(sudo|env|time|nohup|command|exec|xargs|nice|ionice|stdbuf)([[:space:]]+-[^[:space:]]+)*[[:space:]]+(.*)$ ]]; then
       seg="${BASH_REMATCH[3]}"
@@ -200,7 +340,23 @@ while IFS= read -r segment || [[ -n "$segment" ]]; do
   sub=""
   while (( idx < ${#toks[@]} )); do
     case "${toks[$idx]}" in
-      -C|-c|--exec-path|--git-dir|--work-tree|--namespace|--super-prefix|--config-env)
+      -c)
+        cfgtoks+=" ${toks[$((idx + 1))]:-}"
+        idx=$((idx + 2)) ;;
+      --config-env)
+        # The value is an environment variable name, not the setting's value; record the key with
+        # an @env marker so the rules can see the key without pretending to know the value.
+        cfgenv="${toks[$((idx + 1))]:-}"
+        cfgtoks+=" ${cfgenv%%=*}=@env"
+        idx=$((idx + 2)) ;;
+      -c?*)
+        cfgtoks+=" ${toks[$idx]#-c}"
+        idx=$((idx + 1)) ;;
+      --config-env=*)
+        cfgenv="${toks[$idx]#--config-env=}"
+        cfgtoks+=" ${cfgenv%%=*}=@env"
+        idx=$((idx + 1)) ;;
+      -C|--exec-path|--git-dir|--work-tree|--namespace|--super-prefix)
         idx=$((idx + 2)) ;;
       -*)
         idx=$((idx + 1)) ;;
@@ -208,6 +364,12 @@ while IFS= read -r segment || [[ -n "$segment" ]]; do
         sub="${toks[$idx]}"; break ;;
     esac
   done
+  reason="$(classify_config "$cfgtoks")"
+  if [[ -n "$reason" ]]; then
+    deny_reason="$reason"
+    break
+  fi
+
   [[ -n "$sub" ]] || continue
 
   reason="$(classify "git ${toks[*]:$idx}")"

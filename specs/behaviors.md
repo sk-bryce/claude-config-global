@@ -1,6 +1,6 @@
 ---
 created: 2026-07-26
-updated: 2026-09-14
+updated: 2026-09-18
 ---
 
 # Behavior Specs
@@ -269,7 +269,10 @@ buildable intent.
   command as their argument (`env`, `time`, `sudo`, `nohup`, `command`, `exec`, `xargs`, `nice`,
   `ionice`, `stdbuf`, along with their own dash-options), and git's own pre-subcommand
   global options (`-C <path>`, `-c <k>=<v>`, `--git-dir=`, `--work-tree=`, `--no-pager`, ...) are
-  skipped to find the real subcommand; options taking a separate value consume two tokens. Each
+  skipped to find the real subcommand; options taking a separate value consume two tokens. The
+  config-carrying ones are an exception: `-c <k>=<v>`, `-c<k>=<v>`, `--config-env=<k>=<VAR>` and
+  the leading environment assignments are *collected* rather than discarded, because a config
+  override can reproduce a flag the rules below already deny. Each
   segment is then normalized to a canonical `git <subcommand> <args>` string and run through one
   shared rule set, so the rules below are written once and apply to every form. Two ordering
   details are load-bearing: quotes are stripped *before* the split, so a separator inside a commit
@@ -293,6 +296,34 @@ buildable intent.
     filter-branch` (rewrites repository history); and `git reflog expire --all` combined with
     `--expire=now`/`--expire-unreachable=now` (destroys the recovery safety net other mistakes
     rely on).
+  - A pre-subcommand config override that reproduces one of those flags, matched regardless of
+    subcommand: `commit.gpgsign` set to a false value (`false`/`0`/`no`/`off`/empty, key matched
+    case-insensitively) is the documented equivalent of `--no-gpg-sign`, and `core.hooksPath` set
+    at all is the documented equivalent of `--no-verify`. Matched in all of `-c k=v`, `-ck=v`,
+    `--config-env=k=VAR` (denied on the key alone - the value lives in an environment variable the
+    guard cannot read, and a one-shot indirection of exactly this key has no legitimate use), and
+    paired `GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n` environment assignments. Applied regardless of
+    subcommand rather than only on `commit`: `git -c commit.gpgsign=false status` has no
+    legitimate use either, and enumerating every subcommand the setting bites would be a list to
+    keep in step with git rather than a rule. Not matched: `GIT_CONFIG_PARAMETERS` (git requires
+    its payload quoted, and quoted substrings are stripped before matching, so nothing usable
+    survives) and a separate `git config commit.gpgsign false` run before a later `git commit` -
+    the guard sees one command at a time and holds no state between calls. Server-side branch
+    protection requiring signed commits is the only non-bypassable enforcement; this rule closes
+    the ordinary one-liner, not the determined case.
+  - `git config` *writing* either of those same two keys: `commit.gpgsign` set to
+    `false`/`0`/`no`/`off`, `core.hooksPath` set to anything, or an unset of either -
+    `--unset`/`--unset-all` and git's newer `unset` subcommand alike (unsetting at the scope where
+    signing is enabled leaves later commits unsigned, so it is a write, not a read). Matched at any
+    scope (`--global`, `--local`, `--file`) and in both the classic flag forms and the
+    `get`/`set`/`unset`/`list` subcommand forms, since the key and value are read positionally
+    rather than matched in place. Reads are deliberately left alone: `git config --get
+    commit.gpgsign`, `git config get commit.gpgsign` and `git config --list` all pass, and so does
+    a read whose key is not the last token (`git config --get core.hooksPath --global`), because
+    the value slot is checked for a dash-flag before it is treated as a value. A guard that blocks
+    routine inspection gets switched off. Not matched: `--remove-section`, which could drop a
+    whole `[commit]` section - a section-level rule would have to model which keys a section
+    contains, and the ordinary bypass this closes is the key-level one.
   - Deliberately not guarded: a bare `git gc --prune=now` (without a preceding `git reflog expire
     --all --expire=now`) - gc respects reflog-referenced objects by default, so its risk is
     secondary to and smaller than the reflog-expire case that is guarded. `rm -rf` (named in the
@@ -328,7 +359,7 @@ buildable intent.
   push --force origin` falls through where the bare `xargs git push --force origin` is caught.
 - Acceptance criteria, each pinned by a correspondingly labeled group in the tracked suite
   `scripts/git-guard-tests/run.sh` and verified by running that suite against the script rather
-  than reading it for plausibility (91 cases as of 2026-09-14, 0 false positives/negatives). The
+  than reading it for plausibility (134 cases as of 2026-09-17, 0 false positives/negatives). The
   suite is the authority for what holds; this list is the rationale for why those things are
   asserted, and the two are meant to stay in step - a new rule means a criterion here and a case
   there. The suite is itself checked against stubs that deny nothing and deny everything, so that

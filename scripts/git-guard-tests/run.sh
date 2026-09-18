@@ -42,7 +42,6 @@ fi
 
 pass=0
 fail=0
-group=""
 
 # Emits the guard's decision for one command string: "deny" or "allow".
 decide() {
@@ -56,7 +55,7 @@ decide() {
   printf '%s' "$(printf '%s' "$out" | jq -r '.hookSpecificOutput.permissionDecision // "allow"' 2>/dev/null || printf 'allow')"
 }
 
-label() { group="$1"; printf '\n  %s\n' "$1"; }
+label() { printf '\n  %s\n' "$1"; }
 
 # assert <deny|allow> <command>
 assert() {
@@ -184,6 +183,61 @@ assert deny "git commit --no-gpg-sign -m hello"
 assert deny "git rebase -i HEAD~3"
 assert allow "git commit -m hello"
 assert allow "git rebase main"
+
+label "config overrides that reproduce a denied flag"
+assert deny "git -c commit.gpgsign=false commit -m hello"
+assert deny "git -c commit.gpgSign=0 commit -m hello"
+assert deny "git -c commit.gpgsign=no commit -m hello"
+assert deny "git -c commit.gpgsign=off commit -m hello"
+assert deny "git -ccommit.gpgsign=false commit -m hello"
+assert deny "git --config-env=commit.gpgsign=NOPE commit -m hello"
+assert deny "git --config-env commit.gpgsign=NOPE commit -m hello"
+assert deny "git -c core.hooksPath=/dev/null commit -m hello"
+assert deny "cd repo && git -c commit.gpgsign=off commit -m hello"
+assert deny "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false git commit -m hello"
+assert deny "GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=user.name GIT_CONFIG_VALUE_0=x GIT_CONFIG_KEY_1=commit.gpgsign GIT_CONFIG_VALUE_1=false git commit -m hello"
+assert allow "git -c commit.gpgsign=true commit -m hello"
+assert allow "git -c user.name=x commit -m hello"
+assert allow "git -c commit.gpgsignoff=false commit -m hello"
+assert allow "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=user.name GIT_CONFIG_VALUE_0=x git commit -m hello"
+assert allow "git commit -m 'stop setting commit.gpgsign=false in CI'"
+# Pins the two ways the config collector can break the scan rather than a rule: a glob character
+# in a config value (pathname expansion during splitting) and no config tokens at all (an empty
+# array under set -u). Both must leave the rest of the rules working, so each pairs with a
+# guarded command that still has to be denied.
+assert allow "git -c core.pager=* status"
+assert deny "git -c core.pager=* push --force origin main"
+assert deny "git push --force origin main"
+
+label "git config writes that disable signing or redirect hooks"
+assert deny "git config commit.gpgsign false"
+assert deny "git config --global commit.gpgsign false"
+assert deny "git config --local commit.gpgSign 0"
+assert deny "git config --global commit.gpgsign off"
+assert deny "git config --global commit.gpgsign no"
+assert deny "git config set commit.gpgsign false"
+assert deny "git config --global --unset commit.gpgsign"
+assert deny "git config --unset-all commit.gpgsign"
+assert deny "git config core.hooksPath /dev/null"
+assert deny "cd repo && git config commit.gpgsign false"
+assert deny "GIT_DIR=/tmp/x git config commit.gpgsign false"
+# git's newer subcommand spelling of --unset, which no flag regex catches.
+assert deny "git config unset commit.gpgsign"
+assert deny "git config unset --global core.hooksPath"
+# Reads must stay allowed: a guard that blocks `git config --get` blocks routine inspection.
+assert allow "git config --global commit.gpgsign true"
+assert allow "git config --get commit.gpgsign"
+assert allow "git config get commit.gpgsign"
+assert allow "git config --get core.hooksPath"
+assert allow "git config --list"
+# The value is read positionally, so a read whose key is *not* the last token used to hand the
+# rule a scope flag as the value. These pin that a dash-flag in the value slot is not a value.
+assert allow "git config --get core.hooksPath --global"
+assert allow "git config --get-all core.hooksPath --global"
+assert allow "git config --get core.hooksPath --show-origin"
+assert allow "git config list --show-origin"
+assert allow "git config --global user.name x"
+assert allow "git config commit.gpgsignoff false"
 
 label "flag-shaped text inside quoted messages is not a flag"
 assert allow "git commit -m 'fix -n flag handling'"

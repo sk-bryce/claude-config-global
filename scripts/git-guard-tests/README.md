@@ -65,6 +65,20 @@ adding the criterion there and the case here.
 - The rest of the guarded set: bare-dot `checkout`/`restore`, remote-branch deletion, `clean`
   flag clusters, `branch -D`, `stash drop`/`clear`, `filter-branch`, `reflog expire --all`,
   `commit --no-verify`/`--no-gpg-sign`, `rebase -i`.
+- Config overrides that reproduce a denied flag: `commit.gpgsign` set false and `core.hooksPath`
+  set at all, in every form the collector understands (`-c k=v`, `-ck=v`, `--config-env=`, paired
+  `GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n`). Paired with allow cases for `commit.gpgsign=true`, an
+  unrelated key, and the near-miss key `commit.gpgsignoff`, so the match stays exact. Two further
+  cases pin the collector rather than a rule - a glob character in a config value, and a segment
+  with no config tokens at all - each alongside a guarded command that must still be denied,
+  because both failure modes break the scan for every later rule rather than for themselves.
+- `git config` writes of the same two keys, at every scope and in both the classic flag forms and
+  the `set`/`unset` subcommand forms, plus `--unset`/`--unset-all`. The paired allow cases matter
+  more than usual here: the key and value are read positionally, so an off-by-one would turn every
+  `git config --get` into a deny and make the guard intolerable to work alongside. Four of them
+  put a scope flag *after* the key (`git config --get core.hooksPath --global`), which is the
+  shape that actually produced that false positive once - a read whose key is the last token does
+  not exercise the value slot at all.
 - Allow cases throughout, including everyday git, flag-shaped text inside quoted commit messages,
   and non-git commands that merely mention a guarded flag. These carry as much weight as the deny
   cases: a guard that blocks legitimate work gets disabled, and then protects nothing.
@@ -81,5 +95,5 @@ at one that denies everything and every allow case should fail:
 
 ```sh
 printf '#!/usr/bin/env bash\nexit 0\n' > /tmp/nullguard.sh
-scripts/git-guard-tests/run.sh /tmp/nullguard.sh      # expect: ~48 failures, exit 1
+scripts/git-guard-tests/run.sh /tmp/nullguard.sh      # expect: ~74 failures, exit 1
 ```
