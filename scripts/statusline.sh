@@ -213,12 +213,10 @@ set -uo pipefail  # deliberately not -e: a single missing/null field must never 
 
 RESET='\033[0m'
 BOLD='\033[1m'
-GRAY='\033[90m'
 LGRAY='\033[38;5;250m'
 MGRAY='\033[38;5;244m'
 BCYAN='\033[96m'
 BBLUE='\033[94m'
-BMAGENTA='\033[95m'
 BGREEN='\033[92m'
 BYELLOW='\033[93m'
 ORANGE='\033[38;5;208m'

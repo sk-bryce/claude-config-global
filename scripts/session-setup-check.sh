@@ -169,12 +169,12 @@ readonly STAMP_FILE="$REPO_ROOT/.health-check-stamp"
 # Whole days between a YYYY-MM-DD date and today. GNU and BSD date take incompatible flags and this
 # repo is pulled onto both; a machine whose date does neither gets no nudge rather than a wrong one.
 days_since() {
-  local then now
-  then="$(date -d "$1" +%s 2>/dev/null)" \
-    || then="$(date -j -f %Y-%m-%d "$1" +%s 2>/dev/null)" \
+  local past now
+  past="$(date -d "$1" +%s 2>/dev/null)" \
+    || past="$(date -j -f %Y-%m-%d "$1" +%s 2>/dev/null)" \
     || return 1
   now="$(date +%s)" || return 1
-  printf '%s\n' $(( (now - then) / 86400 ))
+  printf '%s\n' $(( (now - past) / 86400 ))
 }
 
 stamp_field() { sed -n "s/^$1=//p" "$STAMP_FILE" 2>/dev/null | head -1 | tr -d '[:space:]'; }
