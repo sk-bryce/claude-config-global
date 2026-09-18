@@ -279,7 +279,14 @@ buildable intent.
   message cannot manufacture a bogus segment; and file-descriptor redirections (`2>&1`, `>&2`,
   `&>log`) are removed *before* the split, because their `&` would otherwise cut a command in half
   and strand any flag that followed it. Over-splitting is safe - it can only yield segments that
-  fail the `git` test - so the split is deliberately blunt.
+  fail the `git` test - so the split is deliberately blunt. The scan then runs a second time over a
+  copy in which the quote *characters* are removed but their contents kept, applying only the two
+  config rules. That pass exists because those rules read a config value positionally rather than
+  matching a token in place, so stripping a quoted value left the slot empty and
+  `git config commit.gpgsign "false"` read as a valueless read and was allowed. It is confined to
+  those two rules precisely because its input still carries quoted contents: the rules match two
+  fixed key names, which a commit message cannot reach, whereas any other rule could be tripped by
+  flag-shaped text inside a quoted argument.
 - Denies, regardless of flag position and of where the git call sits in the command string:
   - The canonical five from the assistant's own Git Safety Protocol: `git push --force`/`-f`
     (including `--force-with-lease`, and a leading `+` on any refspec - git's documented per-ref
@@ -305,9 +312,11 @@ buildable intent.
     paired `GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n` environment assignments. Applied regardless of
     subcommand rather than only on `commit`: `git -c commit.gpgsign=false status` has no
     legitimate use either, and enumerating every subcommand the setting bites would be a list to
-    keep in step with git rather than a rule. Not matched: `GIT_CONFIG_PARAMETERS` (git requires
-    its payload quoted, and quoted substrings are stripped before matching, so nothing usable
-    survives) and a separate `git config commit.gpgsign false` run before a later `git commit` -
+    keep in step with git rather than a rule. Not matched: `GIT_CONFIG_PARAMETERS` (the collector
+    keys on the *name* of an environment assignment, and that variable carries its settings as a
+    payload inside its value rather than as a `<key>=<value>` assignment of its own; quote-stripping
+    was the earlier reason and no longer applies, since the dequoted pass above preserves the
+    payload) and a separate `git config commit.gpgsign false` run before a later `git commit` -
     the guard sees one command at a time and holds no state between calls. Server-side branch
     protection requiring signed commits is the only non-bypassable enforcement; this rule closes
     the ordinary one-liner, not the determined case.
@@ -359,7 +368,7 @@ buildable intent.
   push --force origin` falls through where the bare `xargs git push --force origin` is caught.
 - Acceptance criteria, each pinned by a correspondingly labeled group in the tracked suite
   `scripts/git-guard-tests/run.sh` and verified by running that suite against the script rather
-  than reading it for plausibility (134 cases as of 2026-09-17, 0 false positives/negatives). The
+  than reading it for plausibility (146 cases as of 2026-09-18, 0 false positives/negatives). The
   suite is the authority for what holds; this list is the rationale for why those things are
   asserted, and the two are meant to stay in step - a new rule means a criterion here and a case
   there. The suite is itself checked against stubs that deny nothing and deny everything, so that

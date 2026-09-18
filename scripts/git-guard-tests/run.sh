@@ -239,6 +239,25 @@ assert allow "git config list --show-origin"
 assert allow "git config --global user.name x"
 assert allow "git config commit.gpgsignoff false"
 
+label "quoting the value does not hide a config write"
+# Quoted substrings are stripped before matching, which is what keeps a commit message from
+# tripping the other rules - but the config rules read their value positionally, so stripping it
+# left the slot empty and the write read as a harmless read. A second pass over a dequoted copy
+# closes that; these pin it, and the quoted-message allow cases below pin that the second pass did
+# not cost the protection the stripping exists to provide.
+assert deny "git config --global commit.gpgsign \"false\""
+assert deny "git config --global commit.gpgsign 'false'"
+assert deny "git config commit.gpgsign \"off\""
+assert deny "git config core.hooksPath \"/dev/null\""
+assert deny "git config \"commit.gpgsign\" false"
+assert deny "git -c \"commit.gpgsign=false\" commit -m x"
+assert deny "git -c 'core.hooksPath=/dev/null' commit -m x"
+assert allow "git config --get-regexp \"core.hooksPath\""
+assert allow "git config user.name \"Jane core.hooksPath\""
+assert allow "git log --grep=\"commit.gpgsign false\""
+assert allow "echo \"git config core.hooksPath /x\" >> notes.txt"
+assert allow "git commit -m \"document git config core.hooksPath usage\""
+
 label "flag-shaped text inside quoted messages is not a flag"
 assert allow "git commit -m 'fix -n flag handling'"
 assert allow "git stash push -m 'clear old test data'"

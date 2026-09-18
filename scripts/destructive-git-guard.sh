@@ -59,7 +59,11 @@
 # quoted message does not false-positive and a real flag placed after a quoted argument is not
 # missed either way - both are the same position-independence problem this hook exists to solve.
 # Stripping quotes first also means a separator inside a commit message cannot manufacture a bogus
-# segment. Every other command falls through silently (exit 0, no output). Fails open (no output,
+# segment. The two config rules are the exception and run a second time over a copy with the quote
+# characters removed but their contents kept: they read a value positionally, so stripping it
+# outright made `git config commit.gpgsign "false"` look like a valueless read. That second pass is
+# confined to those two rules, which match two fixed key names a commit message cannot reach; see
+# scan_segments' mode comment. Every other command falls through silently (exit 0, no output). Fails open (no output,
 # exit 0) on missing jq or unparsable input - a broken hook must never block a legitimate tool
 # call; see filter-verbose-output.sh's header comment for the same accepted tradeoff.
 #
@@ -70,8 +74,10 @@
 # A wrapper whose own arguments are not dash-flags hides the git call from the wrapper skip above
 # (`xargs -n 1 git push --force`: the bare `1` is not recognized as an option's value), so that form
 # falls through as well.
-# GIT_CONFIG_PARAMETERS is not matched: git requires its payload to be quoted, and this script
-# strips quoted substrings before matching, so nothing usable survives. `git config commit.gpgsign
+# GIT_CONFIG_PARAMETERS is not matched: the config collector keys on the *name* of an environment
+# assignment, and that variable carries its settings as a payload inside its value rather than as a
+# `<key>=<value>` assignment of its own. (Before the dequoted pass above existed, the payload did
+# not survive quote-stripping either; that is no longer the reason.) `git config commit.gpgsign
 # false` run as its own command, before a later `git commit`, is likewise not matched - the guard
 # sees one command at a time and holds no state between calls. Server-side branch protection is the
 # only non-bypassable enforcement for signing; this rule closes the ordinary one-liner, not the
@@ -292,94 +298,131 @@ classify_config() {
 
 deny_reason=""
 
-# Split on shell separators and inspect each segment independently, so a git call that is not the
-# first command in the string is still seen. Runs of separators collapse; empty segments are
-# skipped. Over-splitting is safe: it can only produce segments that fail the `git` test below.
-# File-descriptor redirections (`2>&1`, `>&2`, `&>log`) are removed before the split, because
-# their `&` would otherwise cut a command in half and strand any flag that followed it.
-# `|| [[ -n "$segment" ]]` is required, not stylistic: the input has no trailing newline, so a
-# command with no separators at all arrives as one unterminated line and a bare `read` would
-# return non-zero and skip it entirely - silently disabling every rule for the common case.
-while IFS= read -r segment || [[ -n "$segment" ]]; do
-  [[ -n "${segment//[[:space:]]/}" ]] || continue
+# Quote characters removed but the quoted contents kept, unlike $stripped above. Used only for the
+# config-only pass below; see scan_segments' mode comment for why the distinction matters.
+dequoted="$(printf '%s' "$cmd" | tr -d "\"'")"
 
-  # Trim leading whitespace.
-  seg="${segment#"${segment%%[![:space:]]*}"}"
+# Walks one command string: splits it into segments and runs the rule sets over each. Sets the
+# global deny_reason and stops at the first rule that fires.
+#
+# mode "all" runs every rule, over the quote-stripped text, where flag-shaped text inside a commit
+# message cannot survive to cause a false positive.
+#
+# mode "config-only" runs just the two config rules, over $dequoted. It exists because those rules
+# read a config value *positionally* rather than matching a token in place, so quote-stripping
+# deletes the value outright and leaves the slot looking empty - which the read-vs-write test then
+# reads as a read. Without this pass, `git config commit.gpgsign "false"` and
+# `git -c "commit.gpgsign=false" commit` are both allowed. The pass is restricted to the config
+# rules precisely because its input still contains quoted contents: those rules match two fixed key
+# names, so a commit message cannot reach them, whereas every other rule could be tripped by
+# flag-shaped text inside a quoted argument.
+scan_segments() {
+  local text="$1" mode="$2"
+  local segment seg before reason cfgtoks cfgenv sub idx
+  local -a toks=()
 
-  # Pre-subcommand config assignments seen while walking to the git subcommand. Collected rather
-  # than discarded: `-c commit.gpgsign=false` is the documented equivalent of a flag this guard
-  # already denies, so the skip loops below must hand these on instead of dropping them.
-  cfgtoks=""
+  # Split on shell separators and inspect each segment independently, so a git call that is not the
+  # first command in the string is still seen. Runs of separators collapse; empty segments are
+  # skipped. Over-splitting is safe: it can only produce segments that fail the `git` test below.
+  # File-descriptor redirections (`2>&1`, `>&2`, `&>log`) are removed before the split, because
+  # their `&` would otherwise cut a command in half and strand any flag that followed it.
+  # `|| [[ -n "$segment" ]]` is required, not stylistic: the input has no trailing newline, so a
+  # command with no separators at all arrives as one unterminated line and a bare `read` would
+  # return non-zero and skip it entirely - silently disabling every rule for the common case.
+  while IFS= read -r segment || [[ -n "$segment" ]]; do
+    [[ -n "${segment//[[:space:]]/}" ]] || continue
 
-  # Drop whatever stands between the start of the segment and the git call: leading environment
-  # assignments (`GIT_DIR=/tmp/x git branch -D main`) and command wrappers that take a command as
-  # their argument (`env git ...`, `time git ...`, `xargs git push --force`). The two can interleave
-  # (`env FOO=1 git ...`), so this loops until the front of the segment stops changing. Stripping a
-  # wrapper can only ever expose a git call that would otherwise have been missed; it cannot cause a
-  # false deny, because whatever follows a wrapper still has to pass the `git` test below.
-  while :; do
-    before="$seg"
-    while [[ "$seg" =~ ^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)[[:space:]]+(.*)$ ]]; do
-      cfgtoks+=" ${BASH_REMATCH[1]}"
-      seg="${BASH_REMATCH[2]}"
+    # Trim leading whitespace.
+    seg="${segment#"${segment%%[![:space:]]*}"}"
+
+    # Pre-subcommand config assignments seen while walking to the git subcommand. Collected rather
+    # than discarded: `-c commit.gpgsign=false` is the documented equivalent of a flag this guard
+    # already denies, so the skip loops below must hand these on instead of dropping them.
+    cfgtoks=""
+
+    # Drop whatever stands between the start of the segment and the git call: leading environment
+    # assignments (`GIT_DIR=/tmp/x git branch -D main`) and command wrappers that take a command as
+    # their argument (`env git ...`, `time git ...`, `xargs git push --force`). The two can interleave
+    # (`env FOO=1 git ...`), so this loops until the front of the segment stops changing. Stripping a
+    # wrapper can only ever expose a git call that would otherwise have been missed; it cannot cause a
+    # false deny, because whatever follows a wrapper still has to pass the `git` test below.
+    while :; do
+      before="$seg"
+      while [[ "$seg" =~ ^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)[[:space:]]+(.*)$ ]]; do
+        cfgtoks+=" ${BASH_REMATCH[1]}"
+        seg="${BASH_REMATCH[2]}"
+      done
+      if [[ "$seg" =~ ^(sudo|env|time|nohup|command|exec|xargs|nice|ionice|stdbuf)([[:space:]]+-[^[:space:]]+)*[[:space:]]+(.*)$ ]]; then
+        seg="${BASH_REMATCH[3]}"
+      fi
+      if [[ "$seg" == "$before" ]]; then
+        break
+      fi
     done
-    if [[ "$seg" =~ ^(sudo|env|time|nohup|command|exec|xargs|nice|ionice|stdbuf)([[:space:]]+-[^[:space:]]+)*[[:space:]]+(.*)$ ]]; then
-      seg="${BASH_REMATCH[3]}"
-    fi
-    if [[ "$seg" == "$before" ]]; then
+
+    [[ "$seg" =~ ^git([[:space:]]|$) ]] || continue
+
+    # Skip git's pre-subcommand global options to find the real subcommand. Options that take a
+    # separate value consume two tokens; any other leading `-` token consumes one.
+    read -r -a toks <<< "${seg#git}" || true
+    idx=0
+    sub=""
+    while (( idx < ${#toks[@]} )); do
+      case "${toks[$idx]}" in
+        -c)
+          cfgtoks+=" ${toks[$((idx + 1))]:-}"
+          idx=$((idx + 2)) ;;
+        --config-env)
+          # The value is an environment variable name, not the setting's value; record the key with
+          # an @env marker so the rules can see the key without pretending to know the value.
+          cfgenv="${toks[$((idx + 1))]:-}"
+          cfgtoks+=" ${cfgenv%%=*}=@env"
+          idx=$((idx + 2)) ;;
+        -c?*)
+          cfgtoks+=" ${toks[$idx]#-c}"
+          idx=$((idx + 1)) ;;
+        --config-env=*)
+          cfgenv="${toks[$idx]#--config-env=}"
+          cfgtoks+=" ${cfgenv%%=*}=@env"
+          idx=$((idx + 1)) ;;
+        -C|--exec-path|--git-dir|--work-tree|--namespace|--super-prefix)
+          idx=$((idx + 2)) ;;
+        -*)
+          idx=$((idx + 1)) ;;
+        *)
+          sub="${toks[$idx]}"; break ;;
+      esac
+    done
+    reason="$(classify_config "$cfgtoks")"
+    if [[ -n "$reason" ]]; then
+      deny_reason="$reason"
       break
     fi
-  done
 
-  [[ "$seg" =~ ^git([[:space:]]|$) ]] || continue
+    [[ -n "$sub" ]] || continue
 
-  # Skip git's pre-subcommand global options to find the real subcommand. Options that take a
-  # separate value consume two tokens; any other leading `-` token consumes one.
-  read -r -a toks <<< "${seg#git}" || true
-  idx=0
-  sub=""
-  while (( idx < ${#toks[@]} )); do
-    case "${toks[$idx]}" in
-      -c)
-        cfgtoks+=" ${toks[$((idx + 1))]:-}"
-        idx=$((idx + 2)) ;;
-      --config-env)
-        # The value is an environment variable name, not the setting's value; record the key with
-        # an @env marker so the rules can see the key without pretending to know the value.
-        cfgenv="${toks[$((idx + 1))]:-}"
-        cfgtoks+=" ${cfgenv%%=*}=@env"
-        idx=$((idx + 2)) ;;
-      -c?*)
-        cfgtoks+=" ${toks[$idx]#-c}"
-        idx=$((idx + 1)) ;;
-      --config-env=*)
-        cfgenv="${toks[$idx]#--config-env=}"
-        cfgtoks+=" ${cfgenv%%=*}=@env"
-        idx=$((idx + 1)) ;;
-      -C|--exec-path|--git-dir|--work-tree|--namespace|--super-prefix)
-        idx=$((idx + 2)) ;;
-      -*)
-        idx=$((idx + 1)) ;;
-      *)
-        sub="${toks[$idx]}"; break ;;
-    esac
-  done
-  reason="$(classify_config "$cfgtoks")"
-  if [[ -n "$reason" ]]; then
-    deny_reason="$reason"
-    break
-  fi
+    # In config-only mode only the `git config` write rule runs; see the mode comment above.
+    if [[ "$mode" == "config-only" ]]; then
+      [[ "$sub" == "config" ]] || continue
+      reason="$(classify_config_write "git ${toks[*]:$idx}")"
+    else
+      reason="$(classify "git ${toks[*]:$idx}")"
+    fi
+    if [[ -n "$reason" ]]; then
+      deny_reason="$reason"
+      break
+    fi
+  done < <(printf '%s' "$text" \
+    | sed -E 's/[0-9]*>&[0-9]+//g; s/&>>?/ /g' \
+    | sed -E 's/[;&|()]+/\n/g')
+  # Explicit, not incidental: under `set -e` a function whose last command returned nonzero would
+  # abort the script, and the while loop's status is whatever its body last produced.
+  return 0
+}
 
-  [[ -n "$sub" ]] || continue
+scan_segments "$stripped" all
+[[ -n "$deny_reason" ]] || scan_segments "$dequoted" config-only
 
-  reason="$(classify "git ${toks[*]:$idx}")"
-  if [[ -n "$reason" ]]; then
-    deny_reason="$reason"
-    break
-  fi
-done < <(printf '%s' "$stripped" \
-  | sed -E 's/[0-9]*>&[0-9]+//g; s/&>>?/ /g' \
-  | sed -E 's/[;&|()]+/\n/g')
 
 [[ -z "$deny_reason" ]] && exit 0
 

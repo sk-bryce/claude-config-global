@@ -79,6 +79,12 @@ adding the criterion there and the case here.
   put a scope flag *after* the key (`git config --get core.hooksPath --global`), which is the
   shape that actually produced that false positive once - a read whose key is the last token does
   not exercise the value slot at all.
+- Quoting the value of a config write. Quoted substrings are stripped before matching, which is
+  what stops a commit message from tripping the other rules; because the config rules read their
+  value positionally, that stripping used to leave the slot empty and the write read as a harmless
+  read. The deny cases here cover both quote styles, a quoted key, and a quoted `-c` assignment.
+  The allow cases beside them are the point of the group: they pin that the second dequoted pass
+  did not cost the commit-message protection the stripping exists to provide.
 - Allow cases throughout, including everyday git, flag-shaped text inside quoted commit messages,
   and non-git commands that merely mention a guarded flag. These carry as much weight as the deny
   cases: a guard that blocks legitimate work gets disabled, and then protects nothing.
@@ -95,5 +101,5 @@ at one that denies everything and every allow case should fail:
 
 ```sh
 printf '#!/usr/bin/env bash\nexit 0\n' > /tmp/nullguard.sh
-scripts/git-guard-tests/run.sh /tmp/nullguard.sh      # expect: ~74 failures, exit 1
+scripts/git-guard-tests/run.sh /tmp/nullguard.sh      # expect: ~81 failures, exit 1
 ```
