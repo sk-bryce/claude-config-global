@@ -1,6 +1,6 @@
 <!--
 created: 2026-07-22
-updated: 2026-09-12
+updated: 2026-09-19
 
 Section order is deliberate. Rules that apply on every turn come first; conditional sections
 (Repository Maintenance) and time-scoped ones (Compact Instructions, which only fires at
@@ -182,6 +182,24 @@ Applies when the working directory is a git checkout of this config repository -
 
 ALWAYS re-read CLAUDE.md and user rules carefully after context is condensed (compaction or
 `/compact`), and confirm via the canary before continuing.
+
+Then, in that same first post-compaction message and before any tool call, print a short
+**Post-compaction State** block - leave a section empty if there is nothing to put in it - and
+keep each section clear and concise:
+
+    **Session Intent** (what the user is trying to achieve)
+    **Definition of Done** (the agreed finish line, if one was set)
+    **Decisions Made** (what was settled, and why)
+    **Open Questions / Blockers** (unanswered asks, failures with exact error text)
+    **Files Modified** (paths, with line numbers where they matter)
+    **Current State** (done, and in flight)
+    **Next Steps** (the immediate next actions)
+
+Draw the block's contents only from the Preserve list below; if a Preserve item is needed and
+cannot be recovered from the condensed context, say that rather than reconstructing it. On
+subsequent compactions, carry the previous block forward and amend it rather than re-deriving a
+fresh one; a summary rebuilt from scratch each time silently drops whatever that rebuild
+deprioritizes.
 
 **Preserve:**
 
