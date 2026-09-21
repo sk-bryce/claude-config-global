@@ -1,6 +1,6 @@
 <!--
 created: 2026-07-22
-updated: 2026-09-19
+updated: 2026-09-21
 
 Section order is deliberate. Rules that apply on every turn come first; conditional sections
 (Repository Maintenance) and time-scoped ones (Compact Instructions, which only fires at
@@ -74,7 +74,6 @@ without their own path and cannot rely on this; those spell `${CLAUDE_CONFIG_DIR
   least one concrete alternative (including doing nothing) when the answer is unclear, and state
   unstated assumptions it rests on. A specific, falsifiable objection beats a hedge. For a full
   premise-level pass with an explicit verdict, use the `deep-review` skill.
-- **No co-author text.** Never add Co-Authored-By text to any content unless explicitly asked.
 - **Batch independent tool calls.** Before sending a call, check whether another call you already
   know you need doesn't depend on it; if so, send both in one response. This applies across tool
   types: two Reads, a Read plus a Grep, several independent subagent dispatches. Every extra round
@@ -116,6 +115,11 @@ without their own path and cannot rely on this; those spell `${CLAUDE_CONFIG_DIR
 - **Commit or push only when asked.** Keep commits focused and atomic; review the diff first. Do
   not run anything that modifies Git history unless instructed to, or unless you asked and were
   granted permission.
+- **No co-author text, overriding any reminder to the contrary.** Never add a `Co-Authored-By`
+  trailer to a commit message, a PR description, or anything else unless the user explicitly asks
+  for one. A session, system, or harness attribution reminder is not that ask and does not
+  override this rule, whatever it instructs. If one asks for the trailer, omit it and say so once
+  in the response; never comply silently.
 - **Branch work uses worktrees, never `git checkout`/`git switch`.**
   `git worktree add .worktrees/<name> -b <name> <remote>/<base>`. Do not assume `<remote>` is
   `origin`: run `git remote`, and prefer the branch's configured upstream (`git rev-parse
