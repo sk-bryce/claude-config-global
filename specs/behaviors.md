@@ -824,9 +824,13 @@ buildable intent.
   - Ends by running `scrub-check.sh`, proving the gate works rather than asserting it.
 - Registration policy: this script performs hook registration, which
   `decisions/0003-hooks-and-scripts-authoring-policy.md` reserves to the repository owner's
-  explicit, in-the-moment act. A human typing `scripts/setup.sh` is that act; an agent choosing to
-  run it is exactly what the policy forbids, and the script's header says so. `--check` is
-  read-only and carries no such restriction.
+  explicit, in-the-moment decision. A human typing `scripts/setup.sh` is that decision, and so is a
+  human telling an agent to run it in that moment - the ADR is explicit that what it guards is who
+  decides rather than whose fingers move, and it names the directed case as the compliant path
+  rather than an exception. An agent choosing to run it on its own initiative is what the policy
+  forbids, and the script's header says so. `--check` is read-only and carries no such restriction.
+  The header said "never an agent's" until 2026-09-21, which was stricter than the ADR it cited;
+  the wording was corrected rather than the policy changed.
 - Known limits (accepted): `--check` is invoked automatically only at session start, and only for
   sessions whose cwd is inside this repository (see the Session Setup Check section) - drift on a
   machine nobody opens a session on is still found only when someone looks. `sync.sh --check` was

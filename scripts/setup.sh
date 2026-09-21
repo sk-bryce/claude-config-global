@@ -4,11 +4,15 @@
 # cloning cannot produce: the git hook registrations, and the machine-local scrub pattern and
 # scrub self-test fixture files. Everything else in this repo travels with the clone.
 #
-# FOR A HUMAN TO RUN, NOT AN AGENT. This script performs hook registration, which
+# DO NOT RUN THIS UNASKED. It performs hook registration, which
 # decisions/0003-hooks-and-scripts-authoring-policy.md requires be the repository owner's explicit,
-# in-the-moment act - never an agent's, never proactively, never on the strength of a prior
-# registration. A human typing `scripts/setup.sh` IS that explicit direction; an agent deciding to
-# run it is precisely what that policy forbids. Use --check (read-only) to inspect state instead.
+# in-the-moment decision - never proactively, never inferred from a broader request, never on the
+# strength of a prior registration. A human typing `scripts/setup.sh` IS that decision. So is a
+# human telling an agent, in that moment, to run it: that ADR is explicit that the safety property
+# is who decides rather than whose fingers move, and it names the directed case as the compliant
+# path rather than an exception to it. What is forbidden is an agent deciding to run this on its
+# own initiative, which is how an unreviewed hook would activate before anyone looked at it. Absent
+# that direction, use --check, which is read-only.
 #
 # Idempotent: every action is skipped when already satisfied, and re-running a completed setup
 # changes nothing and exits 0. It never overwrites a hook it did not write - an unrecognized hook
@@ -34,9 +38,10 @@
 # WHY --repo REGISTERS INTO SOMEONE ELSE'S REPOSITORY AT ALL: reference/public-repo-hygiene.md has
 # a borrower install the pre-commit line by hand, on the reasoning that registering a hook in a
 # repository is its owner's act. That reasoning is unchanged and this does not weaken it - the
-# owner typing `setup.sh --repo ~/src/thing` IS that act, the same way typing `setup.sh` is. What
-# stays forbidden is an agent running either one; decisions/0003's guard is about who decides, not
-# whose fingers move. A command beats a hand-copied line only because a copy drifts silently.
+# owner typing `setup.sh --repo ~/src/thing` IS that act, the same way typing `setup.sh` is - as is
+# telling an agent to run it in that moment, per the header above. What stays forbidden is either
+# one happening on an agent's own initiative. A command beats a hand-copied line only because a
+# copy drifts silently.
 #
 # Exit: 0 setup complete (or completed by this run), 1 incomplete (--check only, or a step the
 #       script cannot finish non-interactively), 2 usage or environment error.
@@ -65,9 +70,9 @@ while [[ $# -gt 0 ]]; do
     --repo) saw_borrow=1; BORROW_TARGET="${2-}"; [[ $# -gt 1 ]] && shift ;;
     --repo=*) saw_borrow=1; BORROW_TARGET="${1#--repo=}" ;;
     --with-scrub) borrow_scrub=1 ;;
-    # 2,43 is the header comment block exactly - one line further and --help prints the
+    # 2,46 is the header comment block exactly - one line further and --help prints the
     # `set -uo pipefail` line as if it were documentation.
-    -h|--help) sed -n '2,43p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,46p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "setup.sh: unknown argument: $1 (try --help)" >&2; exit 2 ;;
   esac
   shift

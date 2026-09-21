@@ -74,9 +74,11 @@ scripts/setup.sh --repo <dir>   # register just the commit-message gate in anoth
 hook it did not write. Run `--check` any time to confirm nothing has drifted; a hook registration
 is untracked local state, so it can silently go missing and nothing else will notice.
 
-**Run it yourself rather than asking an agent to.** It performs hook registration, which
-`decisions/0003-hooks-and-scripts-authoring-policy.md` requires be your explicit, in-the-moment act.
-`--check` is read-only and safe for anyone to run.
+**Nothing should run it unasked.** It performs hook registration, which
+`decisions/0003-hooks-and-scripts-authoring-policy.md` requires be your explicit, in-the-moment
+decision - typing it yourself and telling an agent to run it right now both count, since what that
+ADR guards is who decides rather than who types. What it rules out is an agent running it on its
+own initiative. `--check` is read-only and safe either way.
 
 What it sets up:
 
