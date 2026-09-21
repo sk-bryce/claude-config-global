@@ -139,7 +139,14 @@ What it sets up:
   `reference/layout.md` for what each script does and its registration state.
 - `evals/` - the repo-wide eval run procedure, thresholds, and results log; see `evals/README.md`.
 - `skills/` - personal agent skills (`skill-author`, `review-md`, `write-plan`, `execute-plan`,
-  `health-check`, `research`, `cursor-projection`, `deep-review`).
+  `health-check`, `research`, `cursor-projection`, `deep-review`). `.gitignore` ignores this
+  directory by default and whitelists those eight by name, because org-synced skills
+  (`skills/synced/`) and anything installed from a third party land here too and are not part of
+  this config. Adding a skill means adding its `!/skills/<name>/` line; forgetting one is caught
+  by `health-check.sh`'s `skill-tracking` check, which fails on any skill directory git tracks
+  nothing under. To silence that for a skill you did not write, name its directory in
+  `skills-foreign.local` (repository root, gitignored, one name per line, `#` for comments);
+  `synced` is treated as foreign without being listed.
 - `agents/` - personal subagent definitions (`Explore`, `runner`, `executor`, `researcher`).
 
 `reference/layout.md` has the full version of this list: every script's registration state and

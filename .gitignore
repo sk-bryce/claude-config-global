@@ -3,7 +3,24 @@
 !/CLAUDE.md
 !/settings.json
 !/rules/
+# skills/ is deny-by-default, whitelisted one skill at a time. The directory holds more than this
+# repository's own skills: org skills sync into skills/synced/ on a managed machine, and anything
+# installed from a third party lands beside them. None of that is part of this config, and a
+# blanket !/skills/ made every one of them an untracked file one `git add skills/` away from the
+# public remote. A new skill of this repository's own must add its own line below;
+# scripts/health-check.sh's skill-tracking check fails on any skills/*/SKILL.md that git does not
+# track and that skills-foreign.local does not declare foreign, so a missing line is loud rather
+# than a skill silently absent from the commit meant to add it.
 !/skills/
+/skills/*
+!/skills/cursor-projection/
+!/skills/deep-review/
+!/skills/execute-plan/
+!/skills/health-check/
+!/skills/research/
+!/skills/review-md/
+!/skills/skill-author/
+!/skills/write-plan/
 !/agents/
 !/commands/
 !/hooks/
@@ -33,6 +50,7 @@
 # skills/<name>-workspace/ is where the skill-creator plugin writes eval run output: executor
 # transcripts and native grading JSON. Those can carry real machine state - an eval that runs a
 # --check against this machine pulls ~/.cursor MCP server names and absolute home paths straight
-# into the transcript. The whitelist above un-ignores everything under /skills/, so without this
-# rule a workspace is one `git add skills/` away from the public remote. Never add a ! line for it.
+# into the transcript. The /skills/* rule above already ignores them; this stays as a named,
+# explained rule so the reason survives any future loosening of that line. Never add a ! line
+# for it, and never whitelist a workspace the way a skill directory is whitelisted.
 skills/*-workspace/

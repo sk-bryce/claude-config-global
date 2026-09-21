@@ -28,6 +28,8 @@
 #   settings-refs         every command settings.json points at exists, is executable, and is tracked
 #   frontmatter           created:/updated: present, well-formed, ordered, and not in the future
 #   description-budget    skill descriptions against the per-description cap and the shared pool
+#   skill-tracking        a skills/*/SKILL.md git tracks nothing under, and that is not declared
+#                         foreign in skills-foreign.local
 #   spec-coverage         skills/ and agents/ against their spec sections, in both directions
 #   readme-coverage       top-level scripts, skills, and subagents named in README.md
 #   script-modes          tracked mode 100755 and on-disk executability for every *.sh
@@ -96,6 +98,47 @@ readonly SKILL_POOL_MAX=8000   # the shared skill-description pool fallback, sam
 # tree, against what, and with what result" is per-machine state rather than a property of the tree
 # - a tracked stamp would claim every clone had been audited because one of them had.
 readonly STAMP_FILE=".health-check-stamp"
+
+# Skills this repository does not own: org skills synced onto a managed machine under
+# skills/synced/, and anything installed from a third party. .gitignore keeps them out of the
+# tree, but they are still on disk, so every skills/*/ loop below would otherwise audit somebody
+# else's skill against this repository's conventions - demanding a specs/skills.md section, a
+# README.md mention, and an eval set for a directory no commit here will ever contain.
+#
+# A directory is foreign only if it is declared, one name per line, in skills-foreign.local
+# ("synced" is implicit, being the org sync's own path rather than a skill). Requiring the
+# declaration is the point: an untracked skill that is NOT declared is reported by
+# check_skill_tracking, which is what catches this repository's own new skill whose
+# !/skills/<name>/ line was never added to .gitignore - without that check, deny-by-default would
+# trade a leak risk for a silent omission.
+#
+# Machine-local and untracked by design, like scrub-patterns.local: which skills a machine has
+# installed is per-machine state, and it needs no .gitignore rule for the same reason - the
+# leading /* ignores every root entry that is not explicitly whitelisted.
+readonly FOREIGN_SKILLS_FILE="skills-foreign.local"
+FOREIGN_SKILLS=(synced)
+if [[ -f "$FOREIGN_SKILLS_FILE" ]]; then
+  while IFS= read -r _line; do
+    _line="${_line%%#*}"
+    _line="${_line#"${_line%%[![:space:]]*}"}"   # trim leading, then trailing whitespace
+    _line="${_line%"${_line##*[![:space:]]}"}"
+    [[ -n "$_line" ]] && FOREIGN_SKILLS+=("${_line%/}")
+  done <"$FOREIGN_SKILLS_FILE"
+fi
+
+# Tracked means git has at least one file under it - the whitelist in .gitignore is per-directory,
+# so this is the same question as "does .gitignore let this skill be committed".
+skill_tracked() { [[ -n "$(git ls-files -- "skills/$1" | head -1)" ]]; }
+
+# True for a directory the skills/*/ audits should skip: not tracked here, and declared foreign.
+skill_is_foreign() {
+  local name="$1" f
+  skill_tracked "$name" && return 1
+  for f in "${FOREIGN_SKILLS[@]}"; do
+    [[ "$f" == "$name" ]] && return 0
+  done
+  return 1
+}
 
 usage() {
   sed -n '/^# Usage:/,/^#       environment error\./p' "${BASH_SOURCE[0]}" | sed 's/^#\{1\} \{0,1\}//'
@@ -278,6 +321,7 @@ check_artifact_frontmatter() {
       skills/*) expect="$(basename "$(dirname "$f")")" ;;
       *)        expect="$(basename "$f" .md)" ;;
     esac
+    [[ "$f" == skills/* ]] && skill_is_foreign "$expect" && continue
     if [[ "$(head -1 "$f")" != "---" ]]; then
       fail artifact-frontmatter "$f" 1 "does not open with a '---' frontmatter block"
       continue
@@ -339,6 +383,10 @@ check_description_budgets() {
   local f len total=0 atotal=0
   for f in skills/*/SKILL.md; do
     [[ -f "$f" ]] || continue
+    # A foreign skill's description does consume the real harness pool alongside these, but the
+    # pool is a property of the machine's installed set rather than of this tree; the figure here
+    # measures what this repository ships.
+    skill_is_foreign "$(basename "$(dirname "$f")")" && continue
     len="$(desc_len "$f")"
     total=$(( total + len ))
     if (( len > SKILL_DESC_MAX )); then
@@ -362,11 +410,32 @@ check_description_budgets() {
   warn description-budget agents 0 "subagent descriptions total $atotal chars (no documented cap; always loaded)"
 }
 
+# .gitignore makes skills/ deny-by-default and whitelists this repository's own skills one
+# !-line at a time, so a synced or installed skill can never reach the public remote. The cost is
+# that a NEW skill of this repository's own is invisible to git until its line exists: it would
+# not appear in git status and would be silently absent from the commit meant to add it. This
+# check is what makes that failure loud, and it is the reason the whitelist is safe to rely on.
+# It is also what forces a skill from elsewhere to be declared rather than merely tolerated.
+check_skill_tracking() {
+  local d name
+  for d in skills/*/; do
+    # A SKILL.md is what makes a directory a skill. The guard is not cosmetic: without it this
+    # would fail on skills/<name>-workspace/, which is eval output that is ignored on purpose,
+    # and on skills/synced/, which is the org sync's container rather than a skill.
+    [[ -f "${d}SKILL.md" ]] || continue
+    name="$(basename "$d")"
+    skill_tracked "$name" && continue
+    skill_is_foreign "$name" && continue
+    fail skill-tracking "skills/$name" 0 "present on disk but git tracks nothing under it - add '!/skills/$name/' to .gitignore if this repository owns it, or name it in $FOREIGN_SKILLS_FILE if it is synced or installed"
+  done
+}
+
 check_spec_coverage() {
   local d f name ln heading
   for d in skills/*/; do
     name="$(basename "$d")"
     [[ -f "$d/SKILL.md" ]] || continue
+    skill_is_foreign "$name" && continue
     # A loose substring match, not a heading match: write-plan and execute-plan are specified
     # together under specs/behaviors.md's "Plan and Execute" heading rather than under their own
     # names, so requiring "## <name>" would flag two correctly-specified skills.
@@ -409,6 +478,8 @@ check_readme_coverage() {
   done
   for d in skills/*/; do
     b="$(basename "$d")"
+    [[ -f "$d/SKILL.md" ]] || continue
+    skill_is_foreign "$b" && continue
     grep -qF -- "$b" README.md || fail readme-coverage "skills/$b" 0 "not named anywhere in README.md"
   done
   # Any .sh basename README.md mentions must resolve somewhere in the tracked tree - not just
@@ -559,6 +630,10 @@ check_orphans() {
   local f b n
   for f in reference/*.md decisions/*.md skills/*/references/*.md skills/*/examples/*.md; do
     [[ -f "$f" ]] || continue
+    if [[ "$f" == skills/* ]]; then
+      b="${f#skills/}"
+      skill_is_foreign "${b%%/*}" && continue
+    fi
     b="$(basename "$f")"
     n="$(git grep -lF -- "$b" -- '*.md' 2>/dev/null | grep -vxF -- "$f" | wc -l | tr -d ' ')"
     (( n == 0 )) && warn orphans "$f" 0 "no other tracked Markdown file references it"
@@ -572,6 +647,8 @@ check_eval_coverage() {
   local d name
   for d in skills/*/; do
     name="$(basename "$d")"
+    [[ -f "${d}SKILL.md" ]] || continue
+    skill_is_foreign "$name" && continue
     [[ -f "${d}evals/evals.json" ]] \
       || warn eval-coverage "skills/$name" 0 "no evals/evals.json - trigger and behavioral evals have not been authored"
   done
@@ -675,6 +752,7 @@ check_json_validity
 check_settings_references
 check_frontmatter
 check_description_budgets
+check_skill_tracking
 check_spec_coverage
 check_readme_coverage
 check_script_modes
