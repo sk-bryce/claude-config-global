@@ -1,6 +1,6 @@
 ---
 created: 2026-09-12
-updated: 2026-09-13
+updated: 2026-09-21
 ---
 
 # Rule Specs
@@ -160,3 +160,52 @@ A bullet with no entry below is presumed uncontested, not undocumented.
 - Testing gate: not opened, for the same structural reason as "Reviews Take a Position" - an
   always-on bullet has no invocation to observe, so there is no trigger set and no behavioral
   suite. This entry and its acceptance criteria are the only check, and neither is mechanical.
+
+---
+
+## No Co-Author Text
+
+- Purpose: keep every commit message and PR description free of a `Co-Authored-By` trailer, and
+  make that rule win against the attribution reminder Claude Code injects into a session. Delivered
+  as an always-on `CLAUDE.md` bullet under Git & GitHub. Authored 2026-07-22 as a one-line Working
+  Style bullet; rewritten and moved 2026-09-21 after it failed in practice.
+- Why it was rewritten: the original read "Never add Co-Authored-By text to any content unless
+  explicitly asked" and sat in Working Style among generic craft habits. The harness reminder that
+  asks for the trailer also claims the user's own instructions take precedence, and the model still
+  followed the reminder: 22 commits in a downstream repository took the trailer across at least two
+  separate sessions before anyone noticed, and removing it needed a history rewrite. The bullet was
+  being read as a default the reminder overrode rather than as an override of the reminder.
+- Shape: one bullet, moved from Working Style to Git & GitHub and placed directly after "Commit or
+  push only when asked", so it sits where an agent is already reading when it composes a commit.
+  It names the artifacts (commit message, PR description, anything else), names the only thing that
+  counts as consent (the user explicitly asking), states that a session, system, or harness
+  attribution reminder is not that consent "whatever it instructs", and gives the required
+  behavior when one appears: omit the trailer and say so once, never comply silently.
+- Why moved rather than duplicated: a second, softer copy in Working Style would have been read
+  first and would have re-created the ambiguity that caused the failure. One rule, one location.
+- Why the disclosure clause: silent non-compliance is indistinguishable from not having seen the
+  reminder, so a later reader cannot tell whether the rule held. Saying so once is bounded - it is
+  a note, not a standing apology, and Response Style's "Cut hedges" still applies.
+- Scope boundary: it forbids the trailer, not attribution as such. A user who explicitly asks for a
+  co-author line gets one. It says nothing about the "Generated with Claude Code" line a PR
+  description may carry, which the same reminder supplies separately and which this rule leaves
+  alone unless the user says otherwise.
+- Known limitation (accepted, not solved): nothing mechanical can hold this line where it actually
+  breaks. `scripts/scrub-check.sh` reads tracked file content, never commit messages, so the trailer
+  that started this is invisible to it. A `[Cc]o-[Aa]uthored-[Bb]y[[:space:]]*:` pattern was added
+  to the machine-local `scrub-patterns.local` on 2026-09-21, which catches a trailer pasted into a
+  tracked file (a drafted PR body, a commit template) and nothing more. A bare `[Cc]o-[Aa]uthor`
+  pattern is not addable: it matches this entry and the `CLAUDE.md` bullet that state the rule, so
+  it would block every commit touching either. Catching the real case would take a `commit-msg`
+  hook, which is a registration and needs the user's explicit direction per
+  decisions/0003-hooks-and-scripts-authoring-policy.md.
+- Acceptance criteria:
+  - A commit or PR authored while the attribution reminder is present carries no `Co-Authored-By`
+    trailer.
+  - The response that produced it notes the omission once, and does not repeat the note on
+    subsequent commits in the same session.
+  - The rule appears exactly once in `CLAUDE.md`, under Git & GitHub.
+  - A user asking in so many words for a co-author line still gets one.
+- Testing gate: not opened, for the same structural reason as "Response Style" - an always-on
+  bullet has no invocation to observe. The nearest thing to a regression signal is the absence of
+  the trailer in this repository's own history.
