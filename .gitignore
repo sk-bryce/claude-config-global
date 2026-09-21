@@ -9,8 +9,10 @@
 # blanket !/skills/ made every one of them an untracked file one `git add skills/` away from the
 # public remote. A new skill of this repository's own must add its own line below;
 # scripts/health-check.sh's skill-tracking check fails on any skills/*/SKILL.md that git does not
-# track and that skills-foreign.local does not declare foreign, so a missing line is loud rather
-# than a skill silently absent from the commit meant to add it.
+# track, so a missing line is loud rather than a skill silently absent from the commit meant to
+# add it. A foreign skill nested a level deeper, as an org sync writes it
+# (skills/synced/<skill>/SKILL.md), is skipped by that check on structure alone; only one
+# installed flat beside this repository's own needs naming in skills-foreign.local.
 !/skills/
 /skills/*
 !/skills/cursor-projection/

@@ -118,8 +118,10 @@ section.
     full-tree mechanical half of the periodic self-evaluation, run by hand rather than on any hook
     path. Checks JSON validity of every tracked `*.json`, that every command `settings.json` points
     at exists and is tracked, `created:`/`updated:` frontmatter (presence, ordering, and no future
-    dates), skill description budgets, spec coverage in both directions, README coverage, script
-    executable bits, `bash -n` and shebangs, a skill's or subagent's `name:` against its own path,
+    dates), skill description budgets, that every skill directory on disk is one git tracks
+    (`skill-tracking`, the counterweight to `.gitignore`'s per-skill whitelist), spec coverage in
+    both directions, README coverage, script executable bits, `bash -n` and shebangs, a skill's
+    or subagent's `name:` against its own path,
     `decisions/` numbering, backticked repo-internal path references in prose, and unbumped
     `updated:` dates in the working tree; advisory scans cover eval coverage, always-loaded context
     budget, unreferenced artifacts, and `updated:` dates trailing a file's last commit. Delegates to
@@ -220,7 +222,20 @@ section.
   cases stay co-located under each skill's own `evals/` directory, split into `evals.json`
   (behavioral, run by the plugin's grader) and `trigger-evals.json` (did the skill fire, run by the
   plugin's `run_loop.py`). The two cannot be combined: see `evals/README.md`.
-- `skills/` - personal agent skills:
+- `skills/` - personal agent skills. `.gitignore` ignores this directory by default and
+  whitelists each skill below by name, because it is not only this repository's: org skills sync
+  into `skills/synced/` on a managed machine, and third-party skills can be installed alongside.
+  Under a blanket `!/skills/` those showed as untracked files, one `git add skills/` from a public
+  remote. The cost of deny-by-default is that a new skill is invisible to git until its
+  `!/skills/<name>/` line exists, which `health-check.sh`'s `skill-tracking` check exists to make
+  loud. Foreign skills are excluded from that check and from every other `skills/*/` audit
+  structurally - a directory with no `SKILL.md` of its own is a container, skipped whole along
+  with everything nested in it - so an org sync needs no configuration at all. Only a foreign
+  skill installed flat, at `skills/<name>/SKILL.md`, is indistinguishable from one of this
+  repository's own with a missing whitelist line; naming it in the gitignored, machine-local
+  `skills-foreign.local` (repository root, one directory name per line, `#` for comments) is what
+  separates the two. That file is normally absent, which is the expected state rather than setup
+  left undone.
   - `skill-author` - create, audit, or explain agent skills; hands off to `skill-creator` for
     scaffolding and evals. See `specs/skills.md`'s skill-author section.
   - `review-md` - proofread a single Markdown document, tracking settled/deferred findings in

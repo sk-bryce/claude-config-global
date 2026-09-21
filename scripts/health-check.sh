@@ -28,8 +28,8 @@
 #   settings-refs         every command settings.json points at exists, is executable, and is tracked
 #   frontmatter           created:/updated: present, well-formed, ordered, and not in the future
 #   description-budget    skill descriptions against the per-description cap and the shared pool
-#   skill-tracking        a skills/*/SKILL.md git tracks nothing under, and that is not declared
-#                         foreign in skills-foreign.local
+#   skill-tracking        a flat skills/*/SKILL.md git tracks nothing under, and that is not
+#                         declared foreign in skills-foreign.local
 #   spec-coverage         skills/ and agents/ against their spec sections, in both directions
 #   readme-coverage       top-level scripts, skills, and subagents named in README.md
 #   script-modes          tracked mode 100755 and on-disk executability for every *.sh
@@ -99,24 +99,30 @@ readonly SKILL_POOL_MAX=8000   # the shared skill-description pool fallback, sam
 # - a tracked stamp would claim every clone had been audited because one of them had.
 readonly STAMP_FILE=".health-check-stamp"
 
-# Skills this repository does not own: org skills synced onto a managed machine under
-# skills/synced/, and anything installed from a third party. .gitignore keeps them out of the
-# tree, but they are still on disk, so every skills/*/ loop below would otherwise audit somebody
-# else's skill against this repository's conventions - demanding a specs/skills.md section, a
-# README.md mention, and an eval set for a directory no commit here will ever contain.
+# Skills this repository does not own: org skills synced onto a managed machine, and anything
+# installed from a third party. .gitignore keeps them out of the tree, but they are still on
+# disk, so a skills/*/ audit would otherwise measure somebody else's skill against this
+# repository's conventions - demanding a specs/skills.md section, a README.md mention, and an
+# eval set for a directory no commit here will ever contain.
 #
-# A directory is foreign only if it is declared, one name per line, in skills-foreign.local
-# ("synced" is implicit, being the org sync's own path rather than a skill). Requiring the
-# declaration is the point: an untracked skill that is NOT declared is reported by
-# check_skill_tracking, which is what catches this repository's own new skill whose
-# !/skills/<name>/ line was never added to .gitignore - without that check, deny-by-default would
-# trade a leak risk for a silent omission.
+# The primary rule is structural and needs no declaration: every skills loop in this script globs
+# skills/*/SKILL.md, so a directory that holds no SKILL.md of its own is a container rather than a
+# skill and is skipped whole, along with everything nested inside it. That is exactly the shape an
+# org sync produces - skills/synced/<skill>/SKILL.md - so those cost nothing to ignore.
+#
+# skills-foreign.local is the fallback for the one case structure cannot resolve: a foreign skill
+# installed FLAT, at skills/<name>/SKILL.md, which is indistinguishable from one of this
+# repository's own whose !/skills/<name>/ line was never added. Declaring it, one name per line,
+# is what separates the two; an undeclared flat skill is reported by check_skill_tracking rather
+# than guessed at, because guessing wrong in the quiet direction means a new skill silently
+# missing from the commit meant to add it. The file is usually absent, and that is the normal
+# state rather than a setup step left undone.
 #
 # Machine-local and untracked by design, like scrub-patterns.local: which skills a machine has
 # installed is per-machine state, and it needs no .gitignore rule for the same reason - the
 # leading /* ignores every root entry that is not explicitly whitelisted.
 readonly FOREIGN_SKILLS_FILE="skills-foreign.local"
-FOREIGN_SKILLS=(synced)
+FOREIGN_SKILLS=()
 if [[ -f "$FOREIGN_SKILLS_FILE" ]]; then
   while IFS= read -r _line; do
     _line="${_line%%#*}"
@@ -131,10 +137,11 @@ fi
 skill_tracked() { [[ -n "$(git ls-files -- "skills/$1" | head -1)" ]]; }
 
 # True for a directory the skills/*/ audits should skip: not tracked here, and declared foreign.
+# Containers never reach this - having no SKILL.md, they are filtered by the globs themselves.
 skill_is_foreign() {
   local name="$1" f
   skill_tracked "$name" && return 1
-  for f in "${FOREIGN_SKILLS[@]}"; do
+  for f in ${FOREIGN_SKILLS[@]+"${FOREIGN_SKILLS[@]}"}; do
     [[ "$f" == "$name" ]] && return 0
   done
   return 1
@@ -419,14 +426,15 @@ check_description_budgets() {
 check_skill_tracking() {
   local d name
   for d in skills/*/; do
-    # A SKILL.md is what makes a directory a skill. The guard is not cosmetic: without it this
-    # would fail on skills/<name>-workspace/, which is eval output that is ignored on purpose,
-    # and on skills/synced/, which is the org sync's container rather than a skill.
+    # A SKILL.md is what makes a directory a skill, and this guard is what makes the structural
+    # rule work: it skips skills/<name>-workspace/ (eval output, ignored on purpose) and any
+    # container of foreign skills such as skills/synced/, whose own skills sit one level deeper
+    # than this glob reaches and are therefore never audited here.
     [[ -f "${d}SKILL.md" ]] || continue
     name="$(basename "$d")"
     skill_tracked "$name" && continue
     skill_is_foreign "$name" && continue
-    fail skill-tracking "skills/$name" 0 "present on disk but git tracks nothing under it - add '!/skills/$name/' to .gitignore if this repository owns it, or name it in $FOREIGN_SKILLS_FILE if it is synced or installed"
+    fail skill-tracking "skills/$name" 0 "present on disk but git tracks nothing under it - add '!/skills/$name/' to .gitignore if this repository owns it, or name it in $FOREIGN_SKILLS_FILE if it belongs to someone else"
   done
 }
 

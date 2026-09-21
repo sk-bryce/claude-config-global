@@ -144,9 +144,11 @@ What it sets up:
   (`skills/synced/`) and anything installed from a third party land here too and are not part of
   this config. Adding a skill means adding its `!/skills/<name>/` line; forgetting one is caught
   by `health-check.sh`'s `skill-tracking` check, which fails on any skill directory git tracks
-  nothing under. To silence that for a skill you did not write, name its directory in
-  `skills-foreign.local` (repository root, gitignored, one name per line, `#` for comments);
-  `synced` is treated as foreign without being listed.
+  nothing under. A foreign skill nested under a container, the shape an org sync writes
+  (`skills/synced/<skill>/SKILL.md`), is excluded by structure alone - a directory with no
+  `SKILL.md` of its own is skipped whole. Only a foreign skill installed flat beside your own
+  needs naming in `skills-foreign.local` (repository root, gitignored, one name per line, `#` for
+  comments), which is why that file normally does not exist.
 - `agents/` - personal subagent definitions (`Explore`, `runner`, `executor`, `researcher`).
 
 `reference/layout.md` has the full version of this list: every script's registration state and
