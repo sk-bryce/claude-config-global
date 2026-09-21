@@ -1,6 +1,6 @@
 ---
 created: 2026-07-26
-updated: 2026-09-18
+updated: 2026-09-21
 ---
 
 # Behavior Specs
@@ -685,6 +685,72 @@ buildable intent.
 
 ---
 
+## Commit Message Gate
+
+- Purpose: keep a `Co-Authored-By` trailer out of every commit message, and optionally keep the
+  public-remote leak categories out of one too. Authored 2026-09-21 after the always-on rule alone
+  failed: a Claude Code session injects a reminder instructing the model to add the trailer,
+  `CLAUDE.md` forbids it and says so in terms, and the reminder won anyway - 22 commits in another
+  repository carried the trailer across two sessions before anyone noticed, and removing it needed
+  a history rewrite. `reference/context-file-authoring.md`'s routing table already says a rule that
+  must fire with zero exceptions belongs in a check; this is that check, for the one artifact git
+  gives a hook for. See `specs/rules.md`'s No Co-Author Text section for the rule itself.
+- Why nothing existing could do it: `scrub-check.sh` reads tracked file content, and a commit
+  message is not a tracked file. No check in this repository had ever seen one, which is why the
+  failure was silent rather than noisy.
+- Shape: one tracked script, `scripts/commit-msg-check.sh`, registered as `.git/hooks/commit-msg`.
+  - The trailer check is line-anchored and case-insensitive, matching how git recognises a trailer,
+    and its pattern is tracked in the script rather than added to `scrub-patterns.local`. That rule
+    is universal and machine-independent - it holds in a private work repository exactly as here -
+    where the pattern file is for one person's client and engagement tokens. A bare `co-author`
+    pattern is also unavailable there for a mechanical reason: it matches `CLAUDE.md` and
+    `specs/rules.md`, which have to spell the rule out, so it would block every commit touching
+    either.
+  - `--scrub` is opt-in and calls `scrub-check.sh` rather than restating its patterns, so the
+    detector has one definition. This repository's own registration passes it, because this
+    repository targets a public remote; a borrowing repository decides for itself.
+  - The message is cleaned before anything matches against it: comment lines go, and so does
+    everything from a `>8` scissors line on. Git strips both from the stored message, so matching
+    them would report on text that is never committed - and `git commit -v` puts an entire diff
+    below the scissors, every home path in which would otherwise become a finding.
+  - `core.commentChar` set to `auto` falls back to `#`, since git does not record which character
+    it chose. That can only over-report, which is the direction a leak check should fail in.
+  - Findings are reported as `commit message:<line>`, with the temp path stripped back out: the
+    author needs to edit the message in front of them, not go looking for a file under `/tmp`.
+- Why a separate script rather than a mode on `scrub-check.sh`: every mode that script has answers
+  a question about repository content, and a commit message is not repository content. It needs its
+  own cleanup pass before any pattern can apply, and it carries a check - the trailer - that has
+  nothing to do with public-remote hygiene.
+- Failure mode: fails closed. An unreachable `scrub-check.sh`, or a missing `scrub-patterns.local`
+  under `--scrub`, exits 2 and blocks the commit, matching that script's own stance on a missing
+  pattern file: a gate that passes when it could not check anything produces a commit
+  indistinguishable from a checked one. `git commit --no-verify` is the escape hatch, and is also
+  how a co-author trailer gets added on purpose.
+- Registration: local-only and untracked, the same as `pre-commit`. `scripts/setup.sh` writes it
+  for this repository with `--scrub`; `scripts/setup.sh --repo <dir>` writes it for another
+  repository, without `--scrub` unless `--with-scrub` is given. Both are the owner's explicit act
+  per `decisions/0003-hooks-and-scripts-authoring-policy.md`, never an agent's.
+- Known limits (accepted): it reaches only repositories where it has been registered, so a repo
+  cloned later is unprotected until someone runs the command - nothing here holds a list of which
+  ones have it. `--no-verify` bypasses it completely, by design. A trailer that arrives with a
+  cherry-pick or a revert is caught like any other, which is correct but will surprise.
+  `git merge` and `git rebase` do not run this hook in every case git offers, so a trailer can
+  still enter history along those paths.
+- Acceptance criteria:
+  - A message carrying a `Co-Authored-By` trailer in any casing is rejected, naming the line, and
+    the commit does not happen.
+  - A message mentioning the phrase in prose, or carrying it inside a comment line or below a
+    scissors line, commits cleanly.
+  - Without `--scrub`, a message containing an absolute home path commits; with `--scrub`, it is
+    rejected and the finding is reported against `commit message:<line>`, not a `/tmp` path.
+  - With `--scrub` and no `scrub-patterns.local`, the commit is blocked with exit 2 rather than
+    passing.
+  - Findings print before the closing advice that refers to them.
+  - `--help` prints the usage block and exits 0; no message file, two message files, or an unknown
+    option each exit 2.
+
+---
+
 ## Machine Setup
 
 - Purpose: a clone cannot produce the state this repository expects - hook registrations are
@@ -708,9 +774,22 @@ buildable intent.
     recognized one written without the `--repo` hook shape (see the Pre-commit Drift Check
     section) is left alone too, with a note rather than a failure: it still gates its own repository
     correctly, so re-registering it is the owner's call and a hand edit away.
-  - Installs into the repository it lives in and nothing else. A repository borrowing the gate
-    writes its own hook by hand, deliberately: registering a hook in someone else's repository is
-    precisely the act `decisions/0003` reserves for that repository's owner.
+  - Installs into the repository it lives in, with one exception. A repository borrowing the
+    pre-commit gate writes that hook by hand, deliberately: registering a hook in someone else's
+    repository is precisely the act `decisions/0003` reserves for that repository's owner.
+  - `--repo <dir>` is the exception, and registers the commit-message gate alone into the
+    repository containing `<dir>`, pointing back at this checkout's `commit-msg-check.sh`. The
+    owner typing that command IS the act `decisions/0003` reserves for them - the guard is about
+    who decides, not whose fingers move - so this is the compliant path rather than a loosening of
+    it, and what stays forbidden is an agent running it. It is a command rather than a documented
+    line to paste because the trailer rule is universal: it is wanted in ordinary work
+    repositories that have no public remote at all, which makes this the registration that gets
+    repeated, and a pasted copy in each of them drifts silently. `--with-scrub` adds the
+    public-remote scan of the message and is off by default, since those patterns are written for
+    this repository's remote. Handled before every other check in the script, which all ask about
+    this checkout's own state, and it reports and exits rather than threading a second target
+    through them. It writes one hook and nothing else - no pattern files, no replication hooks -
+    and never overwrites a `commit-msg` it did not write, printing the line to add by hand instead.
   - Installs the replication hooks too, prompting for replication targets. Zero targets is a valid
     answer and still writes every hook: that keeps "no hook" meaning "setup was never run" rather
     than conflating it with "nothing to replicate", which `--check` could not otherwise distinguish.
@@ -764,6 +843,18 @@ buildable intent.
   - A malformed regex offered during collection is rejected with a message and not written.
   - An existing `pre-commit` that does not call `pre-commit-check.sh` survives the run untouched,
     and the run exits 1.
+  - A plain run installs the `commit-msg` hook with `--scrub`, and `--check` reports it missing on
+    a clone that does not have it.
+  - `--repo <dir>` writes `commit-msg` into that repository's hooks directory and nothing else;
+    `--check --repo <dir>` reports its state and writes nothing.
+  - `--repo` pointed at this repository, at a path in no checkout, at a repository with
+    `core.hooksPath` set, or given no argument, exits 2 without writing.
+  - `--repo` against a repository whose `commit-msg` is somebody else's leaves it untouched, prints
+    the registration line to add by hand, and exits 1.
+  - `--with-scrub` without `--repo`, and `--repo` combined with `--scrub`, are both rejected as
+    usage errors rather than silently honouring one of them.
+  - In a linked worktree of the target, the hook is written to the main checkout's hooks directory,
+    where git will actually run it.
 
 ---
 

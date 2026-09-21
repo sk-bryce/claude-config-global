@@ -1,6 +1,6 @@
 ---
 created: 2026-08-21
-updated: 2026-08-31
+updated: 2026-09-21
 ---
 
 # Public Repo Hygiene
@@ -72,6 +72,10 @@ disregard it. Publishing it is the harm; the note does not undo it.
 read-only and exits non-zero on findings, and `scripts/pre-commit-check.sh` runs it so a commit
 carrying a finding is blocked.
 
+It reads tracked file content and nothing else. A commit message is not a tracked file, so none of
+what follows applies to one - `scripts/commit-msg-check.sh` is the gate for those, and it calls
+this script rather than restating its patterns.
+
 Both take `--repo <dir>`, which scans a different checkout instead of this one, so a repository
 wanting this same gate can borrow these scripts rather than copy them - a second copy drifts
 silently, since a scrub check that has stopped matching still exits 0. What a borrower installs is
@@ -82,11 +86,27 @@ exec "<path-to-this-repo>/scripts/pre-commit-check.sh" --repo "$(git rev-parse -
 ```
 
 `scripts/setup.sh` writes the same line for this repository, so there is one shape to keep right
-rather than two. By hand in a borrower, deliberately: registering a hook in someone else's
-repository is the act `decisions/0003-hooks-and-scripts-authoring-policy.md` reserves for that
-repository's owner. Whether a borrower still uses it is theirs to track - nothing here holds a
+rather than two. By hand in a borrower: registering a hook in someone else's repository is the act
+`decisions/0003-hooks-and-scripts-authoring-policy.md` reserves for that repository's owner.
+Whether a borrower still uses it is theirs to track - nothing here holds a
 list, which is also why `--repo` counts as a stable interface: a borrower has no way to notice if
 it changes shape.
+
+The one exception is the commit-message gate, which `scripts/setup.sh --repo <dir>` writes into
+another repository for you:
+
+```sh
+scripts/setup.sh --repo ~/src/some-project              # trailer check only
+scripts/setup.sh --repo ~/src/some-project --with-scrub # and scan the message for leaks
+```
+
+That is not a loosening of the rule above. The owner typing that command is the explicit,
+in-the-moment act the decision requires, exactly as typing `setup.sh` is; what stays forbidden is
+an agent running either. It exists as a command rather than a pasted line because the message gate
+is wanted in ordinary work repositories that have nothing to do with a public remote - the
+`Co-Authored-By` rule is universal - and a line pasted into each of them is a copy that drifts.
+The scrub half stays opt-in for the mirror reason: the patterns it applies are written for THIS
+repository's remote, and a private work repository should not inherit them by default.
 
 The gate may INSPECT a borrowed repository, never EXECUTE anything out of one. That is what decides
 which checks travel: the leak checks do, and so does validating a `settings.json`, since `jq` only

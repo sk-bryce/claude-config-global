@@ -21,7 +21,22 @@
 #   scripts/setup.sh --check      report what is missing and change NOTHING; exit 1 if incomplete
 #   scripts/setup.sh --scrub      also (re)collect scrub patterns and scrub test fixture lines even
 #                                 if their files already exist; appends to them, never truncates
+#   scripts/setup.sh --repo <dir> [--with-scrub]
+#                                 register ONLY the commit-msg gate in the repository containing
+#                                 <dir>, pointing back at this checkout's commit-msg-check.sh. For
+#                                 another repository you work in - the trailer rule is universal,
+#                                 not something this repository needs for itself. --with-scrub adds
+#                                 the public-remote scan of the message, which is off by default
+#                                 because that ruleset is written for THIS repository's remote.
+#                                 Combines with --check to report without writing.
 #   scripts/setup.sh --help
+#
+# WHY --repo REGISTERS INTO SOMEONE ELSE'S REPOSITORY AT ALL: reference/public-repo-hygiene.md has
+# a borrower install the pre-commit line by hand, on the reasoning that registering a hook in a
+# repository is its owner's act. That reasoning is unchanged and this does not weaken it - the
+# owner typing `setup.sh --repo ~/src/thing` IS that act, the same way typing `setup.sh` is. What
+# stays forbidden is an agent running either one; decisions/0003's guard is about who decides, not
+# whose fingers move. A command beats a hand-copied line only because a copy drifts silently.
 #
 # Exit: 0 setup complete (or completed by this run), 1 incomplete (--check only, or a step the
 #       script cannot finish non-interactively), 2 usage or environment error.
@@ -37,18 +52,138 @@ HOOK_DIR=".git/hooks"
 
 mode="install"
 want_scrub=0
+BORROW_TARGET=""
+saw_borrow=0
+borrow_scrub=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --check) mode="check" ;;
     --scrub) want_scrub=1 ;;
-    # 2,27 is the header comment block exactly - one line further and --help prints the
+    # Both spellings, matching every other script here. Validated after the loop: a missing value,
+    # an empty one, and a trailing --repo are the same mistake and deserve one message.
+    --repo) saw_borrow=1; BORROW_TARGET="${2-}"; [[ $# -gt 1 ]] && shift ;;
+    --repo=*) saw_borrow=1; BORROW_TARGET="${1#--repo=}" ;;
+    --with-scrub) borrow_scrub=1 ;;
+    # 2,43 is the header comment block exactly - one line further and --help prints the
     # `set -uo pipefail` line as if it were documentation.
-    -h|--help) sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,43p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "setup.sh: unknown argument: $1 (try --help)" >&2; exit 2 ;;
   esac
   shift
 done
+
+if [[ "$saw_borrow" -eq 1 && -z "$BORROW_TARGET" ]]; then
+  echo "setup.sh: --repo needs a directory argument" >&2
+  exit 2
+fi
+
+if [[ "$borrow_scrub" -eq 1 && "$saw_borrow" -eq 0 ]]; then
+  echo "setup.sh: --with-scrub only means something alongside --repo (try --help)" >&2
+  exit 2
+fi
+
+# --scrub collects THIS repository's pattern and fixture lines; --repo touches nothing but another
+# repository's hook. Honouring both in one run would report on two repositories at once and make
+# the [ok]/[MISSING] lines ambiguous about which one they describe.
+if [[ "$saw_borrow" -eq 1 && "$want_scrub" -eq 1 ]]; then
+  echo "setup.sh: --scrub and --repo are separate jobs - run them one at a time (try --help)" >&2
+  exit 2
+fi
+
+# --- 0. borrowed-repository registration ---------------------------------------------------------
+# Handled here, before every check below, because those all ask about THIS checkout: its .git
+# directory, its hooks, its scrub files. This mode is about somebody else's repository and shares
+# none of that state, so it answers, reports, and exits rather than threading a second target
+# through the rest of the script.
+if [[ "$saw_borrow" -eq 1 ]]; then
+  checker="$REPO_ROOT/scripts/commit-msg-check.sh"
+  if [[ ! -x "$checker" ]]; then
+    echo "setup.sh: $checker is missing or not executable - nothing to register" >&2
+    exit 2
+  fi
+
+  # git resolves the argument, so any path inside the target works, and both failure shapes - a
+  # path that does not exist, and one in no checkout at all - become exit 2 rather than a hook
+  # written somewhere surprising.
+  target_root="$(git -C "$BORROW_TARGET" rev-parse --show-toplevel 2>/dev/null)" || target_root=""
+  if [[ -z "$target_root" ]]; then
+    echo "setup.sh: --repo is not a readable path inside a git checkout: $BORROW_TARGET" >&2
+    exit 2
+  fi
+
+  if [[ "$target_root" == "$REPO_ROOT" ]]; then
+    echo "setup.sh: that is this repository - run scripts/setup.sh with no --repo to set it up" >&2
+    exit 2
+  fi
+
+  target_hooks_path="$(git -C "$target_root" config --get core.hooksPath 2>/dev/null || true)"
+  if [[ -n "$target_hooks_path" ]]; then
+    echo "setup.sh: $target_root sets core.hooksPath to '$target_hooks_path', so .git/hooks is NOT used." >&2
+    echo "setup.sh: unset it there, or install the hook into that directory by hand." >&2
+    exit 2
+  fi
+
+  # --git-common-dir, not --show-toplevel/.git: a linked worktree's hooks live in the main .git,
+  # and writing into the worktree's own .git file would install a hook that never runs.
+  target_common="$(git -C "$target_root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" \
+    || target_common=""
+  if [[ -z "$target_common" ]]; then
+    echo "setup.sh: could not locate the git directory for $target_root" >&2
+    exit 2
+  fi
+  target_hook="$target_common/hooks/commit-msg"
+
+  echo "Commit-message gate for $target_root"
+  echo
+
+  if [[ -f "$target_hook" ]]; then
+    if grep -q 'commit-msg-check\.sh' "$target_hook" 2>/dev/null; then
+      printf '  [ok]      commit-msg -> %s\n' "$checker"
+      if [[ "$borrow_scrub" -eq 1 ]] && ! grep -q -- '--scrub' "$target_hook" 2>/dev/null; then
+        printf '  %s\n' "registered without --scrub; edit $target_hook by hand to add it"
+      fi
+      [[ -x "$target_hook" ]] || { chmod +x "$target_hook" && printf '  [done]    made commit-msg executable\n'; }
+      exit 0
+    fi
+    # Never overwritten: a hook somebody else wrote is more valuable than this one's default, and
+    # a commit-msg hook that already exists is usually enforcing a message convention.
+    printf '  [warn]    commit-msg exists and does not call commit-msg-check.sh - left untouched\n'
+    printf '  %s\n' "review $target_hook by hand; the line to add is:"
+    printf '  %s\n' "exec \"$checker\" --repo \"\$(git rev-parse --show-toplevel)\" \"\$@\""
+    exit 1
+  fi
+
+  if [[ "$mode" == "check" ]]; then
+    printf '  [MISSING] commit-msg hook (a Co-Authored-By trailer would not be caught here)\n'
+    exit 1
+  fi
+
+  scrub_arg=""
+  [[ "$borrow_scrub" -eq 1 ]] && scrub_arg=" --scrub"
+
+  # Unquoted heredoc: $REPO_ROOT and the --scrub choice are resolved now, at registration time,
+  # while the escaped forms stay in the hook for git to expand on each commit.
+  cat > "$target_hook" <<HOOK
+#!/usr/bin/env bash
+#
+# Local-only registration for $checker, written by
+# \`$REPO_ROOT/scripts/setup.sh --repo\`. Not tracked by git, so it needs reinstalling on a fresh
+# clone of this repository.
+#
+# The config repository is named by absolute path because this repository holds no copy of the
+# checker - borrowing the detector rather than copying it is what keeps the two from drifting. If
+# that path moves, exec fails, the hook exits non-zero, and the commit stops: a message gate that
+# cannot run must not pass a message it never read.
+exec "$checker" --repo "\$(git rev-parse --show-toplevel)"$scrub_arg "\$@"
+HOOK
+  chmod +x "$target_hook"
+  printf '  [done]    installed commit-msg -> %s%s\n' "$checker" "${scrub_arg:+ (with --scrub)}"
+  echo
+  echo "Commits in $target_root are now checked for a Co-Authored-By trailer."
+  echo "This registration is local to that clone; git commit --no-verify bypasses it."
+  exit 0
+fi
 
 if [[ ! -d .git ]]; then
   # A linked worktree has a .git FILE, and its hooks live in the main checkout - installing here
@@ -120,7 +255,48 @@ HOOK
   action "installed pre-commit -> scripts/pre-commit-check.sh"
 fi
 
-# --- 2. replication hooks ----------------------------------------------------------------------
+# --- 2. commit-msg -----------------------------------------------------------------------------
+# The message half of the gate. scrub-check.sh reads tracked file content and never sees a commit
+# message, so the Co-Authored-By trailer CLAUDE.md forbids was invisible to every check here until
+# this hook existed. --scrub is passed for this repository because it targets a public remote; a
+# borrowing repository decides that for itself (see --repo below).
+commit_msg="$HOOK_DIR/commit-msg"
+if [[ -f "$commit_msg" ]]; then
+  if grep -q 'commit-msg-check\.sh' "$commit_msg" 2>/dev/null; then
+    ok "commit-msg -> scripts/commit-msg-check.sh"
+    if ! grep -q -- '--scrub' "$commit_msg" 2>/dev/null; then
+      note "commit-msg does not pass --scrub, so messages are checked for the trailer only"
+    fi
+    if [[ ! -x "$commit_msg" ]]; then
+      if [[ "$mode" == "check" ]]; then
+        todo "commit-msg exists but is not executable"
+      else
+        chmod +x "$commit_msg" && action "made commit-msg executable"
+      fi
+    fi
+  else
+    warn "commit-msg exists but does not call commit-msg-check.sh - left untouched, review by hand"
+    missing=1
+  fi
+elif [[ "$mode" == "check" ]]; then
+  todo "commit-msg hook (a Co-Authored-By trailer or a leak in a commit message would not be caught)"
+else
+  cat > "$commit_msg" <<'HOOK'
+#!/usr/bin/env bash
+#
+# Local-only registration for scripts/commit-msg-check.sh, written by scripts/setup.sh.
+# Not tracked by git, so it needs reinstalling on a fresh clone.
+#
+# "$@" rather than "$1": git passes exactly one argument today, and forwarding whatever it passes
+# keeps this line correct if that ever stops being true.
+root="$(git rev-parse --show-toplevel)"
+exec "$root/scripts/commit-msg-check.sh" --repo "$root" --scrub "$@"
+HOOK
+  chmod +x "$commit_msg"
+  action "installed commit-msg -> scripts/commit-msg-check.sh (with --scrub)"
+fi
+
+# --- 3. replication hooks ----------------------------------------------------------------------
 # Replicates this config into other CLAUDE_CONFIG_DIR profiles after each commit, and after each
 # pull, so a commit authored on another machine reaches this machine's other profiles without
 # waiting for the next local commit here. Git has no post-pull hook: `git pull` fires post-merge for
@@ -349,7 +525,7 @@ for hook_name in "${REPLICATION_HOOKS[@]}"; do
 done
 echo
 
-# --- 3. scrub patterns -------------------------------------------------------------------------
+# --- 4. scrub patterns -------------------------------------------------------------------------
 echo "scrub patterns"
 collect_patterns() {
   # Appends, never truncates: re-running --scrub must not silently drop patterns added by hand.
@@ -437,7 +613,7 @@ else
 fi
 echo
 
-# --- 4. scrub test fixtures ---------------------------------------------------------------------
+# --- 5. scrub test fixtures ---------------------------------------------------------------------
 # Fixture lines for `scrub-check.sh --test`, a self-test that the patterns above are actually
 # firing rather than just parsing. Ignored by every other mode - untracked, and never picked up
 # by a bare or --staged scan - so it cannot pollute an ordinary audit.
@@ -518,7 +694,7 @@ else
 fi
 echo
 
-# --- 5. report ---------------------------------------------------------------------------------
+# --- 6. report ---------------------------------------------------------------------------------
 if [[ "$mode" == "check" ]]; then
   if [[ "$missing" -eq 1 ]]; then
     echo "Setup is INCOMPLETE. Run scripts/setup.sh to fix, or see the README's Setup After Cloning."

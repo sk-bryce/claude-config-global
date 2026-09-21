@@ -190,15 +190,17 @@ A bullet with no entry below is presumed uncontested, not undocumented.
   co-author line gets one. It says nothing about the "Generated with Claude Code" line a PR
   description may carry, which the same reminder supplies separately and which this rule leaves
   alone unless the user says otherwise.
-- Known limitation (accepted, not solved): nothing mechanical can hold this line where it actually
-  breaks. `scripts/scrub-check.sh` reads tracked file content, never commit messages, so the trailer
-  that started this is invisible to it. A `[Cc]o-[Aa]uthored-[Bb]y[[:space:]]*:` pattern was added
-  to the machine-local `scrub-patterns.local` on 2026-09-21, which catches a trailer pasted into a
-  tracked file (a drafted PR body, a commit template) and nothing more. A bare `[Cc]o-[Aa]uthor`
-  pattern is not addable: it matches this entry and the `CLAUDE.md` bullet that state the rule, so
-  it would block every commit touching either. Catching the real case would take a `commit-msg`
-  hook, which is a registration and needs the user's explicit direction per
-  decisions/0003-hooks-and-scripts-authoring-policy.md.
+- Mechanical backing: `scripts/commit-msg-check.sh`, registered as `.git/hooks/commit-msg`, rejects
+  the trailer outright - see `specs/behaviors.md`'s Commit Message Gate section. `scrub-check.sh`
+  could not do this: it reads tracked file content and never sees a commit message. A
+  `[Cc]o-[Aa]uthored-[Bb]y[[:space:]]*:` pattern in the machine-local `scrub-patterns.local`
+  (added 2026-09-21) covers the narrower case of a trailer pasted into a tracked file, such as a
+  drafted PR body. A bare `[Cc]o-[Aa]uthor` pattern is not addable there: it matches this entry and
+  the `CLAUDE.md` bullet that state the rule, so it would block every commit touching either.
+- Known limitation (accepted, not solved): the hook is a local registration, so it holds only in
+  repositories where someone has run `scripts/setup.sh` or `scripts/setup.sh --repo <dir>`, and
+  `--no-verify` bypasses it by design. Nothing mechanical reaches a PR description at all - that
+  half of the rule rests on this entry and the `CLAUDE.md` bullet alone.
 - Acceptance criteria:
   - A commit or PR authored while the attribution reminder is present carries no `Co-Authored-By`
     trailer.

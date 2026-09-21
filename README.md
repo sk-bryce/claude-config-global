@@ -67,6 +67,7 @@ travels with the clone.
 scripts/setup.sh            # install what is missing; prompts for scrub patterns and test fixtures on first run
 scripts/setup.sh --check    # report what is missing, change nothing
 scripts/setup.sh --scrub    # add more scrub patterns or test fixture lines later
+scripts/setup.sh --repo <dir>   # register just the commit-message gate in another repo you work in
 ```
 
 `setup.sh` is idempotent - re-running a completed setup changes nothing - and it never overwrites a
@@ -84,7 +85,12 @@ What it sets up:
    `scripts/scrub-check.sh` finds nothing unsuited to a public remote in the staged content, and
    `scrub-check.sh --test` confirms its own patterns are still firing. Without this hook, none of
    them run.
-2. **`scrub-patterns.local`** (repository root, gitignored). The client, engagement, and
+2. **`.git/hooks/commit-msg`** -> `scripts/commit-msg-check.sh`. Gates a commit on its
+   *message*: rejects a `Co-Authored-By` trailer, and scans the message for the same content
+   `scrub-check.sh` looks for in files. A commit message is not a tracked file, so no other check
+   here has ever seen one. `git commit --no-verify` bypasses it, which is also how you add a
+   co-author trailer on purpose.
+3. **`scrub-patterns.local`** (repository root, gitignored). The client, engagement, and
    internal-hostname patterns only you know - one extended regex per line, `#` for comments.
    `scrub-check.sh` **refuses to run** without this file rather than passing quietly. Its built-in
    coverage is structural shapes plus literals derived from this machine, so it cannot know your
@@ -92,18 +98,18 @@ What it sets up:
    means "I have no such tokens"; a missing file is an unanswered question. It needs no
    `.gitignore` rule: the leading `/*` there ignores every root entry not explicitly whitelisted,
    so it cannot be committed by accident.
-3. **`scrub-test.local`** (repository root, gitignored, same mechanism as above). Fixture lines
+4. **`scrub-test.local`** (repository root, gitignored, same mechanism as above). Fixture lines
    known to match one of the patterns above, used by `scrub-check.sh --test` to prove they still
    fire rather than having silently stopped matching. Its absence is a hard error for `--test` the
    same way `scrub-patterns.local`'s absence is for the default scan, and for the same reason.
-4. **`.git/hooks/post-commit`, `post-merge`, and `post-rewrite`** -> `scripts/replicate.sh`, which
+5. **`.git/hooks/post-commit`, `post-merge`, and `post-rewrite`** -> `scripts/replicate.sh`, which
    mirrors this config into other `CLAUDE_CONFIG_DIR` profiles. Three hooks rather than one,
    because replication has to follow content onto a machine, not just off the one that wrote it.
    `post-commit` alone would miss a commit that arrives by `git pull`, leaving this machine's other
    profiles stale. Git has no post-pull hook, so `post-merge` catches the merge (fast-forwards
    included) and `post-rewrite` catches `--rebase`. Each path syncs exactly once; see
    `reference/layout.md` for how the overlap between them is suppressed.
-5. **`.git/hooks/replicate-targets.sh`**, the target list all three hooks exec. `setup.sh` prompts
+6. **`.git/hooks/replicate-targets.sh`**, the target list all three hooks exec. `setup.sh` prompts
    for the target directories, since which accounts exist is per-machine state it cannot invent.
    Keeping them in one file means a target is added or removed in one place rather than three.
    Giving no targets is a valid answer and still installs everything: the list guards on its own
@@ -124,7 +130,7 @@ What it sets up:
 - `docs/` - human-oriented notes and standalone platform/technical guides; see
   [What's here and why you might care](#whats-here-and-why-you-might-care) above.
 - `scripts/` - hook logic, the status line script, and the deterministic sync/check tooling:
-  `destructive-git-guard.sh`, `filter-verbose-output.sh`, `health-check.sh`,
+  `commit-msg-check.sh`, `destructive-git-guard.sh`, `filter-verbose-output.sh`, `health-check.sh`,
   `link-recheck-hook.sh`, `markdownlint-hook.sh`, `md-checks.sh`, `md-deferred-checks.sh`,
   `md-ledger-append.sh`, `pre-commit-check.sh`, `read-only-plan-guard.sh`, `replicate.sh`,
   `scrub-check.sh`, `session-setup-check.sh`, `setup.sh`, `statusline.sh`, `sync.sh`. See

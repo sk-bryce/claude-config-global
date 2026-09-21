@@ -1,6 +1,6 @@
 ---
 created: 2026-09-14
-updated: 2026-09-14
+updated: 2026-09-21
 ---
 
 # Repository layout
@@ -144,6 +144,19 @@ section.
     the projection check does not - nor does it run in a linked worktree, where it would compare
     machine-level artifacts against a checkout that never installs them. Local-only; not tracked by
     git, so it needs reinstalling on a fresh clone - see README.md's Setup After Cloning section.
+  - `commit-msg-check.sh` - registered as `.git/hooks/commit-msg`, the message half of the commit
+    gate. Rejects a `Co-Authored-By` trailer, and with `--scrub` runs `scrub-check.sh` over the
+    message body as well. It exists because a commit message is not a tracked file: every other
+    check here reads repository content, so the trailer `CLAUDE.md` forbids was unreachable by any
+    of them, and a context-file rule alone did not hold - see `specs/rules.md`'s No Co-Author Text
+    section. Comment lines and anything past a `>8` scissors line are stripped first, so a
+    `git commit -v` diff is never scanned. The trailer pattern is tracked here rather than living
+    in `scrub-patterns.local` because that rule is universal and machine-independent, where the
+    scrub is a public-remote concern a borrowing repository opts into. Fails closed: an unreachable
+    detector or a missing `scrub-patterns.local` exits 2 and blocks the commit, and
+    `git commit --no-verify` is the escape hatch, also the way to add a co-author trailer
+    deliberately. Local-only; reinstall on a fresh clone. `setup.sh --repo <dir>` registers it in
+    another repository you work in, pointing back at this checkout.
   - `session-setup-check.sh` (`SessionStart`) - warns at session start about two things: this
     machine's setup being incomplete, so a missing pre-commit registration surfaces before the
     commit that needed it (`setup.sh --check`), and the health check being overdue or having left
@@ -158,8 +171,12 @@ section.
   - `setup.sh` - brings a fresh clone or a new machine to the state cloning cannot produce: the
     git hook registrations, `scrub-patterns.local`, and `scrub-test.local`. Idempotent, never
     overwrites a hook it did not write, and `--check` reports what is missing without changing
-    anything. Human-run only, per `decisions/0003-hooks-and-scripts-authoring-policy.md` - it
-    registers hooks. See README.md's Setup After Cloning section.
+    anything. `--repo <dir>` registers only the commit-message gate, in another repository you
+    work in - the trailer rule is not specific to this one - with `--with-scrub` to add the
+    public-remote scan of the message, off by default because that ruleset is written for this
+    repository's remote. Human-run only, per
+    `decisions/0003-hooks-and-scripts-authoring-policy.md` - it registers hooks, and `--repo` is
+    that same act aimed at another checkout. See README.md's Setup After Cloning section.
   - `scrub-check.sh` - detects content unsuited to a public remote in tracked files: absolute home
     paths and their projects-path spellings, the local username and hostname, session UUIDs, email
     addresses, and credential-shaped tokens. `--repo <dir>` scans a different checkout instead,
