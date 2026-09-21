@@ -788,8 +788,14 @@ buildable intent.
     public-remote scan of the message and is off by default, since those patterns are written for
     this repository's remote. Handled before every other check in the script, which all ask about
     this checkout's own state, and it reports and exits rather than threading a second target
-    through them. It writes one hook and nothing else - no pattern files, no replication hooks -
-    and never overwrites a `commit-msg` it did not write, printing the line to add by hand instead.
+    through them. It writes one hook and nothing else - no pattern files, no replication hooks.
+    A `commit-msg` byte-identical to what an earlier run wrote with the other `--scrub` choice is
+    rewritten, which is what makes the flag usable on an already-registered repository; anything
+    else, including one of its own hooks that has since been hand-edited, is left untouched with
+    the line to add printed instead. Recognition is an exact comparison against the body it would
+    write rather than a grep for the script name, because the whole point is telling "ours, other
+    flag" from "ours, then edited" - and an edit is a decision, so silently reverting one would be
+    the same mistake as overwriting a stranger's hook.
   - Installs the replication hooks too, prompting for replication targets. Zero targets is a valid
     answer and still writes every hook: that keeps "no hook" meaning "setup was never run" rather
     than conflating it with "nothing to replicate", which `--check` could not otherwise distinguish.
@@ -849,8 +855,14 @@ buildable intent.
     `--check --repo <dir>` reports its state and writes nothing.
   - `--repo` pointed at this repository, at a path in no checkout, at a repository with
     `core.hooksPath` set, or given no argument, exits 2 without writing.
-  - `--repo` against a repository whose `commit-msg` is somebody else's leaves it untouched, prints
-    the registration line to add by hand, and exits 1.
+  - `--repo` against a repository whose `commit-msg` this script did not write - a stranger's hook,
+    or one of its own that has been edited since - leaves it untouched, prints the registration
+    line to add by hand, and exits 1.
+  - `--repo --with-scrub` against a repository registered without it rewrites the hook and reports
+    the re-registration; running it again reports `[ok]` and changes nothing. The reverse
+    direction, dropping back to no `--scrub`, behaves the same way.
+  - `--check --repo <dir> --with-scrub` against a repository registered without `--scrub` reports
+    the mismatch and exits 1 without writing.
   - `--with-scrub` without `--repo`, and `--repo` combined with `--scrub`, are both rejected as
     usage errors rather than silently honouring one of them.
   - In a linked worktree of the target, the hook is written to the main checkout's hooks directory,

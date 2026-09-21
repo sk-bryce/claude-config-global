@@ -134,37 +134,13 @@ if [[ "$saw_borrow" -eq 1 ]]; then
   fi
   target_hook="$target_common/hooks/commit-msg"
 
-  echo "Commit-message gate for $target_root"
-  echo
-
-  if [[ -f "$target_hook" ]]; then
-    if grep -q 'commit-msg-check\.sh' "$target_hook" 2>/dev/null; then
-      printf '  [ok]      commit-msg -> %s\n' "$checker"
-      if [[ "$borrow_scrub" -eq 1 ]] && ! grep -q -- '--scrub' "$target_hook" 2>/dev/null; then
-        printf '  %s\n' "registered without --scrub; edit $target_hook by hand to add it"
-      fi
-      [[ -x "$target_hook" ]] || { chmod +x "$target_hook" && printf '  [done]    made commit-msg executable\n'; }
-      exit 0
-    fi
-    # Never overwritten: a hook somebody else wrote is more valuable than this one's default, and
-    # a commit-msg hook that already exists is usually enforcing a message convention.
-    printf '  [warn]    commit-msg exists and does not call commit-msg-check.sh - left untouched\n'
-    printf '  %s\n' "review $target_hook by hand; the line to add is:"
-    printf '  %s\n' "exec \"$checker\" --repo \"\$(git rev-parse --show-toplevel)\" \"\$@\""
-    exit 1
-  fi
-
-  if [[ "$mode" == "check" ]]; then
-    printf '  [MISSING] commit-msg hook (a Co-Authored-By trailer would not be caught here)\n'
-    exit 1
-  fi
-
-  scrub_arg=""
-  [[ "$borrow_scrub" -eq 1 ]] && scrub_arg=" --scrub"
-
-  # Unquoted heredoc: $REPO_ROOT and the --scrub choice are resolved now, at registration time,
-  # while the escaped forms stay in the hook for git to expand on each commit.
-  cat > "$target_hook" <<HOOK
+  # One definition, used to write the hook and to recognize one this script wrote earlier. The
+  # recognition has to be exact rather than a grep for the script name: the point of comparing is
+  # to tell "ours, with the other --scrub setting" - safe to rewrite - apart from "ours, then
+  # hand-tuned", which is not.
+  borrow_hook_body() {
+    local scrub_arg="$1"
+    cat <<HOOK
 #!/usr/bin/env bash
 #
 # Local-only registration for $checker, written by
@@ -177,8 +153,57 @@ if [[ "$saw_borrow" -eq 1 ]]; then
 # cannot run must not pass a message it never read.
 exec "$checker" --repo "\$(git rev-parse --show-toplevel)"$scrub_arg "\$@"
 HOOK
+  }
+
+  scrub_arg=""
+  [[ "$borrow_scrub" -eq 1 ]] && scrub_arg=" --scrub"
+  want_label="commit-msg -> $checker${scrub_arg:+ (with --scrub)}"
+
+  echo "Commit-message gate for $target_root"
+  echo
+
+  if [[ -f "$target_hook" ]]; then
+    existing="$(cat "$target_hook" 2>/dev/null)"
+    if [[ "$existing" == "$(borrow_hook_body "$scrub_arg")" ]]; then
+      printf '  [ok]      %s\n' "$want_label"
+      [[ -x "$target_hook" ]] || { chmod +x "$target_hook" && printf '  [done]    made commit-msg executable\n'; }
+      exit 0
+    fi
+    # Written by an earlier run with the other --scrub choice. Rewriting it is what makes the
+    # flag usable at all - the alternative is telling the owner to hand-edit a file this script
+    # generated, which is how a registration starts drifting from what this script would write.
+    other_arg=" --scrub"
+    [[ "$borrow_scrub" -eq 1 ]] && other_arg=""
+    if [[ "$existing" == "$(borrow_hook_body "$other_arg")" ]]; then
+      if [[ "$mode" == "check" ]]; then
+        have_scrub="without --scrub"; [[ -n "$other_arg" ]] && have_scrub="with --scrub"
+        want_scrub_label="without --scrub"; [[ -n "$scrub_arg" ]] && want_scrub_label="with --scrub"
+        printf '  [MISSING] commit-msg is registered %s, not %s\n' "$have_scrub" "$want_scrub_label"
+        exit 1
+      fi
+      borrow_hook_body "$scrub_arg" > "$target_hook"
+      chmod +x "$target_hook"
+      printf '  [done]    re-registered %s\n' "$want_label"
+      exit 0
+    fi
+    # Never overwritten: a hook somebody else wrote is more valuable than this one's default, and
+    # a commit-msg hook that already exists is usually enforcing a message convention. A hook this
+    # script wrote and somebody then edited lands here too, deliberately - an edit is a decision,
+    # and silently reverting it would be the same mistake as overwriting a stranger's hook.
+    printf '  [warn]    commit-msg exists and is not one this script wrote - left untouched\n'
+    printf '  %s\n' "review $target_hook by hand; the line to add is:"
+    printf '  %s\n' "exec \"$checker\" --repo \"\$(git rev-parse --show-toplevel)\"$scrub_arg \"\$@\""
+    exit 1
+  fi
+
+  if [[ "$mode" == "check" ]]; then
+    printf '  [MISSING] commit-msg hook (a Co-Authored-By trailer would not be caught here)\n'
+    exit 1
+  fi
+
+  borrow_hook_body "$scrub_arg" > "$target_hook"
   chmod +x "$target_hook"
-  printf '  [done]    installed commit-msg -> %s%s\n' "$checker" "${scrub_arg:+ (with --scrub)}"
+  printf '  [done]    installed %s\n' "$want_label"
   echo
   echo "Commits in $target_root are now checked for a Co-Authored-By trailer."
   echo "This registration is local to that clone; git commit --no-verify bypasses it."
