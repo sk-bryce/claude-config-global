@@ -1,6 +1,6 @@
 ---
 created: 2026-08-05
-updated: 2026-09-19
+updated: 2026-09-23
 ---
 
 > Code examples in this file follow upstream Go idiom, including `:=` for local

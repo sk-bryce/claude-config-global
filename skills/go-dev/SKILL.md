@@ -24,7 +24,7 @@ description: |
 
 <!--
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-09-23
 spec: specs/skills.md (go-dev section)
 generated-by: skill-author, Opus subagent dispatched from Claude Code main thread
 model: claude-opus-5

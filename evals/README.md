@@ -1,6 +1,6 @@
 ---
 created: 2026-07-27
-updated: 2026-09-14
+updated: 2026-09-23
 ---
 
 # Evals: Repo-Wide Run Procedure
@@ -106,6 +106,19 @@ regeneration needs this gate at all):
    with `command -v claude >/dev/null || exit 1`, and check the wall clock: a valid serial run of a
    16-query set at 3 runs each makes 48 subprocess calls and takes tens of minutes. The void run
    finished in 130 milliseconds per skill. Anything that returns in seconds did not measure anything.
+
+   **A void run can also be partial, and then it looks like data.** During the `go-dev` first
+   build, one serial run left three positives that scored 9 of 9 on the runs either side at 0 of 9,
+   including the most obviously-triggering query in the set, while two other positives still fired
+   9 of 9 and every negative stayed clean. Exit code 0, no `query failed` line. It read as a
+   catastrophic regression caused by the preceding description edit; re-running two of the collapsed
+   queries in isolation scored 3 of 3 each. The uniform-zero signature above does not catch this,
+   and because `run_eval.py` sends the child's stderr to `DEVNULL` the failing calls leave no trace.
+   **The tripwire is mean wall time per call** - total run time divided by queries times
+   runs-per-query. Healthy serial runs of that set measured 4.4 to 6.5 seconds per call; the void
+   run measured 2.3. A run well below the band its predecessors set measured fewer real completions,
+   whatever the results JSON says, so record the per-call figure in every run file to give the next
+   run a band to compare against. Details: `runs/2026-09-19-go-dev-first-build.md`.
 
    **Never run `--optimize` against parallel-mode scores.** The optimizer grades its own proposed
    descriptions with this same harness, so it will rewrite a working description to fit timing noise
@@ -249,6 +262,7 @@ the artifact count or run frequency grows.
 | 2026-09-05 | `cursor-projection` | 87.5% (7/8 positive, 8/8 negative) [^6] | not run | not run | trigger only |
 | 2026-09-05 | `research` | 75% (6/8 positive, 8/8 negative) [^6] | not run | not run | trigger only |
 | 2026-09-05 | `health-check` | not valid [^7] | not run | not run | trigger only |
+| 2026-09-19 | `go-dev` | 100% (9/9 positive at >= 8 of 9); negatives 9/9 at <= 1 fire, 7/9 at 0 fires [^16] | 100% (30/30) [^16] | 100% (8/8) [^16] | SHIP [^16] |
 
 **Every row above dated before 2026-09-08 was measured under the superseded threshold** - "fires on
 every run", recorded at three runs per query and in several cases computed at `run_eval.py`'s 0.5
@@ -558,3 +572,20 @@ exists to force.
     import crash, and an empty-`CLAUDE_CONFIG_DIR` isolation attempt that silently breaks login and
     produces a result indistinguishable from a void run - discarded rather than recorded). Details:
     `runs/2026-09-11-deep-review-full-suite.md`.
+
+[^16]: First build, both layers, measured over six serial trigger runs and two full behavioral runs
+    plus targeted re-runs; `runs/2026-09-19-go-dev-first-build.md` has every run. Trigger measured
+    with `run_eval.py` rather than `run_loop.py` (the latter rewrites the description it is
+    measuring), at `claude-sonnet-5`, n=9, `--trigger-threshold 0.88`, 4.75 s per call. One of the
+    six runs was discarded as a partial void run - the failure mode now documented under the
+    trigger layer above. **The negative figure does not meet this README's threshold as written**:
+    two negatives fired once in nine runs each, so 7 of 9 negatives are at 0 fires. The build's own
+    gate was amended to "no more than 1 fire of 9" with the user's explicit approval on 2026-09-20,
+    because at n=9 a single stochastic fire fails the 0-fires rule; the repo-wide threshold above
+    was deliberately NOT changed by that approval, and the SHIP decision rests on the amended gate.
+    Two of the 38 behavioral expectations were re-derived mid-run with approval (case 1's
+    deferred-close check, scoped to written handles; case 8's judgment check, from reciting the
+    upstream-idiom exemption to drawing the distinction); unsoftened figures are 29/30 and 7/8.
+    Post-run on 2026-09-23, case 7 was rewritten because its `ok` check passed vacuously, and cases
+    1, 7, and 8 were re-run against follow-up content (`errors.Join`, parameter reassignment under
+    the house `var` rule): all three passed every expectation. The other six cases were not re-run.

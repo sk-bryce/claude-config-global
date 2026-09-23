@@ -1,6 +1,6 @@
 ---
 created: 2026-08-05
-updated: 2026-09-19
+updated: 2026-09-23
 ---
 
 > Code examples in this file follow upstream Go idiom, including `:=` for local
@@ -151,3 +151,55 @@ named-return pattern there would only clutter the read path.
 If you deliberately want to discard a close error, write `defer func() { _ = f.Close() }()`
 instead of a bare `defer f.Close()`: it states the intent explicitly and keeps a linter such as
 `errcheck` from flagging the ignored return.
+
+**When both errors matter, keep both with `errors.Join`** (Go 1.20+). The pattern above keeps
+the first error and drops a later close error. If the close error is worth reporting even when
+the body already failed, join them instead:
+
+```go
+ defer func() {
+  var closeErr = reportFile.Close()
+  if closeErr != nil {
+   err = errors.Join(err, fmt.Errorf("close report %s: %w", path, closeErr))
+  }
+ }()
+```
+
+---
+
+## Combining Several Errors With `errors.Join`
+
+`errors.Join(errs ...error)` (Go 1.20+) combines several errors into one. It discards nil
+arguments and returns nil when every argument is nil, including when it is called with an empty
+slice, so it can wrap a collection loop without a length check:
+
+```go
+func closeAll(closers []io.Closer) error {
+ var closeErrors []error
+ for _, closer := range closers {
+  if err := closer.Close(); err != nil {
+   closeErrors = append(closeErrors, err)
+  }
+ }
+ return errors.Join(closeErrors...)
+}
+```
+
+`errors.Is` and `errors.As` search every joined error, so a caller can still match any one
+sentinel inside the result. The same is true of `fmt.Errorf` with more than one `%w` verb, which
+is the better choice when you want a single line of context around the errors rather than a list.
+
+Three things to know before reaching for it:
+
+- **The message is multi-line.** `Error()` joins the parts with newlines. That reads well in a
+  terminal but can break a line-oriented log format; pass the error to the logger as a field
+  (`zap.Error(err)`) rather than interpolating it into a message string.
+- **Even one error comes back wrapped.** `errors.Join(nil, ErrNotFound)` is not `==`
+  `ErrNotFound`. Compare with `errors.Is`, never with `==`, which is already the rule for any
+  wrapped error.
+- **It is not a substitute for `%w` context.** Joining adds no description of what was being
+  done. Wrap each error with `fmt.Errorf("...: %w", err)` first, then join the wrapped errors.
+
+It pairs naturally with the collect-every-error worker pool in `go-concurrency.md`: that function
+returns `[]error`, and a caller that wants a single `error` can return
+`errors.Join(collectedErrors...)`.

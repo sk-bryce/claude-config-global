@@ -1,6 +1,6 @@
 ---
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-09-23
 ---
 
 # Go Style Preferences (Override)
@@ -194,6 +194,40 @@ for {
 
 Apply the declaration-style rule with judgment: it is a readability and grep-ability
 preference, not a rule that has a clean answer for every multi-value error chain.
+
+### Reassigning a parameter from a multi-value call
+
+The same redeclaration rule has a sharper edge when the name being reused is a function
+parameter. Parameters share the function body's block, so upstream code can write
+`g, ctx := errgroup.WithContext(ctx)`: `g` is new, which licenses the `:=`, and `ctx` is the
+parameter, reassigned rather than shadowed. Plain `var` has no redeclaration rule, so the
+direct translation does not compile:
+
+```go
+func FetchAll(ctx context.Context) error {
+	var group, ctx = errgroup.WithContext(ctx) // compile error: ctx redeclared in this block
+	group.Go(func() error { return fetchUsers(ctx) })
+	return group.Wait()
+}
+```
+
+Declare only the genuinely new name with `var`, then assign both with `=`:
+
+```go
+func FetchAll(ctx context.Context) error {
+	var group *errgroup.Group
+	group, ctx = errgroup.WithContext(ctx)
+	group.Go(func() error { return fetchUsers(ctx) })
+	return group.Wait()
+}
+```
+
+The plain assignment reuses the parameter exactly as the upstream `:=` does, so every closure
+below it sees the derived, cancelable context. A new name such as `groupCtx` also compiles, but
+it leaves the original `ctx` in scope beside it, and a closure that picks up the wrong one runs
+on the parent context and never sees the group's cancellation. Reassigning `ctx` removes that
+choice. The same shape applies to any constructor that returns a derived value of a
+parameter's own type, such as `context.WithTimeout` or `context.WithCancel`.
 
 ### Mechanical enforcement is complementary, and stronger
 

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-09-23
 ---
 
 # `go-dev` 2026-09-19: first build, both eval layers
@@ -341,3 +341,29 @@ cannot redeclare a parameter name, which makes the house rule unfollowable at th
 nowhere; case 7's `ok`/`err` expectation still passes vacuously; and the partial-void-run failure
 mode found here should be written into `evals/README.md`, which currently documents only the
 uniform-zero variant.
+
+## Post-run changes, 2026-09-23
+
+Made after the skill merged, to close follow-ups this run raised. None of them touches the
+`description:`, so the trigger figures above still describe the shipped artifact.
+
+- **Case 7 rewritten.** Its `ok`/`err` expectation passed vacuously, since the task introduced
+  neither a comma-ok access nor an error value. It also over-claimed: the house rule permits `ok`
+  and does not require it. The prompt now takes a slice of candidate keys, skips absent ones, and
+  counts a present candidate with an empty slice, so a comma-ok lookup is required for
+  correctness. The expectation now checks for that lookup over a nil or length check, and accepts
+  `ok` or a descriptive name. Case and expectation counts are unchanged at 9 and 38.
+- **Content added.** `go-style-preferences.md` gained a subsection on reassigning a parameter from
+  a multi-value call. It covers the `var group, ctx = errgroup.WithContext(ctx)` compile error the
+  case-8 executor found, and the declare-then-assign fix. `go-error-handling.md` gained
+  `errors.Join`. It covers joining a close error with a body error, a collect-then-join loop, and
+  three caveats (multi-line messages, single-error wrapping, and joining is not a substitute for
+  `%w` context). Every claim in both was compiled on go1.26.4 before it was written.
+- **Targeted re-run.** Cases 1, 7, and 8 were re-run at Sonnet with expectations withheld, the only
+  cases whose prompt changed or whose likely-read files gained content bearing on them. All three
+  passed every expectation: case 1 at 5/5 and 1/1, case 7 at 2/2 and 1/1, and case 8 at 1/1 and
+  2/2. Case 8's executor used the new declare-then-assign shape directly. The other six cases were
+  not re-run.
+- **Digests after these changes.** `evals.json` is now
+  `7f20f3efdd0e4b777e5fe1c175d6f4e5c978000a271e8ef1556da7042627dcba`, a deliberate change to case 7 only. `trigger-evals.json` is unchanged at
+  `ca087912a4fc8f9ec9f6d93bb1767c0d3cef06c346cc8b25bb4ef74d561bc0ea`.
