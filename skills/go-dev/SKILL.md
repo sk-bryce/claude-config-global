@@ -7,9 +7,10 @@ description: |
   "why is this goroutine leaking?", "wrap this error properly",
   "how should context get passed through here?", "add logging to this Go package",
   "set a timeout on this HTTP client", "this handler returns the wrong status code",
-  "this test flakes in CI - what should I look at?", or "I profiled this and there is an
-  allocation hot spot - how do I cut it down?". Use it for a Go test that already exists and
-  is failing or flaking, and for Go profiling or benchmark output the user brings.
+  "this test flakes in CI - what should I look at?", or
+  "I profiled this and there is an allocation hot spot - how do I cut it down?". Use it for a
+  Go test that already exists and is failing or flaking, and for Go profiling or benchmark
+  output the user brings.
   Loads this user's Go house style (declaration style,
   naming, and zap-with-typed-fields logging) plus on-demand references for concurrency,
   context propagation, error handling, HTTP clients and servers, performance and profiling,
