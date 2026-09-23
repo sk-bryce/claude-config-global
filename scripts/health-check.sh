@@ -503,8 +503,8 @@ check_readme_coverage() {
 }
 
 check_script_modes() {
-  local mode sha stage path
-  while read -r mode sha stage path; do
+  local mode path
+  while read -r mode _ _ path; do
     [[ "$mode" == "100755" ]] || fail script-modes "$path" 0 "tracked mode is $mode, expected 100755"
     [[ -x "$path" ]] || fail script-modes "$path" 0 "not executable on disk"
   done < <(git ls-files -s '*.sh')
@@ -604,6 +604,7 @@ check_path_refs() {
     dir="$(dirname "$f")"
     ln=0
     fenced=0
+    # shellcheck disable=SC2094  # fail() appends to $FAILS; nothing in this loop writes to $f
     while IFS= read -r line || [[ -n "$line" ]]; do
       ln=$(( ln + 1 ))
       case "$line" in
@@ -615,6 +616,7 @@ check_path_refs() {
         *absent*|*"does not exist"*|*"not yet"*) continue ;;
       esac
       case "$line" in *'`'*) ;; *) continue ;; esac
+      # shellcheck disable=SC2016  # the backticks are literal Markdown code spans, not expansions
       for p in $(grep -oE '`[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+`' <<<"$line" | tr -d '`' | sort -u); do
         case "$p" in
           agents/*|decisions/*|docs/*|evals/*|reference/*|scripts/*|skills/*|specs/*) ;;
@@ -643,7 +645,7 @@ check_orphans() {
       skill_is_foreign "${b%%/*}" && continue
     fi
     b="$(basename "$f")"
-    n="$(git grep -lF -- "$b" -- '*.md' 2>/dev/null | grep -vxF -- "$f" | wc -l | tr -d ' ')"
+    n="$(git grep -lF -- "$b" -- '*.md' 2>/dev/null | grep -cvxF -- "$f")"
     (( n == 0 )) && warn orphans "$f" 0 "no other tracked Markdown file references it"
   done
 }

@@ -1483,6 +1483,7 @@ VSYNC_ENABLED=1
 # ROWn/labeln are numbered in render order, matching the "Line n:" section headers above: env,
 # claude, session, context, cache, limits, git. The git row is defined out of that order up in the
 # script (next to the git data it reads) but assembled in it here.
+# shellcheck disable=SC2034  # read through eval indirection in the row loop below
 declare -a ROW0 ROW1 ROW2 ROW3 ROW4 ROW5 ROW6
 build_row_items ROW0 "$item_help" "$item_org" "$item_cwd"
 build_row_items ROW1 "$item_version" "$item_model" "$item_effort" "$item_thinking" "$item_fast"
@@ -1513,6 +1514,8 @@ row_labels=("$label0" "$label1" "$label2" "$label3" "$label4" "$label5" "$label6
 active_labels=()
 align_input=""
 bodies=()
+row_count=0  # both assigned by eval inside the loop
+row_items=()
 for row_idx in "${!row_names[@]}"; do
   row_name="${row_names[$row_idx]}"
   eval "row_count=\${#${row_name}[@]}"

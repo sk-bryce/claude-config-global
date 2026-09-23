@@ -184,7 +184,7 @@ sync_cursor_hooks() {
 
   if [[ "$CHECK_ONLY" -eq 1 ]]; then
     if [[ "$new_json" != "$(jq . <<< "$existing")" ]]; then
-      note_drift "~/.cursor/hooks.json missing or out of date relative to settings.json hooks"
+      note_drift "$hooks_path missing or out of date relative to settings.json hooks"
     fi
   else
     mkdir -p "$(dirname "$hooks_path")"
@@ -229,7 +229,7 @@ sync_cursor_statusline() {
 
   if [[ "$CHECK_ONLY" -eq 1 ]]; then
     if [[ "$new_json" != "$(jq . <<< "$existing")" ]]; then
-      note_drift "~/.cursor/cli-config.json's statusLine is missing or does not point at $desired_command"
+      note_drift "$config_path's statusLine is missing or does not point at $desired_command"
     fi
   else
     mkdir -p "$(dirname "$config_path")"
