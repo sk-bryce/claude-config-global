@@ -48,7 +48,7 @@
       "files": [],
       "expectations": [
         "[deterministic] Bounds the number of concurrently running goroutines (e.g. a fixed worker count, a semaphore, or errgroup.SetLimit), rather than spawning one goroutine per job unbounded",
-        "[deterministic] Collects every job error without a data race or a dropped error, using an explicitly synchronized collector (mutex-protected slice, or an error channel drained by a single goroutine), alone or alongside errgroup; errgroup.Group's Wait alone returns only the first error and does not satisfy this",
+        "[deterministic] Collects every job error without a data race or a dropped error, using either an explicitly synchronized collector (mutex-protected slice, or an error channel drained by a single goroutine) or a pre-sized slice with one slot per goroutine or worker that only that goroutine writes, joined after Wait; errgroup.Group's Wait alone returns only the first error and does not satisfy this",
         "[deterministic] Propagates cancellation via context (e.g. context.WithCancel or errgroup's derived context) so that one worker's failure stops the remaining work rather than letting every job run to completion regardless",
         "[judgment] Declaration style and naming in the new code follow the house rules"
       ]
@@ -112,6 +112,34 @@
         "[deterministic] Uses slog (the project's existing established logger) for the new log line rather than introducing go.uber.org/zap",
         "[deterministic] Does not introduce a second logging library alongside the project's existing slog setup",
         "[judgment] States or otherwise makes clear that it is deferring to the project's already-established logging decision rather than applying the skill's default zap preference"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "In a Go 1.26 module, write a method on an existing Service type that loads a user's profile, orders, and recommendations concurrently using its existing methods s.profiles.Get(ctx, userID), s.orders.List(ctx, userID), and s.recommendations.For(ctx, userID) - each returns a value and an error - and returns all three together in a Dashboard struct.",
+      "expected_output": "Fan-out that can fail goes through errgroup with a derived context rather than a WaitGroup; every goroutine uses the derived context; Wait is called once and its error returned; wrap messages are gerund-form.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Uses golang.org/x/sync/errgroup for the fan-out, not sync.WaitGroup",
+        "[deterministic] Builds the group with errgroup.WithContext and passes the derived context, not the original un-derived parent, to all three calls",
+        "[deterministic] Does not use manual wg.Add/wg.Done anywhere",
+        "[deterministic] Calls Wait exactly once and returns or wraps its error rather than discarding it",
+        "[deterministic] Any fmt.Errorf wrap message that names an operation uses a lowercase gerund (e.g. \"loading profile: %w\"), with no \"failed to\"",
+        "[judgment] Obtains the derived context by reassigning the parent (group, ctx = errgroup.WithContext(ctx)) or otherwise leaves no un-derived context in scope for the closures to pick up by mistake"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Write a new Go package named manifest with an exported Manifest struct and an exported function Load(ctx context.Context, path string) (*Manifest, error) that reads a JSON manifest file from disk and decodes it. Callers need to be able to tell when the manifest file does not exist.",
+      "expected_output": "Exported symbols carry doc comments that begin with their names; package documentation lives in doc.go; the not-found case is an ErrFoo sentinel whose doc comment says what a caller should do; wrap messages are gerund-form.",
+      "files": [],
+      "expectations": [
+        "[deterministic] The exported Manifest type, the exported Load function, and any exported sentinel each carry a doc comment that begins with the symbol's name and ends with a period",
+        "[deterministic] Package documentation is placed in a doc.go file holding only the package clause and its doc comment",
+        "[deterministic] The not-found case is exposed as an exported sentinel named Err<Something> (or by wrapping os.ErrNotExist with %w so callers can match it with errors.Is), and the code matches file-not-found with errors.Is rather than ==",
+        "[deterministic] Every fmt.Errorf wrap message that names an operation uses a lowercase gerund (e.g. \"reading manifest %s: %w\"), with no \"failed to\"",
+        "[deterministic] Contains no init() function and no grouped var (...) or const (...) block",
+        "[judgment] The sentinel's doc comment (if a sentinel is defined) says what a caller is expected to do when it matches, not only when it is returned"
       ]
     }
   ]
