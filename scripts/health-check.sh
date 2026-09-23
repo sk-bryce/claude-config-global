@@ -472,7 +472,7 @@ check_spec_coverage() {
 }
 
 check_readme_coverage() {
-  local f b d
+  local f b d tracked
   # Top-level scripts only. Fixtures and helpers under scripts/<subdir>/ are documented by their
   # own README, not by the repository Layout section.
   while IFS= read -r f; do
@@ -495,8 +495,11 @@ check_readme_coverage() {
   # isn't flagged for living where it belongs. A basename the tree has no file for at all is
   # still a real defect (a rename or deletion the prose was not updated for), unless README.md
   # itself says so by naming it under .git/hooks/, which setup.sh generates and does not track.
+  # The file list is read once rather than piped into grep -q: grep exits on its first match, git
+  # can then take SIGPIPE on its next write, and under pipefail that 141 reads as "not found".
+  tracked="$(git ls-files)"
   while IFS= read -r b; do
-    git ls-files | grep -qE "(^|/)${b}\$" && continue
+    grep -qE "(^|/)${b}\$" <<<"$tracked" && continue
     grep -qF ".git/hooks/$b" README.md && continue
     fail readme-coverage README.md 0 "names $b, which does not exist anywhere in the tree"
   done < <(grep -oE '\b[a-z0-9][a-z0-9-]*\.sh\b' README.md | sort -u)
