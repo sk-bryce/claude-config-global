@@ -385,3 +385,69 @@ position. See `go-style-preferences.md` for the authority on logging: `go.uber.o
 typed fields and an injected logger. In a real service, request logging middleware should
 take the logger as a dependency rather than calling a package-level logger, so the middleware
 stays testable and the sink stays configurable.
+
+### Server Timeouts and Graceful Shutdown
+
+Examples in this section are written in house style.
+
+`http.ListenAndServe` builds a server with no timeouts and no way to drain it; `gosec` flags it
+(G114), and flags an `http.Server` without `ReadHeaderTimeout` as open to Slowloris (G112).
+Construct the server yourself and shut it down from the context:
+
+```go
+const shutdownTimeout = 10 * time.Second
+
+// Run serves handler on addr until ctx is cancelled, then shuts the server down gracefully.
+func Run(ctx context.Context, addr string, handler http.Handler, logger *zap.Logger) error {
+ var server = &http.Server{
+  Addr:              addr,
+  Handler:           handler,
+  ReadHeaderTimeout: 5 * time.Second,
+  ReadTimeout:       30 * time.Second,
+  WriteTimeout:      30 * time.Second,
+  IdleTimeout:       120 * time.Second,
+  ErrorLog:          zap.NewStdLog(logger.Named("http")),
+ }
+
+ var listenConfig net.ListenConfig
+ var listener, err = listenConfig.Listen(ctx, "tcp", addr)
+ if err != nil {
+  return fmt.Errorf("listening on %s: %w", addr, err)
+ }
+
+ var serveErr = make(chan error, 1)
+ go func() {
+  serveErr <- server.Serve(listener)
+ }()
+
+ select {
+ case err = <-serveErr:
+  return fmt.Errorf("serving http: %w", err)
+ case <-ctx.Done():
+ }
+
+ var shutdownCtx, cancel = context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
+ defer cancel()
+
+ if err = server.Shutdown(shutdownCtx); err != nil {
+  return fmt.Errorf("shutting down http server: %w", err)
+ }
+ if err = <-serveErr; !errors.Is(err, http.ErrServerClosed) {
+  return fmt.Errorf("serving http: %w", err)
+ }
+ return nil
+}
+```
+
+- **The shutdown deadline comes from `context.WithoutCancel(ctx)`.** When shutdown starts, `ctx`
+  is already cancelled, so a timeout derived from it is already done: `Shutdown` returns
+  `context.Canceled` at once without waiting for in-flight requests. `context.Background()`
+  avoids that but drops the values `ctx` carries, such as a trace span. `WithoutCancel`
+  (Go 1.21+) keeps the values and drops only the cancellation.
+- **`ErrorLog` is set.** `net/http` logs connection-level failures (malformed requests, TLS
+  handshake errors, handler panics it recovers) to `ErrorLog`, and when that is nil they go to
+  the standard `log` package, outside the application logger. `zap.NewStdLog` routes them into
+  zap.
+
+The `ctx` comes from `signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)`
+in `main`.

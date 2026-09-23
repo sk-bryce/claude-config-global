@@ -92,14 +92,16 @@ deliberately, rather than defending the line on other grounds.
   and the logging position. Overrides the files below.
 - `references/go-style-conventions.md` - project structure, consumer-defined interfaces, naming
   conventions, type safety, linting.
-- `references/go-error-handling.md` - wrapping, sentinel errors, error classification, close
-  errors on a write path, and combining errors with `errors.Join`.
+- `references/go-error-handling.md` - wrapping, sentinel errors, error classification and
+  `errors.AsType`, close errors on a write path, and combining errors with `errors.Join`.
 - `references/go-concurrency.md` - goroutine ownership, `errgroup`, worker pools, channels, sync
   primitives.
-- `references/go-context-patterns.md` - cancellation, timeouts, and the narrow case for context
-  values.
-- `references/go-http.md` - client construction and server routing.
-- `references/go-testing.md` - test organization, table-driven tests, naming.
+- `references/go-context-patterns.md` - cancellation, timeouts, context-aware API forms, and the
+  narrow case for context values.
+- `references/go-http.md` - client construction, server routing, server timeouts, and graceful
+  shutdown.
+- `references/go-testing.md` - test organization, table-driven tests, test contexts, polling
+  instead of sleeping, naming.
 - `references/go-performance.md` - profile first, then I/O, readers, and buffers.
 - `references/go-gotchas.md` - variable shadowing, slice aliasing, and other footguns worth
   recognizing before they bite.

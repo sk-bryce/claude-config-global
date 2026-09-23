@@ -69,6 +69,21 @@ func ProcessBatch(ctx context.Context, items []Item) error {
 }
 ```
 
+**Take the context-aware form of every API that offers one.** The context-free form is the same
+call with cancellation removed, so a shutdown that should take milliseconds waits out a dial, a
+query, or a DNS lookup nobody can reach.
+
+| Context-free | Use instead |
+| --- | --- |
+| `http.NewRequest` | `http.NewRequestWithContext` |
+| `net.Listen` | `(*net.ListenConfig).Listen` |
+| `net.Dial` | `(*net.Dialer).DialContext` |
+| `exec.Command` | `exec.CommandContext` |
+| `db.Query`, `db.Exec` | `QueryContext`, `ExecContext` |
+
+`noctx`, enabled in the house `.golangci.yml` in `go-style-conventions.md`, flags every row of
+this table. In a test, pass `t.Context()` (see `go-testing.md`).
+
 ---
 
 ## Context Values (Use Sparingly)

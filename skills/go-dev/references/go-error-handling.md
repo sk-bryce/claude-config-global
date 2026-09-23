@@ -112,6 +112,23 @@ func HandleRequest(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### `errors.AsType` (Go 1.26+)
+
+Examples in this subsection are written in house style.
+
+In a module on Go 1.26 or later, prefer the generic `errors.AsType[T]` to `errors.As`. It
+returns the typed value and a bool instead of writing through a pointer, so it needs no
+pre-declared target and fits in an `if` initializer:
+
+```go
+if maxBytesErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
+ return fmt.Errorf("request body over %d bytes: %w", maxBytesErr.Limit, err)
+}
+```
+
+Like `errors.As`, it returns only the first match: over an `errors.Join` tree it finds one of
+the joined errors, not all of them.
+
 ---
 
 ## Errors From Close on a Write Path

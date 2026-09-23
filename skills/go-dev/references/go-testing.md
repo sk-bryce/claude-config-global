@@ -160,6 +160,42 @@ sources; when the two disagree, follow `go-style-preferences.md` for your own co
 
 ---
 
+## Test Contexts and Waiting Without Sleeping
+
+Examples in this section are written in house style.
+
+Pass `t.Context()` (Go 1.24+) to the code under test, not `context.Background()`. It is
+cancelled just before the test's `Cleanup` functions run, so a goroutine or request the test
+started is told to stop when the test ends instead of outliving it. `b.Context()` does the same
+in a benchmark.
+
+When a test must wait for something another goroutine or process does, poll an observable
+condition with a deadline rather than sleeping a fixed duration. A fixed sleep asserts a
+duration nobody measured: it is flaky on a loaded machine and slow on an idle one. Here the
+interval only paces the polling, and the deadline only turns a condition that never holds into
+a named failure instead of a hang until the package timeout:
+
+```go
+const pollInterval = 10 * time.Millisecond
+
+func pollUntil(t *testing.T, timeout time.Duration, check func() bool, describe func() string) {
+ t.Helper()
+
+ var deadline = time.Now().Add(timeout)
+ for !check() {
+  if time.Now().After(deadline) {
+   t.Fatalf("%s within %s", describe(), timeout)
+  }
+  time.Sleep(pollInterval)
+ }
+}
+```
+
+`describe` is a function rather than a string so the failure can report what the check last
+observed, which is usually the only clue a timeout leaves.
+
+---
+
 ## Test Naming Conventions
 
 Scenario naming: `Test<FunctionName>_<Scenario>`.

@@ -821,10 +821,11 @@ Shared conventions for every skill spec:
   `WaitGroup.Go`, two `encoding/json` decoder behaviors verified against the Go 1.26
   toolchain, a golangci-lint v2 schema `.golangci.yml` carrying a `govet` `shadow` setting
   and `depguard` rules, and the `go.uber.org/zap/exp/zapslog` bridge API, which lives in an
-  experimental module and may change), and Go ships a
-  minor release roughly twice a year. Re-check trigger: each Go minor release, not a
-  calendar date. `health-check` should treat a Go release newer than this file's `updated:`
-  date as a staleness signal for the whole skill.
+  experimental module and may change), and Go ships a minor release roughly twice a year.
+  The newer-API claims are Go 1.21 `context.WithoutCancel`, Go 1.24 `t.Context()`, and Go 1.26
+  `errors.AsType`. Re-check trigger: each Go minor release, not a calendar date.
+  `health-check` should treat a Go release newer than this file's `updated:` date as a
+  staleness signal for the whole skill.
 - Settled decision: the domain files' code examples stay in upstream Go idiom and are not
   rewritten into house declaration style. The house rule governs new code the model writes,
   not the reference examples, which stay comparable to the external Go a reader would
