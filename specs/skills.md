@@ -790,13 +790,12 @@ Shared conventions for every skill spec:
   what belongs in one and how a project is laid out around it, not dependency version
   resolution - see Non-goals.
 - Knowledge sources: the nine files under `references/`. `go-style-preferences.md`
-  carries this user's positions - declaration style, naming, no named returns, and the
-  logging position (`go.uber.org/zap` with its typed field API for application code,
-  `log/slog` confined to a bridge package and to `slog.LogValuer` secret redaction, enforced
-  by `depguard`) - and
-  overrides the others where they disagree,
-  `go-gotchas.md` carries the traps worth recognizing, and the remaining seven are
-  domain references loaded on demand.
+  carries this user's positions - declaration style (including the ban on grouped
+  declarations and its `iota` exception), naming, no named returns, and the logging position
+  (`go.uber.org/zap` with its typed field API for application code, `log/slog` confined to a
+  bridge package and to `slog.LogValuer` secret redaction, enforced by `depguard`) - and
+  overrides the others where they disagree, `go-gotchas.md` carries the traps worth
+  recognizing, and the remaining seven are domain references loaded on demand.
 - Design: a knowledge-loading skill in the shape of `research` - a mostly thin `SKILL.md`
   that routes to `references/*.md` rather than restating their content, with one deliberate
   exception: the declaration-style and naming rules and the canonical-shape list are inline
@@ -823,7 +822,9 @@ Shared conventions for every skill spec:
   `depguard` rules, and the `go.uber.org/zap/exp/zapslog` bridge API, which lives in an
   experimental module and may change), and Go ships a minor release roughly twice a year. The
   newer-API claims are Go 1.21 `context.WithoutCancel`, Go 1.24 `t.Context()`, and Go 1.26
-  `errors.AsType`. Last re-checked on Go 1.27.1, 2026-09-23. Re-check trigger: each Go minor
+  `errors.AsType`. The concurrency claims pinned to a version are Go 1.25 `WaitGroup.Go`
+  re-panicking without `Done`, and x/sync v0.23.0 `errgroup` neither recovering a panic nor
+  carrying it to `Wait`. Last re-checked on Go 1.27.1, 2026-09-23. Re-check trigger: each Go minor
   release, not a calendar date. `health-check` should treat a Go release newer than this file's
   `updated:` date as a staleness signal for the whole skill.
 - Settled decision: the domain files' code examples stay in upstream Go idiom and are not
@@ -843,6 +844,26 @@ Shared conventions for every skill spec:
   example in the skill, upstream idiom included: no file under `references/` shows a named
   result. The house `.golangci.yml` enforces it with `nonamedreturns` and
   `report-error-in-defer: true`, since the linter's default exempts the deferred-`Close` case.
+- Settled decision (2026-09-23), carried over from a production Go service: fan-out prefers
+  `errgroup` when the goroutines can fail, `sync.WaitGroup.Go` when they cannot, and manual
+  `Add`/`Done` only when the count is not one per goroutine or `go.mod` predates Go 1.25. This
+  binds house-style sections; an upstream example may still show `Add`/`Done` only where it is
+  labeled as the fallback.
+- Settled decision (2026-09-23): grouped `var (...)` and `const (...)` blocks are both banned;
+  the one exception is a `const` block that uses `iota`, because `iota` restarts at zero in each
+  separate declaration. Grouped `import` blocks are unaffected.
+- Settled decision (2026-09-23): wrap messages name the operation in progress as a gerund
+  (`fetching manifest: %w`), lowercase, with no "failed to". Like the returns rule, this binds
+  every example in the skill, upstream idiom included. Sentinels are `ErrFoo`, error types end
+  in `Error`, and both carry a doc comment saying what a caller should do on a match.
+- Settled decision (2026-09-23): the layout the skill teaches is the conventional single-module
+  one - module at the repository root, `cmd/<binary>/`, `internal/<feature>/`, and `pkg/` only
+  for packages deliberately published for outside import - not an `apps/<service>/` wrapper.
+- Settled decision (2026-09-23): `go-testing.md` carries test-first rules (red/green, never edit
+  a test to match the code, regression test first, mutation check for untested code), test-double
+  rules (real collaborators first, never mock project-owned types), and a short spec-driven
+  development section naming the three SDD rungs and stating that every project should use some
+  form of it. A project's own stated process governs over it.
 - Evals: `skills/go-dev/evals/trigger-evals.json` (did it fire) and
   `skills/go-dev/evals/evals.json` (did it behave), both authored from this section before
   `SKILL.md` was generated and both kept as the gate on any future regeneration. The two
@@ -857,4 +878,9 @@ Shared conventions for every skill spec:
     fields and an injected logger rather than `log/slog` or the standard `log` package, and
     places `log/slog` only in a bridge or a `slog.LogValuer` redaction role. Where a
     project states its own logging decision, the project governs and the skill yields.
+  - Asked to fan out work that can fail, the model reaches for `errgroup` with a derived context
+    before a `WaitGroup`, and never pairs manual `Add`/`Done` with one-goroutine-per-item work
+    on Go 1.25 or later.
+  - Error-wrap messages the model writes are gerund-form (`fetching manifest: %w`), and new
+    exported symbols it writes carry doc comments.
   - `scripts/md-checks.sh` reports no typography or placeholder findings across the skill.
