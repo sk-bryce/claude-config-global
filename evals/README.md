@@ -263,6 +263,7 @@ the artifact count or run frequency grows.
 | 2026-09-05 | `research` | 75% (6/8 positive, 8/8 negative) [^6] | not run | not run | trigger only |
 | 2026-09-05 | `health-check` | not valid [^7] | not run | not run | trigger only |
 | 2026-09-19 | `go-dev` | 100% (9/9 positive at >= 8 of 9); negatives 9/9 at <= 1 fire, 7/9 at 0 fires [^16] | 100% (30/30) [^16] | 100% (8/8) [^16] | SHIP [^16] |
+| 2026-09-23 | `go-dev` | not re-run (description unchanged) [^17] | 93.5% (29/31) [^17] | 87.5% (7/8) [^17] | HOLD [^17] |
 
 **Every row above dated before 2026-09-08 was measured under the superseded threshold** - "fires on
 every run", recorded at three runs per query and in several cases computed at `run_eval.py`'s 0.5
@@ -589,3 +590,10 @@ exists to force.
     Post-run on 2026-09-23, case 7 was rewritten because its `ok` check passed vacuously, and cases
     1, 7, and 8 were re-run against follow-up content (`errors.Join`, parameter reassignment under
     the house `var` rule): all three passed every expectation. The other six cases were not re-run.
+[^17]: v1.2.1 pass: the naming exceptions were settled, a no-named-returns house rule was added,
+    and four additions came from a comparison with a Go service project; the eval set grew to 39
+    expectations. One full behavioral run at Sonnet executors, `evals.json` digest `06bcc172...`.
+    The three failures (cases 3 and 6 deterministic, case 4 judgment) touch no content the pass
+    changed. A separate one-shot re-run of those cases, not merged into this row, passed cases 3
+    and 6 and moved case 4's failure to its cancellation expectation. HOLD stands as measured;
+    `runs/2026-09-23-go-dev-v1.2.1.md` has every run and the open eval-set fixes.
