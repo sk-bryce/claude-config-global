@@ -43,12 +43,12 @@
     },
     {
       "id": 4,
-      "prompt": "Write a Go worker pool that processes jobs from a channel with a bounded number of goroutines and collects errors.",
-      "expected_output": "Bounded goroutines, error collection that drops nothing under concurrency (errgroup or an explicit collector), and cancellation propagated by context so one failure stops the remaining work.",
+      "prompt": "Write a Go worker pool that processes jobs from a channel with a bounded number of goroutines. It should return every job error, not just the first, and once any job fails it should stop starting new jobs.",
+      "expected_output": "Bounded goroutines, error collection that drops nothing under concurrency (errgroup or an explicit collector), and cancellation propagated by context so one failure stops the remaining work while every error already produced is still returned.",
       "files": [],
       "expectations": [
         "[deterministic] Bounds the number of concurrently running goroutines (e.g. a fixed worker count, a semaphore, or errgroup.SetLimit), rather than spawning one goroutine per job unbounded",
-        "[deterministic] Collects errors from workers without a data race or dropped error under concurrency, using errgroup.Group or an explicitly synchronized collector (mutex-protected slice or dedicated error channel drained by a single goroutine)",
+        "[deterministic] Collects every job error without a data race or a dropped error, using an explicitly synchronized collector (mutex-protected slice, or an error channel drained by a single goroutine), alone or alongside errgroup; errgroup.Group's Wait alone returns only the first error and does not satisfy this",
         "[deterministic] Propagates cancellation via context (e.g. context.WithCancel or errgroup's derived context) so that one worker's failure stops the remaining work rather than letting every job run to completion regardless",
         "[judgment] Declaration style and naming in the new code follow the house rules"
       ]
@@ -68,15 +68,15 @@
     },
     {
       "id": 6,
-      "prompt": "Write a Go function that parses a slice of \"key=value\" config strings into a map[string]string, returning an error for any malformed entry.",
-      "expected_output": "Declaration-style rule is followed: explicit var outside if/for/switch/select initializers, := confined to those initializers, no grouped var (...) block; no named results or naked return.",
+      "prompt": "Write a Go function that parses a slice of \"key=value\" config strings into a map[string]string. A malformed entry should produce an error that callers can detect with errors.Is.",
+      "expected_output": "Declaration-style rule is followed: explicit var outside if/for/switch/select initializers, := confined to those initializers, no grouped var (...) block; no named results or naked return; the malformed-entry error wraps a sentinel with %w.",
       "files": [],
       "expectations": [
         "[deterministic] Declares the result map and any accumulator/loop-scoped variable that lives outside an if/for/switch/select initializer with an explicit `var`, not `:=`",
         "[deterministic] Uses `:=` only as part of an initializer expression inside an if, for, switch, or select statement where the declared variable's scope is visibly limited to that statement",
         "[deterministic] Does not use a grouped `var (...)` block anywhere in the function",
         "[deterministic] Does not name its result parameters and does not use a naked return",
-        "[deterministic] Wraps the malformed-entry error using %w in fmt.Errorf, not %v or a bare string"
+        "[deterministic] Wraps a sentinel error with %w in fmt.Errorf for the malformed entry, so errors.Is matches it, not %v or a bare string"
       ]
     },
     {
