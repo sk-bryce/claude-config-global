@@ -1,6 +1,6 @@
 ---
 created: 2026-07-26
-updated: 2026-09-13
+updated: 2026-09-19
 ---
 
 # Skill Specs
@@ -776,3 +776,70 @@ Shared conventions for every skill spec:
     `2026-09-08-deep-review-gate-generalization.md` (matched pair at 4/4);
     `2026-09-08-deep-review-partial-context.md` (eval 12 at 0/4); and
     `2026-09-08-deep-review-purpose-quote-test.md` (12 of 12).
+
+---
+
+## go-dev
+
+- Purpose: load Go house style, domain patterns, and gotchas into whichever context is
+  writing or reviewing Go code, so output matches this user's preferences rather than
+  generic idiom.
+- Trigger conditions: work on `.go` files, a `go.mod`, or a Go project; prompts naming Go
+  or golang; Go-specific tasks (goroutine leaks, error wrapping, table-driven tests,
+  `context` propagation, HTTP client or handler design, profiling). `go.mod` here means
+  what belongs in one and how a project is laid out around it, not dependency version
+  resolution - see Non-goals.
+- Knowledge sources: the nine files under `references/`. `go-style-preferences.md`
+  carries this user's positions - declaration style, naming, and the logging position
+  (`go.uber.org/zap` with its typed field API for application code, `log/slog` confined to a
+  bridge package and to `slog.LogValuer` secret redaction, enforced by `depguard`) - and
+  overrides the others where they disagree,
+  `go-gotchas.md` carries the traps worth recognizing, and the remaining seven are
+  domain references loaded on demand.
+- Design: a knowledge-loading skill in the shape of `research` - a mostly thin `SKILL.md`
+  that routes to `references/*.md` rather than restating their content, with one deliberate
+  exception: the declaration-style and naming rules and the canonical-shape list are inline
+  in `SKILL.md`, because a rule the model must choose to open a file to find is a rule that
+  does not reliably fire. Content is selected by one test: does it change what the model
+  reaches for, rather than what it can recall? General Go knowledge the model already holds
+  (the G-M-P scheduler model, what an unbuffered channel is, pass-by-value semantics) is
+  excluded as redundant context cost.
+- Frontmatter: no `context: fork` and no `model`/`effort` pin. Like `research`, this skill
+  carries knowledge into the invoking context and must share its warm prompt cache; a
+  fork would cold-start and defeat that (see
+  `decisions/0008-avoid-parallel-research-fanout.md`).
+- Non-goals: it is guidance, not execution. It does not review a diff, debug a running
+  program, or generate tests - those are candidates for dedicated Go subagents, tracked
+  separately. It does not proofread Markdown (see `review-md`). It does not resolve module
+  or dependency versions: conflicting requirements on one dependency, `go mod tidy`
+  behaviour, minimal version selection, and indirect dependencies are all out of scope, and
+  no reference file covers them. This boundary was set by measurement rather than taste -
+  the first eval run scored a dependency-conflict query at 6 of 9, and the only way to raise
+  that number would have been to advertise coverage the skill does not have.
+- Maintenance: the domain files carry version-specific claims (Go 1.22 routing, Go 1.25
+  `WaitGroup.Go`, two `encoding/json` decoder behaviors verified against the Go 1.26
+  toolchain, a golangci-lint v2 schema `.golangci.yml` carrying a `govet` `shadow` setting
+  and `depguard` rules, and the `go.uber.org/zap/exp/zapslog` bridge API, which lives in an
+  experimental module and may change), and Go ships a
+  minor release roughly twice a year. Re-check trigger: each Go minor release, not a
+  calendar date. `health-check` should treat a Go release newer than this file's `updated:`
+  date as a staleness signal for the whole skill.
+- Settled decision: the domain files' code examples stay in upstream Go idiom and are not
+  rewritten into house declaration style. The house rule governs new code the model writes,
+  not the reference examples, which stay comparable to the external Go a reader would
+  cross-check them against. Each domain file says so in a framing note at the top.
+- Evals: `skills/go-dev/evals/trigger-evals.json` (did it fire) and
+  `skills/go-dev/evals/evals.json` (did it behave), both authored from this section before
+  `SKILL.md` was generated and both kept as the gate on any future regeneration. The two
+  cannot be merged; see `evals/README.md`. The acceptance criteria below are their source.
+- Acceptance criteria:
+  - Triggers on Go work described in the user's own words, without the skill being named.
+  - Does not trigger on non-Go work.
+  - Go that the model writes with this skill active follows the declaration-style and
+    naming rules in `go-style-preferences.md`. The domain files' own examples are exempt
+    and are framed as upstream idiom.
+  - Asked to add logging to Go application code, the model reaches for `zap` with typed
+    fields and an injected logger rather than `log/slog` or the standard `log` package, and
+    places `log/slog` only in a bridge or a `slog.LogValuer` redaction role. Where a
+    project states its own logging decision, the project governs and the skill yields.
+  - `scripts/md-checks.sh` reports no typography or placeholder findings across the skill.

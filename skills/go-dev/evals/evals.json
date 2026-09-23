@@ -1,0 +1,117 @@
+{
+  "skill_name": "go-dev",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write a Go function that reads a CSV file from a path and returns the rows as a slice of structs, with error handling.",
+      "expected_output": "Errors are wrapped with %w (not %v or a bare string); the file handle is closed via defer with the close error not silently dropped; declaration style and naming follow the house rules for the new code.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Wraps errors using %w in fmt.Errorf, not %v or a bare string, when returning an error from the file-open or parse path",
+        "[deterministic] Closes the file handle via a deferred Close call",
+        "[deterministic] Does not silently discard the error returned by a deferred Close on a handle that was written to - it captures the error into a named return, logs it, or wraps it. A bare deferred Close on a read-only handle is acceptable when the response says why it is safe there.",
+        "[deterministic] Uses explicit `var` declarations for variables outside any if/for/switch/select initializer expression (e.g. the slice of rows being built up), not `:=`",
+        "[deterministic] Does not use a grouped `var (...)` block anywhere; each `var` declaration is on its own line",
+        "[judgment] Chooses names whose descriptiveness scales with scope depth and complexity, avoiding one- and two-letter names outside the `ok`/`err` exceptions"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Write a table-driven test in Go for a function ValidateEmail(string) (bool, error).",
+      "expected_output": "Subtests via t.Run, a named test-case struct, and t.Parallel() where it is safe; declaration style and naming follow the house rules.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Runs each test case as a subtest via t.Run",
+        "[deterministic] Defines a named struct type for the test cases (e.g. `type testCase struct { ... }` or similarly named), rather than only an inline anonymous struct literal with no type name",
+        "[deterministic] Calls t.Parallel() inside the subtests",
+        "[deterministic] Uses explicit `var` declarations outside if/for/switch/select initializers and does not use a grouped `var (...)` block",
+        "[judgment] Field and variable names scale in descriptiveness with scope complexity, avoiding one- and two-letter names outside the `ok`/`err` exceptions"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Write a Go HTTP client method that POSTs a JSON payload and decodes the response, with a timeout.",
+      "expected_output": "The timeout is carried on a context.Context passed to http.NewRequestWithContext rather than only http.Client.Timeout; the response body is closed; the status code is checked before decoding.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Builds the request with http.NewRequestWithContext, passing a context.Context that carries the timeout (e.g. via context.WithTimeout), rather than relying only on http.Client.Timeout",
+        "[deterministic] Closes the response body via a deferred Close call",
+        "[deterministic] Checks the response status code before attempting to decode the response body",
+        "[deterministic] Wraps errors using %w in fmt.Errorf, not %v or a bare string",
+        "[judgment] Declaration style and naming in the new code follow the house rules (explicit var outside initializer expressions, no grouped var block, descriptive names scaled to scope)"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Write a Go worker pool that processes jobs from a channel with a bounded number of goroutines and collects errors.",
+      "expected_output": "Bounded goroutines, error collection that drops nothing under concurrency (errgroup or an explicit collector), and cancellation propagated by context so one failure stops the remaining work.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Bounds the number of concurrently running goroutines (e.g. a fixed worker count, a semaphore, or errgroup.SetLimit), rather than spawning one goroutine per job unbounded",
+        "[deterministic] Collects errors from workers without a data race or dropped error under concurrency, using errgroup.Group or an explicitly synchronized collector (mutex-protected slice or dedicated error channel drained by a single goroutine)",
+        "[deterministic] Propagates cancellation via context (e.g. context.WithCancel or errgroup's derived context) so that one worker's failure stops the remaining work rather than letting every job run to completion regardless",
+        "[judgment] Declaration style and naming in the new code follow the house rules"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Add structured logging to a Go HTTP service: set up the logger at startup and log each request with its method, path, and status.",
+      "expected_output": "Reaches for go.uber.org/zap with typed fields (zap.String, zap.Int, zap.Error) and an injected logger; does not reach for log/slog or the standard log package as the application logger, except log/slog confined to a bridge package or slog.LogValuer redaction role.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Imports and uses go.uber.org/zap as the logging library for the application's request logging",
+        "[deterministic] Uses typed field constructors (zap.String, zap.Int, and/or zap.Error) for the method, path, and status values rather than building the log line with fmt-style string formatting",
+        "[deterministic] Constructs the logger once at startup and passes/injects it into the request-handling code (e.g. via a struct field, middleware closure, or constructor parameter) rather than only a package-level global referenced directly inside the handler",
+        "[deterministic] Does not use the standard library log package as the application logger",
+        "[deterministic] If log/slog appears anywhere in the response, it appears only inside a bridge package (e.g. mentioning zapslog or an slog.Handler backed by zap) or an slog.LogValuer redaction implementation - never as the direct application logging call for the method/path/status line"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Write a Go function that parses a slice of \"key=value\" config strings into a map[string]string, returning an error for any malformed entry.",
+      "expected_output": "Declaration-style rule is followed: explicit var outside if/for/switch/select initializers, := confined to those initializers, no grouped var (...) block.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Declares the result map and any accumulator/loop-scoped variable that lives outside an if/for/switch/select initializer with an explicit `var`, not `:=`",
+        "[deterministic] Uses `:=` only as part of an initializer expression inside an if, for, switch, or select statement where the declared variable's scope is visibly limited to that statement",
+        "[deterministic] Does not use a grouped `var (...)` block anywhere in the function",
+        "[deterministic] Wraps the malformed-entry error using %w in fmt.Errorf, not %v or a bare string"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Write a Go function that, given a map[string][]int, returns the key whose slice has the largest sum, using nested loops to compute each sum.",
+      "expected_output": "Naming descriptiveness scales with nesting depth and complexity; one- and two-letter names are avoided outside the ok/err exceptions; declaration style is followed for the running best-key/best-sum state.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Declares the running best-key and best-sum tracking variables with explicit `var`, not `:=`, since they live outside any if/for/switch/select initializer",
+        "[deterministic] Uses `ok` for any comma-ok map-access or type-assertion result it introduces, and `err` for any local error value, matching the standing exceptions",
+        "[judgment] Names inside the nested loop bodies grow more descriptive with nesting depth and complexity, avoiding one- and two-letter names other than the `ok`/`err` exceptions and idiomatic short-lived loop indices"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Looking at references/go-concurrency.md's errgroup example, explain why it writes `g, ctx := errgroup.WithContext(ctx)`, then write a new helper function of your own, in the same style, that runs a set of independent lookups concurrently and returns the first error.",
+      "expected_output": "Does not flag or rewrite the quoted reference-file example's `:=` usage as a house-style violation, since domain reference examples stay in upstream Go idiom by design; the new helper function it writes itself still follows the house declaration-style rule.",
+      "files": [
+        "references/go-concurrency.md"
+      ],
+      "expectations": [
+        "[judgment] Does not flag, apologize for, or rewrite the quoted `g, ctx := errgroup.WithContext(ctx)` example from the reference file as a declaration-style violation, treating it as upstream idiom the reference is allowed to keep",
+        "[judgment] Draws an explicit distinction between the reference file's own example and the new code it writes - naming the example as the reference's existing style and its own helper as house style - rather than applying one declaration style uniformly to both or passing over the difference in silence",
+        "[deterministic] In the new helper function it writes itself, uses explicit `var` for any declaration outside an if/for/switch/select initializer, rather than applying the reference example's `:=` style to its own new code"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "This service's main.go already sets up `slog.New(slog.NewJSONHandler(os.Stdout, nil))` as its logger and passes it through the whole app - that's the project's existing, established logging decision. Add a log line inside the existing ProcessOrder function that records the order ID when processing starts, consistent with how the rest of the codebase already logs.",
+      "expected_output": "Where a project states its own logging decision, the project governs and the skill yields: the new log line uses the project's existing slog setup rather than introducing zap.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Uses slog (the project's existing established logger) for the new log line rather than introducing go.uber.org/zap",
+        "[deterministic] Does not introduce a second logging library alongside the project's existing slog setup",
+        "[judgment] States or otherwise makes clear that it is deferring to the project's already-established logging decision rather than applying the skill's default zap preference"
+      ]
+    }
+  ]
+}

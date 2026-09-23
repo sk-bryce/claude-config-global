@@ -1,0 +1,74 @@
+[
+  {
+    "query": "My worker pool seems to leak goroutines under load - can you help me find where they're not exiting?",
+    "should_trigger": true
+  },
+  {
+    "query": "I need to wire context cancellation through this request handler so a client disconnect actually stops the downstream call.",
+    "should_trigger": true
+  },
+  {
+    "query": "This Go HTTP handler is returning a 200 even when the downstream call fails - it should be a 502.",
+    "should_trigger": true
+  },
+  {
+    "query": "This table-driven test passes locally but flakes in CI about one run in twenty - what should I look at?",
+    "should_trigger": true
+  },
+  {
+    "query": "I passed a Go slice to a helper that appends to it, and sometimes the caller sees the change and sometimes it does not - what is going on?",
+    "should_trigger": true
+  },
+  {
+    "query": "I profiled this service and there's a big allocation hot spot in the JSON marshaling path - how do I cut it down?",
+    "should_trigger": true
+  },
+  {
+    "query": "I need to add error wrapping to this Go function so callers can use errors.Is - can you help?",
+    "should_trigger": true
+  },
+  {
+    "query": "I'm setting up a new Go project - what should go in my go.mod and how do I structure the module?",
+    "should_trigger": true
+  },
+  {
+    "query": "Can you write a Go HTTP client that posts JSON with a timeout?",
+    "should_trigger": true
+  },
+  {
+    "query": "Here's my diff to this Go payment service - can you review it and flag any bugs before I open the PR?",
+    "should_trigger": false
+  },
+  {
+    "query": "My Go program is hanging in production right now - can you attach and help me figure out what it's stuck on?",
+    "should_trigger": false
+  },
+  {
+    "query": "Generate a full test suite with complete coverage for this Go package - just write all the tests for me.",
+    "should_trigger": false
+  },
+  {
+    "query": "Can you proofread this README that documents our Go microservice's deployment steps?",
+    "should_trigger": false
+  },
+  {
+    "query": "How do I avoid data races when using Python's threading and multiprocessing together?",
+    "should_trigger": false
+  },
+  {
+    "query": "My Rust program has a channel deadlock somewhere - can you help me trace it?",
+    "should_trigger": false
+  },
+  {
+    "query": "We're planning to migrate our Go services from EC2 to Kubernetes - can you help me draft the phases?",
+    "should_trigger": false
+  },
+  {
+    "query": "This Node.js HTTP handler is returning the wrong status code - can you fix it?",
+    "should_trigger": false
+  },
+  {
+    "query": "Can you fix the deployment YAML for our Go service's Helm chart?",
+    "should_trigger": false
+  }
+]
