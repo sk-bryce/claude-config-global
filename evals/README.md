@@ -264,6 +264,7 @@ the artifact count or run frequency grows.
 | 2026-09-05 | `health-check` | not valid [^7] | not run | not run | trigger only |
 | 2026-09-19 | `go-dev` | 100% (9/9 positive at >= 8 of 9); negatives 9/9 at <= 1 fire, 7/9 at 0 fires [^16] | 100% (30/30) [^16] | 100% (8/8) [^16] | SHIP [^16] |
 | 2026-09-23 | `go-dev` | not re-run (description unchanged) [^17] | 93.5% (29/31) [^17] | 87.5% (7/8) [^17] | HOLD [^17] |
+| 2026-09-23 | `go-dev` | not re-run [^18] | partial re-run of cases 4, 6 after rewording (not a suite score) [^18] | partial re-run of case 4 (not a suite score) [^18] | HOLD [^18] |
 
 **Every row above dated before 2026-09-08 was measured under the superseded threshold** - "fires on
 every run", recorded at three runs per query and in several cases computed at `run_eval.py`'s 0.5
@@ -597,3 +598,8 @@ exists to force.
     changed. A separate one-shot re-run of those cases, not merged into this row, passed cases 3
     and 6 and moved case 4's failure to its cancellation expectation. HOLD stands as measured;
     `runs/2026-09-23-go-dev-v1.2.1.md` has every run and the open eval-set fixes.
+[^18]: Cases 4 and 6 were reworded to remove the prompt/expectation mismatch the first build
+    flagged (`evals.json` `0592272d...`) and re-run once each: case 4 3/3 and 1/1, case 6 4/5, its
+    miss a caller snippet using `:=`. The description's line-break fix was deliberately not
+    re-measured. The full suite was not re-run, so the HOLD above stands. Details in the same run
+    file.
