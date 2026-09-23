@@ -10,7 +10,7 @@ updated: 2026-09-23
 > new code you write.
 # Go Error Handling Patterns
 
-**When to read**: Working with errors, error handling, panic recovery
+**When to read**: Working with errors, error handling, error naming and wrap-message wording
 
 ---
 
@@ -23,7 +23,7 @@ func (r *Repository) GetUser(ctx context.Context, id string) (*User, error) {
  user, err := r.db.QueryUser(ctx, id)
  if err != nil {
   // Wrap with context - preserves original error
-  return nil, fmt.Errorf("get user %s: %w", id, err)
+  return nil, fmt.Errorf("getting user %s: %w", id, err)
  }
  return user, nil
 }
@@ -53,10 +53,33 @@ func (r *Repository) GetUser(ctx context.Context, id string) (*User, error) {
   if isNotFoundError(err) {
    return nil, fmt.Errorf("user %s: %w", id, ErrNotFound)
   }
-  return nil, fmt.Errorf("query user %s: %w", id, err)
+  return nil, fmt.Errorf("querying user %s: %w", id, err)
  }
  return user, nil
 }
+```
+
+---
+
+## Naming and Wording
+
+Examples in this section are written in house style.
+
+- **Sentinels are `ErrFoo`; error types end in `Error`** (`ValidationError`). `errname`, enabled
+  in the house config, enforces both.
+- **Document what a caller should do on a match.** The doc comment on a sentinel or error type is
+  its contract: when it is returned, and what a caller that matches it is expected to do.
+  `errname` checks the name; the comment is on you.
+- **Wrap messages name the operation in progress, as a gerund:** `fetching manifest: %w`, not
+  `fetch manifest: %w` or `failed to fetch manifest: %w`. Lowercase, no trailing punctuation, and
+  no "failed to" or "error": every layer of the chain would repeat it, and the `%w` already says
+  something failed. Include the identifier that makes the failure findable:
+  `fetching manifest %s: %w`.
+
+```go
+// ErrManifestNotFound is returned when no manifest exists for the requested
+// release. Callers should report it to the client as not found and not retry.
+var ErrManifestNotFound = errors.New("manifest not found")
 ```
 
 ---
@@ -151,12 +174,12 @@ body reaches the one `Close`:
 func writeReport(path string, report Report) error {
  var reportFile, err = os.Create(path)
  if err != nil {
-  return fmt.Errorf("create report %s: %w", path, err)
+  return fmt.Errorf("creating report %s: %w", path, err)
  }
  var writeErr = writeReportBody(reportFile, report)
  var closeErr = reportFile.Close()
  if closeErr != nil {
-  closeErr = fmt.Errorf("close report %s: %w", path, closeErr)
+  closeErr = fmt.Errorf("closing report %s: %w", path, closeErr)
  }
  return errors.Join(writeErr, closeErr)
 }
@@ -218,6 +241,5 @@ Three things to know before reaching for it:
 - **It is not a substitute for `%w` context.** Joining adds no description of what was being
   done. Wrap each error with `fmt.Errorf("...: %w", err)` first, then join the wrapped errors.
 
-It pairs naturally with the collect-every-error worker pool in `go-concurrency.md`: that function
-returns `[]error`, and a caller that wants a single `error` can return
-`errors.Join(collectedErrors...)`.
+The collect-every-error pattern in `go-concurrency.md` is built on it: each goroutine fills its
+own slot, and the function returns `errors.Join` over the slots.

@@ -14,6 +14,17 @@ updated: 2026-09-23
 
 ---
 
+## Passing a Context
+
+- **`context.Context` is the first parameter** of anything that performs I/O, can block, or
+  crosses a goroutine boundary, conventionally named `ctx`.
+- **Never store a context in a struct.** A context belongs to one call, and a struct outlives it:
+  a stored context goes on cancelling later calls it was never meant to govern, or fails to
+  cancel the one it was. Pass it to each method instead. `containedctx`, enabled in the house
+  config, flags a struct field of type `context.Context`.
+
+---
+
 ## Context for Cancellation and Timeouts
 
 HTTP handler: derive ctx from the request; it cancels automatically if the client disconnects.
@@ -43,7 +54,7 @@ func (s *Service) GetUser(ctx context.Context, id string) (*User, error) {
 
  user, err := s.repo.FindByID(ctx, id)
  if err != nil {
-  return nil, fmt.Errorf("get user: %w", err)
+  return nil, fmt.Errorf("getting user: %w", err)
  }
  return user, nil
 }
@@ -62,7 +73,7 @@ func ProcessBatch(ctx context.Context, items []Item) error {
   }
 
   if err := processItem(ctx, item); err != nil {
-   return fmt.Errorf("process item %v: %w", item.ID, err)
+   return fmt.Errorf("processing item %v: %w", item.ID, err)
   }
  }
  return nil

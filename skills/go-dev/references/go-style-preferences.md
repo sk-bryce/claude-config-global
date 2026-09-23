@@ -16,7 +16,8 @@ file wins.
 Declaration style: prefer explicit `var` declarations. Use `:=` ONLY as part of an
 initializer expression in `if`, `for`, `switch`, or a `select` case, where the declared
 variable's scope is visibly limited to that statement. Everywhere else, use `var`. Do not
-use grouped `var (...)` blocks; write one `var` per line.
+use grouped `var (...)` or `const (...)` blocks; write one declaration per line. The one
+exception is a `const` block that uses `iota`.
 ```
 
 The rationale, condensed: a line that starts with `var` is grep-able by that leading
@@ -265,11 +266,29 @@ config sets `default: none`, as the house config does.
 
 ## No grouped declarations
 
-One `var` per line. The rationale is the same grep-ability argument as the declaration-
-style rule: a `var (...)` block wraps the declaring keyword around the whole group instead
-of prefixing each line, so a search for `var <name>` cannot match a name that only appears
-inside the parens. It is also arguably less readable at a glance, since the block's
-context-giving `var (` token is separated from each variable it declares.
+One declaration per line, for `var` and `const` alike. The rationale is the same grep-ability
+argument as the declaration-style rule: a `var (...)` or `const (...)` block wraps the declaring
+keyword around the whole group instead of prefixing each line, so a search for `var <name>` or
+`const <name>` cannot match a name that only appears inside the parens. One declaration per line
+also keeps every diff attributable to a single declaration. Grouped `import` blocks are standard
+and unaffected.
+
+The one exception is a `const` block that uses `iota`. `iota` counts from zero within a single
+`const` declaration, so splitting an enum into one `const` per line restarts it in each, and
+every constant written `= iota` gets the value zero:
+
+```go
+type Status int
+
+const (
+	StatusPending Status = iota
+	StatusProcessing
+	StatusComplete
+)
+```
+
+An enum whose values are spelled out, such as typed string constants, has no such dependency
+and takes one `const` per line.
 
 ## No named or naked returns
 

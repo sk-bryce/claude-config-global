@@ -16,54 +16,57 @@ updated: 2026-09-23
 
 ## Project Structure
 
-### Service Layout
+### Module Layout
 
 Group by **feature/domain**, not by layer. Layer-based layouts (`service/`, `repo/`, `domain/`) create artificial separation without enforced dependency boundaries.
 
+The module sits at the repository root, in the conventional Go layout:
+
 ```
-apps/<service>/
+<repository root>/
+├── go.mod
+├── go.sum
 ├── cmd/
-│   └── main.go               # Wiring only — no business logic
-├── internal/
-│   ├── handler.go            # Thin gRPC/Connect handlers
-│   ├── config.go             # Configuration struct
+│   ├── <binary>/
+│   │   └── main.go           # Wiring only - no business logic
+│   └── <second-binary>/
+│       └── main.go           # Each binary gets its own directory
+├── internal/                 # Not importable from outside this module
+│   ├── server/               # Transport: thin HTTP/gRPC handlers
+│   ├── config/               # Configuration loading
 │   ├── <domain>/             # One package per subdomain
+│   │   ├── doc.go            # Package doc comment only
 │   │   ├── interactor.go     # Business logic
 │   │   ├── repo.go           # Data access (concrete types)
 │   │   ├── adapter.go        # External service adapters
-│   │   ├── errors.go         # Domain errors
-│   │   └── types.go          # Domain types (if needed)
+│   │   └── errors.go         # Sentinel errors and error types
 │   └── <domain2>/
 │       └── ...
-├── go.mod
-└── go.sum
+└── pkg/                      # Only for packages deliberately published for outside import
 ```
 
-### Multi-Binary Services
-
-```
-apps/<service>/
-├── cmd/
-│   ├── api-server/
-│   │   └── main.go           # API server — wiring only
-│   └── dailyjob/
-│       └── main.go           # Cron job — shares internal/
-├── internal/                 # Shared across all binaries
-│   ├── <domain>/
-│   └── handler.go
-```
+- `cmd/<binary>/` holds one `main` package per binary, even when there is only one, so adding a
+  second never forces a move.
+- `internal/` holds everything else. The compiler refuses imports of it from outside the module,
+  which is the only package-privacy boundary Go enforces.
+- `pkg/` exists only when a package is meant to be imported by other modules. It is not a default
+  home for shared code; a package under `internal/` can be promoted later.
 
 ### Key Principles
 
 **Feature-grouped, not layer-grouped**
 
-- Package names reflect the domain (`card`, `scan`, `offers`), not a technical role (`service`, `repo`, `handler`)
+- Package names reflect the domain (`card`, `scan`, `offers`), not a technical role (`service`, `repo`, `handler`). The transport package (`internal/server/` above) is the one exception: it is the boundary domain packages are kept away from, not a layer of domain code.
 - Never create generic packages: `util`, `common`, `helper`, `types`, `interfaces`
 
-**`cmd/main.go` does all dependency wiring**
+**`cmd/<binary>/main.go` does all dependency wiring**
 
 - Construct all repos, interactors, and handlers here
-- No global state, no `init()` side effects
+- No global mutable state: loggers, config, and clients arrive through struct fields or function
+  arguments
+- No `init()` functions. They run in an order the reader cannot see from any call site and
+  cannot be called from a test; do the work in an explicit constructor that `main` calls.
+  `gochecknoinits` enforces this.
 
 ```go
 func main() {
@@ -75,7 +78,7 @@ func main() {
 }
 ```
 
-**`handler.go` is thin orchestration**
+**Transport handlers are thin orchestration**
 
 - Parse gRPC/Connect request, then call subdomain interactor, then serialize response
 - No business logic in handlers
@@ -83,12 +86,12 @@ func main() {
 **Subdomain packages do not import each other**
 
 - Cross-subdomain dependencies are satisfied via consumer-defined interfaces (see below)
-- `handler.go` (or `cmd/main.go`) is the only place that imports multiple subdomain packages
+- The transport package or `cmd/<binary>/main.go` is the only place that imports multiple subdomain packages
 
 **Domain packages must not depend on transport**
 
 - `internal/<domain>/interactor.go` must not import `net/http` or gRPC packages
-- Transport layers in `handler.go` adapt domain types to HTTP/gRPC
+- The transport package adapts domain types to HTTP/gRPC
 
 **Keep package names short and meaningful**
 
@@ -128,7 +131,7 @@ type Interactor struct {
 }
 ```
 
-`handler.go` or `cmd/main.go` wires the concrete implementation at construction time:
+`cmd/<binary>/main.go` wires the concrete implementation at construction time:
 
 ```go
 memberInteractor := members.NewInteractor(memberRepo)
@@ -200,6 +203,26 @@ names sparingly. The more nested or complex the scope, the more descriptive the 
 In a larger scope that means a name like `userRepository` or `configLoader`.
 
 `go-style-preferences.md` is the authority on declaration style and naming; see it for the full rule.
+
+---
+
+## Documentation
+
+- **Every exported symbol has a doc comment,** written as full sentences that begin with the
+  symbol's name and end with a period. Describe purpose and behavior; a comment that only
+  restates the name is not documentation.
+- **Every package under `internal/` and `pkg/` has a `doc.go`** holding the package clause and
+  its doc comment and nothing else, so the package description has one fixed home instead of
+  riding on whichever file was written first.
+
+```go
+// Package ratelimit enforces per-client request budgets over a sliding window.
+package ratelimit
+```
+
+`revive`, enabled in the house config below, runs its `exported` and `package-comments` rules by
+default, which flag a missing or malformed doc comment on an exported symbol or package. Neither
+checks that the package comment lives in `doc.go`; that part is on review.
 
 ---
 
@@ -455,6 +478,7 @@ linters:
     - interfacebloat
     - nonamedreturns
     - ireturn
+    - gochecknoinits
 
   settings:
     nonamedreturns:

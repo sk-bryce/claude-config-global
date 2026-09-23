@@ -52,7 +52,8 @@ is a rule that does not reliably fire.
 Declaration style: prefer explicit `var` declarations. Use `:=` ONLY as part of an
 initializer expression in `if`, `for`, `switch`, or a `select` case, where the declared
 variable's scope is visibly limited to that statement. Everywhere else, use `var`. Do not
-use grouped `var (...)` blocks; write one `var` per line.
+use grouped `var (...)` or `const (...)` blocks; write one declaration per line. The one
+exception is a `const` block that uses `iota`.
 
 Naming: descriptiveness scales with the scope's nesting depth and complexity. Avoid one-
 and two-letter names. The standing exceptions are `ok` (map access, channel receive, type
@@ -78,8 +79,8 @@ deliberately, rather than defending the line on other grounds.
 
 ## Canonical shapes
 
-- Error wrapping with `%w`, plus sentinel errors and `errors.Is`/`errors.As`:
-  `references/go-error-handling.md`.
+- Error wrapping with `%w` and a gerund message (`fetching manifest: %w`), plus sentinel errors
+  and `errors.Is`/`errors.As`: `references/go-error-handling.md`.
 - Table-driven tests with subtests: `references/go-testing.md`.
 - `http.NewRequestWithContext` over a bare `Client.Timeout`: `references/go-http.md`.
 - A worker pool carrying both error collection and context cancellation:
@@ -91,18 +92,21 @@ deliberately, rather than defending the line on other grounds.
 
 - `references/go-style-preferences.md` - declaration style, naming, no named or naked returns,
   and the logging position. Overrides the files below.
-- `references/go-style-conventions.md` - project structure, consumer-defined interfaces, naming
+- `references/go-style-conventions.md` - project layout (module root, `cmd/`, `internal/`,
+  `pkg/`), no `init()`, doc comments and `doc.go`, consumer-defined interfaces, naming
   conventions, type safety, linting.
-- `references/go-error-handling.md` - wrapping, sentinel errors, error classification and
-  `errors.AsType`, close errors on a write path, and combining errors with `errors.Join`.
-- `references/go-concurrency.md` - goroutine ownership, `errgroup`, worker pools, channels, sync
-  primitives.
-- `references/go-context-patterns.md` - cancellation, timeouts, context-aware API forms, and the
-  narrow case for context values.
+- `references/go-error-handling.md` - wrapping, sentinel errors, error naming and gerund wrap
+  messages, error classification and `errors.AsType`, close errors on a write path, and
+  combining errors with `errors.Join`.
+- `references/go-concurrency.md` - choosing `errgroup`, `WaitGroup.Go`, or `Add`/`Done`;
+  `errgroup` rules; collecting every error; panics in goroutines; goroutine ownership, worker
+  pools, channels, sync primitives.
+- `references/go-context-patterns.md` - context as first parameter and never in a struct,
+  cancellation, timeouts, context-aware API forms, and the narrow case for context values.
 - `references/go-http.md` - client construction, server routing, server timeouts, and graceful
   shutdown.
-- `references/go-testing.md` - test organization, table-driven tests, test contexts, polling
-  instead of sleeping, naming.
+- `references/go-testing.md` - test-first rules, test doubles, spec-driven development, test
+  organization, table-driven tests, test contexts, polling instead of sleeping, naming.
 - `references/go-performance.md` - profile first, then I/O, readers, and buffers.
 - `references/go-gotchas.md` - variable shadowing, slice aliasing, and other footguns worth
   recognizing before they bite.

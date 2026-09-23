@@ -47,7 +47,7 @@ func (c *Client) PostWithRetry(ctx context.Context, url string, data []byte) err
  for attempt := 1; attempt <= 3; attempt++ {
   req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
   if err != nil {
-   return fmt.Errorf("create request: %w", err)
+   return fmt.Errorf("creating request: %w", err)
   }
 
   // No manual GetBody: NewRequestWithContext sets it for a *bytes.Reader body,
@@ -118,13 +118,13 @@ func StreamData(ctx context.Context) error {
  // Reader side (maybe HTTP request body)
  req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.example.com/upload", pr)
  if err != nil {
-  return fmt.Errorf("create request: %w", err)
+  return fmt.Errorf("creating request: %w", err)
  }
 
  // Send the request
  resp, err := http.DefaultClient.Do(req)
  if err != nil {
-  return fmt.Errorf("send request: %w", err)
+  return fmt.Errorf("sending request: %w", err)
  }
  defer resp.Body.Close()
 
@@ -153,13 +153,13 @@ func UploadFiles(ctx context.Context, files []File) error {
    // Write file field
    part, err := mw.CreateFormFile("files", file.Name)
    if err != nil {
-    pw.CloseWithError(fmt.Errorf("create form file: %w", err))
+    pw.CloseWithError(fmt.Errorf("creating form file: %w", err))
     return
    }
 
    // Write file data
    if _, err := io.Copy(part, file.Reader); err != nil {
-    pw.CloseWithError(fmt.Errorf("copy file data: %w", err))
+    pw.CloseWithError(fmt.Errorf("copying file data: %w", err))
     return
    }
   }
@@ -175,7 +175,7 @@ func UploadFiles(ctx context.Context, files []File) error {
  url := "https://api.example.com/upload"
  req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, pr)
  if err != nil {
-  return fmt.Errorf("create request: %w", err)
+  return fmt.Errorf("creating request: %w", err)
  }
 
  // CRITICAL: Set Content-Type from multipart writer
@@ -184,7 +184,7 @@ func UploadFiles(ctx context.Context, files []File) error {
  // Send request
  resp, err := http.DefaultClient.Do(req)
  if err != nil {
-  return fmt.Errorf("send request: %w", err)
+  return fmt.Errorf("sending request: %w", err)
  }
  defer resp.Body.Close()
 
@@ -199,12 +199,10 @@ func BadUploadFiles(files []File) error {
  go func() {
   var wg sync.WaitGroup
   for _, file := range files {
-   wg.Add(1)
-   go func(f File) {
-    defer wg.Done()
-    part, _ := mw.CreateFormFile("files", f.Name)
-    io.Copy(part, f.Reader) // BAD - parallel writes corrupt multipart!
-   }(file)
+   wg.Go(func() {
+    part, _ := mw.CreateFormFile("files", file.Name)
+    io.Copy(part, file.Reader) // BAD - parallel writes corrupt multipart!
+   })
   }
   wg.Wait()
   mw.Close()

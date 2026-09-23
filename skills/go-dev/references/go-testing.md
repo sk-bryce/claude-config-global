@@ -10,7 +10,62 @@ updated: 2026-09-23
 > new code you write.
 # Go Testing Patterns
 
-**When to read**: Writing tests, table-driven tests, mocks, test organization
+**When to read**: Writing tests, test-first development, test doubles, spec-driven development,
+table-driven tests, test organization
+
+---
+
+## Test-First Development
+
+- **Write the test first.** Confirm it fails for the intended reason, write the minimum code to
+  pass, then refactor with the tests green. A test that has never failed has not been shown to
+  test anything.
+- **Never edit a test to match what the code does.** When a test fails, the default conclusion
+  is that the code is wrong. Revise an expectation only when the requirement changed (amend the
+  spec first, then the test) or when the test encoded a wrong assumption about a third party's
+  behavior (leave a comment at the assertion naming the documented behavior). Say which in the
+  commit message.
+- **A bug fix starts with a failing regression test** that reproduces the report, committed with
+  the fix.
+- **Test existing untested code under a mutation check.** A test written after the code cannot
+  show it would have failed first, so show it directly: break the line the test covers, confirm
+  the test fails with the expected message, and restore it.
+- **Arrange, Act, Assert, one behavior per test,** with a name that states the behavior.
+- **Tests are deterministic and independent.** Inject clocks and random seeds, keep no ordering
+  dependence or shared mutable fixtures between tests, and never `time.Sleep` to synchronize
+  (see "Waiting Without Sleeping" below).
+- **`go test -race ./...` passes.** A race that only shows under load is not safe to defer.
+- **Coverage is a diagnostic, not a target.** A numeric gate becomes a number to game.
+
+---
+
+## Test Doubles
+
+- **Prefer real collaborators to test doubles.** Fake only at boundaries the test cannot
+  control: the network, the clock, randomness, the filesystem, and third-party APIs.
+- **Do not mock types this project owns.** A mock of your own code encodes an assumption about
+  it and keeps passing while production breaks. Build the real type with test inputs instead.
+- **A fake at a boundary is a small hand-written type** satisfying a consumer-defined interface
+  (see `go-style-conventions.md`); a mocking framework is rarely needed.
+
+---
+
+## Specifications Before Code
+
+Spec-driven development (SDD) writes down what a change must do before the code exists, so the
+intent outlives the session that produced it. Every project should practice some form of it.
+Birgitta Boeckeler's taxonomy names three rungs:
+
+- **Spec-first:** a spec drives one task and is then discarded.
+- **Spec-anchored:** the spec is kept and evolved alongside the code as the maintained
+  description of behavior.
+- **Spec-as-source:** the spec is the only thing a human edits, and the code is generated from it.
+
+Spec-anchored suits long-lived code. Its common shape, used by GitHub Spec Kit and AWS Kiro, is
+three documents per feature - requirements (Spec Kit's spec), a design (Spec Kit's plan), and a
+task list - with acceptance criteria that tests cite. SDD sets intent at feature scale, and the
+test-first rules above implement it at task scale. Where a project states its own process,
+follow it.
 
 ---
 

@@ -45,7 +45,7 @@ func (c *Client) GetUser(ctx context.Context, userID string) (*User, error) {
  url := fmt.Sprintf("%s/users/%s", c.baseURL, userID)
  req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
  if err != nil {
-  return nil, fmt.Errorf("create request: %w", err)
+  return nil, fmt.Errorf("creating request: %w", err)
  }
 
  req.Header.Set("Authorization", "Bearer "+c.apiKey)
@@ -53,7 +53,7 @@ func (c *Client) GetUser(ctx context.Context, userID string) (*User, error) {
 
  resp, err := c.httpClient.Do(req)
  if err != nil {
-  return nil, fmt.Errorf("execute request: %w", err)
+  return nil, fmt.Errorf("executing request: %w", err)
  }
  defer resp.Body.Close()
 
@@ -81,13 +81,13 @@ func (c *BadClient) GetUser(ctx context.Context, userID string) (*User, error) {
 func (c *Client) CreateUser(ctx context.Context, user *User) (*User, error) {
  body, err := json.Marshal(user)
  if err != nil {
-  return nil, fmt.Errorf("marshal user: %w", err)
+  return nil, fmt.Errorf("marshaling user: %w", err)
  }
 
  url := c.baseURL + "/users"
  req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
  if err != nil {
-  return nil, fmt.Errorf("create request: %w", err)
+  return nil, fmt.Errorf("creating request: %w", err)
  }
 
  req.Header.Set("Authorization", "Bearer "+c.apiKey)
@@ -95,7 +95,7 @@ func (c *Client) CreateUser(ctx context.Context, user *User) (*User, error) {
 
  resp, err := c.httpClient.Do(req)
  if err != nil {
-  return nil, fmt.Errorf("execute request: %w", err)
+  return nil, fmt.Errorf("executing request: %w", err)
  }
  defer resp.Body.Close()
 
@@ -127,7 +127,7 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body io.Re
 func (c *Client) GetUser(ctx context.Context, userID string) (*User, error) {
  req, err := c.newRequest(ctx, http.MethodGet, "/users/"+userID, nil)
  if err != nil {
-  return nil, fmt.Errorf("create request: %w", err)
+  return nil, fmt.Errorf("creating request: %w", err)
  }
 
  resp, err := c.httpClient.Do(req)
@@ -167,7 +167,7 @@ func (c *Client) GetUser(ctx context.Context, userID string) (*User, error) {
 
  req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/users/"+userID, nil)
  if err != nil {
-  return nil, fmt.Errorf("create request: %w", err)
+  return nil, fmt.Errorf("creating request: %w", err)
  }
  // ... send with c.httpClient.Do(req) and handle the response as in rule 6 ...
 }
@@ -179,7 +179,7 @@ func (c *Client) GetUser(ctx context.Context, userID string) (*User, error) {
 // GOOD: Always defer close and check error
 resp, err := c.httpClient.Do(req)
 if err != nil {
- return fmt.Errorf("execute request: %w", err)
+ return fmt.Errorf("executing request: %w", err)
 }
 defer resp.Body.Close()
 
@@ -192,7 +192,7 @@ if resp.StatusCode != http.StatusOK {
 // Parse response
 var result User
 if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
- return fmt.Errorf("decode response: %w", err)
+ return fmt.Errorf("decoding response: %w", err)
 }
 ```
 
