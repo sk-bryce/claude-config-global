@@ -1,12 +1,13 @@
 ---
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-09-23
 ---
 
 > Code examples in this file follow upstream Go idiom, including `:=` for local
 > declarations, so they match the sources they came from and the Go you will meet in the
-> wild. They are not house style. House declaration and naming style lives in
-> `go-style-preferences.md` and governs new code you write.
+> wild, unless a section says it is written in house style. Upstream examples are not house
+> style. House declaration and naming style lives in `go-style-preferences.md` and governs
+> new code you write.
 # Go Gotchas
 
 Traps in Go that have cost real debugging time. These are things to recognize when you hit
@@ -116,10 +117,12 @@ developers will learn where the seam is. It is still easy to get bitten by it.
   pointer inside it is.
 
 - **A computed number is off by a small but consistent amount after using an untyped
-  constant.** Go's untyped constants convert implicitly to fit the context they are used in,
-  and that conversion can silently lose precision, for example when a constant meant to be a
-  float is used somewhere that forces integer division. There is no runtime error to flag it;
-  the value is just wrong.
+  constant.** An expression of untyped constants is evaluated in the kind its operands have,
+  before any conversion to the destination type, so `var ratio float64 = 1 / 2` sets `ratio`
+  to 0: `1 / 2` is integer division of two untyped integer constants, and only the result is
+  converted. Write `1.0 / 2` to get 0.5. A conversion that would lose information outright,
+  such as assigning `2.5` to an `int`, is a compile error rather than a silent truncation; the
+  quiet failure is the integer arithmetic that happens first.
 
 - **A failure happens downstream with no error ever surfacing near its actual cause.** Go
   lets a function's returned error be discarded silently, with no explicit `_ =` required to

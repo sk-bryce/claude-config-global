@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "Write a Go function that reads a CSV file from a path and returns the rows as a slice of structs, with error handling.",
-      "expected_output": "Errors are wrapped with %w (not %v or a bare string); the file handle is closed via defer with the close error not silently dropped; declaration style and naming follow the house rules for the new code.",
+      "expected_output": "Errors are wrapped with %w (not %v or a bare string); the file handle is closed via defer, and a bare deferred Close on the read-only handle is explained rather than left unremarked; declaration style and naming follow the house rules for the new code.",
       "files": [],
       "expectations": [
         "[deterministic] Wraps errors using %w in fmt.Errorf, not %v or a bare string, when returning an error from the file-open or parse path",

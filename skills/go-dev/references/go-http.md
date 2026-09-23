@@ -1,12 +1,13 @@
 ---
 created: 2026-08-05
-updated: 2026-09-19
+updated: 2026-09-23
 ---
 
 > Code examples in this file follow upstream Go idiom, including `:=` for local
 > declarations, so they match the sources they came from and the Go you will meet in the
-> wild. They are not house style. House declaration and naming style lives in
-> `go-style-preferences.md` and governs new code you write.
+> wild, unless a section says it is written in house style. Upstream examples are not house
+> style. House declaration and naming style lives in `go-style-preferences.md` and governs
+> new code you write.
 # Go HTTP Patterns
 
 **When to read**: Building HTTP clients or servers, working with requests/responses
@@ -151,6 +152,24 @@ func NewClient(baseURL, apiKey string) *Client {
    },
   },
  }
+}
+```
+
+`Client.Timeout` is a backstop: one ceiling shared by every call the client makes, and it cannot
+tell a slow endpoint from a fast one or see that the caller has given up. Set the per-call
+deadline on the request's context instead, and keep the client timeout as the outer limit:
+
+```go
+// GOOD: Per-call deadline on the context; the caller's cancellation still applies
+func (c *Client) GetUser(ctx context.Context, userID string) (*User, error) {
+ ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+ defer cancel()
+
+ req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/users/"+userID, nil)
+ if err != nil {
+  return nil, fmt.Errorf("create request: %w", err)
+ }
+ // ... send with c.httpClient.Do(req) and handle the response as in rule 6 ...
 }
 ```
 

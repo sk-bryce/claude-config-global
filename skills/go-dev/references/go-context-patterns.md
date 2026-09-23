@@ -1,12 +1,13 @@
 ---
 created: 2026-08-05
-updated: 2026-09-19
+updated: 2026-09-23
 ---
 
 > Code examples in this file follow upstream Go idiom, including `:=` for local
 > declarations, so they match the sources they came from and the Go you will meet in the
-> wild. They are not house style. House declaration and naming style lives in
-> `go-style-preferences.md` and governs new code you write.
+> wild, unless a section says it is written in house style. Upstream examples are not house
+> style. House declaration and naming style lives in `go-style-preferences.md` and governs
+> new code you write.
 # Go Context Patterns
 
 **When to read**: Working with context.Context, cancellation, timeouts, request-scoped values

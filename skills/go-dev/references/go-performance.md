@@ -1,12 +1,13 @@
 ---
 created: 2026-08-05
-updated: 2026-09-19
+updated: 2026-09-23
 ---
 
 > Code examples in this file follow upstream Go idiom, including `:=` for local
 > declarations, so they match the sources they came from and the Go you will meet in the
-> wild. They are not house style. House declaration and naming style lives in
-> `go-style-preferences.md` and governs new code you write.
+> wild, unless a section says it is written in house style. Upstream examples are not house
+> style. House declaration and naming style lives in `go-style-preferences.md` and governs
+> new code you write.
 # Go Performance Optimization
 
 **When to read**: Optimizing performance, working with I/O readers, profiling code
@@ -49,14 +50,14 @@ func (c *Client) PostWithRetry(ctx context.Context, url string, data []byte) err
    return fmt.Errorf("create request: %w", err)
   }
 
-  // Configure GetBody for automatic retries/redirects
-  req.GetBody = func() (io.ReadCloser, error) {
-   return io.NopCloser(bytes.NewReader(data)), nil
-  }
+  // No manual GetBody: NewRequestWithContext sets it for a *bytes.Reader body,
+  // so a redirect can replay the payload
 
   resp, err := c.httpClient.Do(req)
   if err == nil {
-   defer resp.Body.Close()
+   // Close per attempt; a defer inside the loop would hold every attempt's
+   // body open until the function returns
+   resp.Body.Close()
    if resp.StatusCode < 500 {
     return nil // Success or client error
    }
@@ -146,7 +147,6 @@ func UploadFiles(ctx context.Context, files []File) error {
  // Writer goroutine - writes MUST be sequential
  go func() {
   defer pw.Close()
-  defer mw.Close()
 
   // Write fields and files IN ORDER
   for _, file := range files {
@@ -215,4 +215,3 @@ func BadUploadFiles(files []File) error {
  // ...
 }
 ```
-</content>

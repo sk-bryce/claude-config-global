@@ -183,6 +183,9 @@ for {
 	// checked for opening the file, with no danger of losing a value in the
 	// enclosing scope.
 	if row, err = csvReader.Read(); err != nil {
+		if errors.Is(err, io.EOF) {
+			break
+		}
 		return err
 	}
 
@@ -191,6 +194,11 @@ for {
 	}
 }
 ```
+
+The same hoisting answers the loop case. Inside a loop, do not invent a second error name such as
+`errRead` to avoid redeclaring `err`: declare the loop-carried variable (`row` above) before the
+loop and reuse `err` by plain assignment. A second error variable is exactly the kind of near-
+duplicate name that makes the wrong one easy to check.
 
 Apply the declaration-style rule with judgment: it is a readability and grep-ability
 preference, not a rule that has a clean answer for every multi-value error chain.
@@ -232,20 +240,28 @@ parameter's own type, such as `context.WithTimeout` or `context.WithCancel`.
 ### Mechanical enforcement is complementary, and stronger
 
 `var` only makes shadowing conspicuous to a human reader; it does not stop it. `go vet`'s
-`shadow` analyzer catches this class of bug regardless of declaration style, and it is not
-enabled by the `.golangci.yml` shown in the sibling file `go-style-conventions.md`. Enable
-it.
+`shadow` analyzer catches this class of bug regardless of declaration style. The house
+`.golangci.yml` in the sibling file `go-style-conventions.md` already enables it; if a
+project's own config does not, enable it.
 
 `shadow` is a `go vet` sub-analyzer, configured through `govet`'s settings in
 `golangci-lint`, not a linter name in its own right. It does not belong in
 `linters.enable`. It is configured like this:
 
 ```yaml
-linters-settings:
-  govet:
-    enable:
-      - shadow
+version: "2"
+linters:
+  enable:
+    - govet
+  settings:
+    govet:
+      enable:
+        - shadow
 ```
+
+This is golangci-lint v2 syntax. v1 used a top-level `linters-settings:` key, which a
+`version: "2"` config rejects outright. Listing `govet` under `linters.enable` matters when the
+config sets `default: none`, as the house config does.
 
 ## No grouped declarations
 
@@ -320,14 +336,18 @@ func processFiles(ctx context.Context, dirPath string, fileNames chan string) er
 				return err
 			}
 			var csvReader = csv.NewReader(dataFile)
+			var row []string
 			for {
-				var row, errRead = csvReader.Read()
-				if errRead != nil {
-					return errRead
+				if row, err = csvReader.Read(); err != nil {
+					break
 				}
 				for _, column := range row {
 					// do stuff with data...
 				}
+			}
+			dataFile.Close() //nolint:errcheck,gosec // read-only handle
+			if !errors.Is(err, io.EOF) {
+				return err
 			}
 		}
 	}
@@ -369,6 +389,7 @@ func processFile(filePath string) error {
 	if dataFile, err = os.Open(filePath); err != nil {
 		return err
 	}
+	defer dataFile.Close() //nolint:errcheck // read-only handle
 
 	var csvReader = csv.NewReader(dataFile)
 	for {
@@ -376,6 +397,9 @@ func processFile(filePath string) error {
 		// been checked for opening the file, with no danger of losing a value
 		// in the enclosing scope.
 		if row, err = csvReader.Read(); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
 			return err
 		}
 
@@ -386,10 +410,12 @@ func processFile(filePath string) error {
 			// do stuff with data...
 		}
 	}
-
-	return err
 }
 ```
+
+Encapsulating the per-file work also gives `defer dataFile.Close()` a function to belong to. In
+the loop version above, a `defer` would hold every file open until `processFiles` returns, which
+is why that version closes each file explicitly.
 
 ## Logging: zap as the application logger, slog as the bridge
 

@@ -5,8 +5,8 @@ updated: 2026-09-23
 
 # `go-dev` 2026-09-19: first build, both eval layers
 
-**Decision: HOLD.** Both layers ran to completion. Neither met its threshold. Nothing was
-committed on the strength of this run.
+**Decision: SHIP on the second pass** (first pass HOLD; see Decision). On the first pass both
+layers ran to completion and neither met its threshold.
 
 ## Harness and environment
 
@@ -178,7 +178,7 @@ tension in the prompt as written and should be split or reworded.
 Four content changes, all approved before they were made, then both layers re-measured.
 
 1. `go-testing.md` gained a `### The same test in house style` subsection beside the upstream
-   example, which is left byte-identical. This is the fix for the headline finding below.
+   example, which is left byte-identical. This is the fix for the headline finding above.
 2. `go-error-handling.md` gained `## Errors From Deferred Close`, teaching the named-return capture
    pattern for handles that were written to, and saying plainly that a bare `defer f.Close()` is the
    right call on a read-only handle.
@@ -210,9 +210,11 @@ well clear of the 2.3s partial-void signature described above, so the run is tru
 - Positives: 9 of 9 meet the 8-of-9 gate. 78 of 81 total fires. Six cases at 9/9, three at 8/9.
 - Negatives: 9 of 9 within the 1-fire gate. 2 total fires across 81 runs.
 - The sharpened negation moved `Generate a full test suite` from 5/9 to 1/9.
-- The re-scoped `go.mod` positive (`setting up a new Go project`) reached 9/9, up from the 6/9 that
-  stalled the first pass. That number moved because the spec boundary moved, not because the
-  description was tuned to advertise coverage the skill lacks.
+- The `go.mod` dependency-resolution positive that stalled the first pass at 6/9 is gone: the spec
+  boundary moved to exclude dependency resolution, and the query was replaced by a slice-aliasing
+  positive. The remaining `go.mod` positive (`setting up a new Go project`) was already 9/9 and
+  held there. The gap closed because the spec boundary moved, not because the description was
+  tuned to advertise coverage the skill lacks.
 
 Scored on raw `triggers`/`runs`, not the harness's own pass flag. The harness reported `18/18
 passed`, which grades negatives on `rate < threshold` and would have concealed a negative firing up
@@ -223,7 +225,7 @@ to 7 times in 9.
 Same protocol as run 1: nine executors at Sonnet, one per case, expectations withheld from every
 executor, graded by the dispatching agent.
 
-- **Case 2 fully fixed**, 4/4 deterministic and 1/1 judgment, up from 1/4 and 0/1. The output now
+- **Case 2 fully fixed**, 4/4 deterministic and 1/1 judgment, up from 2/4 and 0/1. The output now
   declares a named `validateEmailCase` struct type, writes `var testCases = []validateEmailCase{`,
   and ranges with `for _, testCase := range testCases` rather than `tt`. One added example converted
   all three prior failures, which is direct confirmation of the headline finding's diagnosis.
@@ -318,10 +320,11 @@ after the content gap was confirmed rather than papered over.
 
 The first pass was held for two reasons and both are now closed. The `go.mod` spec-versus-content
 gap was resolved by narrowing the spec rather than by tuning the description to advertise coverage
-the skill does not have; the re-scoped positive then reached 9/9 on its own. The reference-example
+the skill does not have, and the dependency-resolution positive was replaced by a slice-aliasing
+one. The reference-example
 style leak, which defeated the skill's primary purpose in the single most-copied shape in Go, was
 closed by adding a house-style counterpart beside the untouched upstream example in
-`go-testing.md`; case 2 went from 1/4 to 4/4 on that one change.
+`go-testing.md`; case 2 went from 2/4 to 4/4 on that one change.
 
 Final measurement against the shipped artifact:
 
@@ -335,7 +338,7 @@ was touched. A reader who distrusts those two re-derivations can read the unsoft
 deterministic 29/30 and judgment 7/8 and decide for themselves; the raw outputs are unchanged and
 the reasoning is recorded rather than folded into the numbers.
 
-Known follow-ups, none of them gates: `go-style-preferences.md` does not document that plain `var`
+Known follow-ups at the time, none of them gates, all closed on 2026-09-23 (see below): `go-style-preferences.md` does not document that plain `var`
 cannot redeclare a parameter name, which makes the house rule unfollowable at the
 `errgroup.WithContext` shape; `reference/layout.md` has no `go-dev` entry; `errors.Join` is taught
 nowhere; case 7's `ok`/`err` expectation still passes vacuously; and the partial-void-run failure
@@ -364,6 +367,54 @@ Made after the skill merged, to close follow-ups this run raised. None of them t
   passed every expectation: case 1 at 5/5 and 1/1, case 7 at 2/2 and 1/1, and case 8 at 1/1 and
   2/2. Case 8's executor used the new declare-then-assign shape directly. The other six cases were
   not re-run.
-- **Digests after these changes.** `evals.json` is now
-  `7f20f3efdd0e4b777e5fe1c175d6f4e5c978000a271e8ef1556da7042627dcba`, a deliberate change to case 7 only. `trigger-evals.json` is unchanged at
+- **Docs.** `reference/layout.md` gained its `go-dev` entry, and `evals/README.md` now documents
+  the partial-void run alongside the uniform-zero variant. With the two content additions above,
+  that closes all five known follow-ups from the Decision section.
+- **Digests after these changes.** `evals.json` was then
+  `7f20f3efdd0e4b777e5fe1c175d6f4e5c978000a271e8ef1556da7042627dcba`, a deliberate change to
+  case 7 only. `trigger-evals.json` is unchanged at
   `ca087912a4fc8f9ec9f6d93bb1767c0d3cef06c346cc8b25bb4ef74d561bc0ea`.
+
+## Review changes, 2026-09-23
+
+A skill-author audit of the merged skill found claims that were wrong or went against the skill's
+own rules. Each fix below was checked against go1.26.4 or golangci-lint v2 before it was written.
+None touches the `description:`.
+
+- **Linter claims.** The house config runs `errcheck` with `check-blank: true`, which flags both
+  `defer f.Close()` and `defer func() { _ = f.Close() }()`. `go-error-handling.md` now teaches
+  `//nolint:errcheck // reason` for a read-only deferred Close. A Close called directly, not
+  deferred, also trips `gosec` G104, so the in-loop close in `go-style-preferences.md` names both
+  linters. That file's shadow snippet was v1 syntax, which a `version: "2"` config rejects. It is
+  now v2 and passes `golangci-lint config verify`. The stale claim that the house config lacks
+  `shadow` is gone.
+- **Examples that taught against the house rule.** The loop example in `go-style-preferences.md`
+  is where the `var row, errRead` shape of case 1's first output came from. It now hoists `row`
+  and reuses `err`. `go-http.md` gained a per-call `context.WithTimeout` example layered over
+  `Client.Timeout`. In `go-performance.md`, the retry loop no longer defers `resp.Body.Close()`
+  inside the loop, and the redundant hand-set `GetBody` is gone (`NewRequestWithContext` sets it
+  for a `*bytes.Reader`). The multipart writer is no longer closed twice, and a stray
+  `</content>` line is removed.
+- **Framing.** The top-of-file note in all eight files that carry it now allows sections marked as
+  written in house style. Three sections now carry that mark, and the house-style subsection in
+  `go-testing.md` already said so in its heading. `SKILL.md`, `specs/skills.md`, and
+  `reference/layout.md` say the same. `SKILL.md`'s error-handling routing line now names deferred
+  Close errors and `errors.Join`.
+- **Other corrections.** The untyped-constant gotcha described a silent lossy conversion. That is
+  actually a compile error; the real trap is integer arithmetic before conversion
+  (`var ratio float64 = 1 / 2` is 0). `go-style-conventions.md` now says a package holding an
+  `slog.LogValuer` redaction type needs its own scoped depguard rule. This file's own claims were
+  corrected: the opening decision line, the `go.mod` positive (it was replaced, not re-scoped to
+  9/9), case 2's starting score (2/4, not 1/4), and one "below" that should read "above".
+- **Eval text.** Case 1's `expected_output` still said the close error must not be dropped, which
+  contradicted its re-derived expectation 3. It now matches. Expectations are unchanged. `evals.json`
+  is now `ff3141f9dec54798aa2c7b311173443540dc1ed4c89d8b38f67cd9d629a8f9a5`.
+  `trigger-evals.json` is unchanged.
+- **Targeted re-run.** Cases 1, 3, and 6 were re-run at Sonnet with expectations withheld. These
+  are the cases whose likely-read examples changed. All passed every expectation: case 1 at 5/5
+  and 1/1, case 3 at 4/4 and 1/1, and case 6 at 4/4. Case 1's loop now hoists `row` and reuses
+  `err`, where its last output declared `var row, errRead` inside the loop. Case 3 layered a
+  per-call `context.WithTimeout` over `Client.Timeout`. Case 3's receiver is the one-letter `c`,
+  graded the same way as in earlier runs; whether receivers, `t`/`b`, and loop indices are formal
+  naming exceptions is an open policy question. The Go parse baseline held at 3 unparseable
+  blocks.

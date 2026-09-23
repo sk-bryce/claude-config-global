@@ -58,10 +58,11 @@ and two-letter names. `ok` (map access, channel receive, type assertion) and `er
 error values) are the standing exceptions. Use three- to five-letter names sparingly. The
 more nested or complex the scope, the more descriptive the name must be.
 
-The code examples inside the reference files are upstream Go idiom and are exempt from these two
+Most code examples inside the reference files are upstream Go idiom and are exempt from these two
 rules by a settled decision; each file says so in a note at the top. Keeping them in upstream form
 keeps them comparable to the external Go a reader would cross-check them against. Apply the rules
-to new code, not to those examples. When asked about one of those examples directly, say plainly
+to new code, not to those examples. Sections marked as written in house style are the exception:
+their examples are exemplars to follow. When asked about one of those examples directly, say plainly
 that it is upstream idiom carried deliberately, rather than defending the line on other grounds.
 
 ## Canonical shapes
@@ -81,7 +82,8 @@ that it is upstream idiom carried deliberately, rather than defending the line o
   Overrides the files below.
 - `references/go-style-conventions.md` - project structure, consumer-defined interfaces, naming
   conventions, type safety, linting.
-- `references/go-error-handling.md` - wrapping, sentinel errors, error classification.
+- `references/go-error-handling.md` - wrapping, sentinel errors, error classification, errors from
+  a deferred `Close`, and combining errors with `errors.Join`.
 - `references/go-concurrency.md` - goroutine ownership, `errgroup`, worker pools, channels, sync
   primitives.
 - `references/go-context-patterns.md` - cancellation, timeouts, and the narrow case for context

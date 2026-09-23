@@ -5,8 +5,9 @@ updated: 2026-09-23
 
 > Code examples in this file follow upstream Go idiom, including `:=` for local
 > declarations, so they match the sources they came from and the Go you will meet in the
-> wild. They are not house style. House declaration and naming style lives in
-> `go-style-preferences.md` and governs new code you write.
+> wild, unless a section says it is written in house style. Upstream examples are not house
+> style. House declaration and naming style lives in `go-style-preferences.md` and governs
+> new code you write.
 # Go Error Handling Patterns
 
 **When to read**: Working with errors, error handling, panic recovery
@@ -115,6 +116,8 @@ func HandleRequest(w http.ResponseWriter, r *http.Request) {
 
 ## Errors From Deferred Close
 
+Examples in this section are written in house style.
+
 Whether it is safe to discard the error from a deferred `Close` depends on which direction the
 handle moves data. A file or reader opened only for reading is nearly harmless to close and
 ignore, so `defer f.Close()` is normal, accepted Go practice there. On anything being written,
@@ -145,12 +148,20 @@ func writeReport(path string) (err error) {
 The deferred closure only assigns to `err` when `err` is still nil, so a real error from the
 body of the function is never masked by a close error that happened afterward.
 
-For a read-only handle, skip all of this: a bare `defer f.Close()` is the right call, and the
-named-return pattern there would only clutter the read path.
+For a read-only handle, skip all of this: discarding the close error is the right call, and the
+named-return pattern there would only clutter the read path. Say so where the linter can see it.
+The house `.golangci.yml` in `go-style-conventions.md` runs `errcheck` with `check-blank: true`,
+so it flags both a bare `defer f.Close()` and `defer func() { _ = f.Close() }()`. Mark the
+deliberate discard instead:
 
-If you deliberately want to discard a close error, write `defer func() { _ = f.Close() }()`
-instead of a bare `defer f.Close()`: it states the intent explicitly and keeps a linter such as
-`errcheck` from flagging the ignored return.
+```go
+ defer dataFile.Close() //nolint:errcheck // read-only handle; nothing buffered to flush
+```
+
+Name only the linters that actually fire on the line and give the reason after them, so a later
+reader can tell a deliberate discard from a forgotten check. Under the house config that is
+`errcheck` alone for a deferred `Close`; an unchecked `Close` called directly, not deferred, also
+trips `gosec` (G104) and needs `//nolint:errcheck,gosec`.
 
 **When both errors matter, keep both with `errors.Join`** (Go 1.20+). The pattern above keeps
 the first error and drops a later close error. If the close error is worth reporting even when
@@ -168,6 +179,8 @@ the body already failed, join them instead:
 ---
 
 ## Combining Several Errors With `errors.Join`
+
+Examples in this section are written in house style.
 
 `errors.Join(errs ...error)` (Go 1.20+) combines several errors into one. It discards nil
 arguments and returns nil when every argument is nil, including when it is called with an empty

@@ -279,7 +279,8 @@ section.
     concurrency, context, errors, HTTP, performance, testing, project conventions, and gotchas.
     Knowledge-loading only, in the shape of `research`, so it has no `context: fork` pin; it does
     not review diffs, debug running processes, or generate test suites. The reference files' code
-    examples stay in upstream Go idiom by a settled decision, framed as such at the top of each.
+    examples stay in upstream Go idiom by a settled decision, framed as such at the top of each,
+    except sections marked as written in house style, which are exemplars to follow.
     See `specs/skills.md`'s go-dev section.
 - `agents/` - personal subagent definitions:
   - `Explore` - read-only search agent pinned to Haiku at high effort, replacing the built-in

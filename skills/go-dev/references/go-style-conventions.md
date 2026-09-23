@@ -1,12 +1,13 @@
 ---
 created: 2026-08-05
-updated: 2026-09-19
+updated: 2026-09-23
 ---
 
 > Code examples in this file follow upstream Go idiom, including `:=` for local
 > declarations, so they match the sources they came from and the Go you will meet in the
-> wild. They are not house style. House declaration and naming style lives in
-> `go-style-preferences.md` and governs new code you write.
+> wild, unless a section says it is written in house style. Upstream examples are not house
+> style. House declaration and naming style lives in `go-style-preferences.md` and governs
+> new code you write.
 # Go Style, Structure, and Tooling
 
 **When to read**: Writing new Go code, setting up projects, reviewing code style, configuring linters
@@ -506,3 +507,5 @@ linters:
 ```
 
 The two `depguard` rules together demonstrate one thing: how a project-wide policy gets enforced with a scoped exception. The `main` rule denies `log$`, `log/slog$`, and `github.com/sirupsen/logrus` in application packages - the mechanical enforcement of the logging position stated in `go-style-preferences.md`. The `logging-bridge` rule scopes an exception for the one package that bridges `slog` into zap. Look at what its deny list actually is: a full copy of the `main` list minus the two logging entries being exempted, because `depguard` has no rule inheritance - a scoped rule cannot say "everything `main` denies, except X." The consequence is real maintenance work: a new deny added to `main` must be copied into every scoped rule too, or that package silently gains an exemption nobody intended.
+
+The bridge is not the only package that must import `log/slog`. A package holding a secret-bearing type that implements `slog.LogValuer` (the redaction rule in `go-style-preferences.md`) imports it too, and `main` as written would reject that import. Give such a package its own scoped rule of the same shape, and add its path to the `files` exclusions on `main`, so each exemption stays as narrow as the bridge's.

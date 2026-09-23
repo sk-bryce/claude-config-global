@@ -827,7 +827,8 @@ Shared conventions for every skill spec:
 - Settled decision: the domain files' code examples stay in upstream Go idiom and are not
   rewritten into house declaration style. The house rule governs new code the model writes,
   not the reference examples, which stay comparable to the external Go a reader would
-  cross-check them against. Each domain file says so in a framing note at the top.
+  cross-check them against. Each domain file says so in a framing note at the top. A section
+  that says it is written in house style is the exception: its examples are exemplars to follow.
 - Evals: `skills/go-dev/evals/trigger-evals.json` (did it fire) and
   `skills/go-dev/evals/evals.json` (did it behave), both authored from this section before
   `SKILL.md` was generated and both kept as the gate on any future regeneration. The two

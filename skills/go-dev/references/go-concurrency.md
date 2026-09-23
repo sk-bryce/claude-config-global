@@ -5,8 +5,9 @@ updated: 2026-09-23
 
 > Code examples in this file follow upstream Go idiom, including `:=` for local
 > declarations, so they match the sources they came from and the Go you will meet in the
-> wild. They are not house style. House declaration and naming style lives in
-> `go-style-preferences.md` and governs new code you write.
+> wild, unless a section says it is written in house style. Upstream examples are not house
+> style. House declaration and naming style lives in `go-style-preferences.md` and governs
+> new code you write.
 # Concurrency
 
 ## Goroutines: Keep Them Short and Owned
@@ -140,6 +141,8 @@ func ProcessJobs(ctx context.Context, jobs <-chan Job, workers int) error {
 ```
 
 ## Collecting Every Error While Still Cancelling
+
+Examples in this section are written in house style.
 
 `errgroup` is the right tool when the first error should stop everything: `g.Wait()` returns
 that one error and the rest of the work never completes. When the caller needs a full list of
