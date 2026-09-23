@@ -138,22 +138,25 @@ developers will learn where the seam is. It is still easy to get bitten by it.
   non-addressable value of that type, for example a struct value stored in a map or held
   through an interface, so the same type can marshal differently depending on how it is held.
   This is long-standing behavior in `encoding/json`, and no Go release has changed it; a
-  change has been proposed but not merged. It remains open as of Go 1.26. Code that has to
+  change has been proposed but not merged. It remains open as of Go 1.27. Code that has to
   work regardless of how a value is held should not assume marshaling is receiver-agnostic.
 
-- **The same payload is accepted by one parser and rejected, or read differently, by
-  another.** Parser behavior is not uniform, even within one package, and mixing entry points
-  or parsers over the same bytes creates room for an attacker to craft one payload that gets
-  interpreted differently by each component, a data format confusion attack. Verified against
-  the Go 1.26.4 toolchain: `json.Unmarshal` rejects trailing data after a valid document (it
+- **The same payload is accepted by one parser and rejected, or read differently, by another.**
+  Parser behavior is not uniform, even within one package, and mixing entry points or parsers
+  over the same bytes creates room for an attacker to craft one payload that gets interpreted
+  differently by each component, a data format confusion attack. Verified against the Go 1.26.4
+  and 1.27.1 toolchains: `json.Unmarshal` rejects trailing data after a valid document (it
   returns `invalid character 'G' after top-level value` for `{"a":1} GARBAGE`), but
-  `json.NewDecoder(...).Decode(...)` accepts that same input silently, with a nil error, so
-  the two JSON entry points disagree with each other. `json.Unmarshal` accepts duplicate keys
-  and keeps the last one (`{"a":1,"a":2}` decodes to 2 with a nil error). `xml.Unmarshal` and
-  `xml.Decoder.Decode` both accept trailing data after a valid document, silently. Go has no
-  standard-library YAML parser; YAML support always comes from a third-party module, and its
-  behavior on duplicate keys and trailing data depends on which module and which strictness
-  mode is in use, so it cannot be assumed either way.
+  `json.NewDecoder(...).Decode(...)` accepts that same input silently, with a nil error, so the
+  two JSON entry points disagree with each other. `json.Unmarshal` accepts duplicate keys and
+  keeps the last one (`{"a":1,"a":2}` decodes to 2 with a nil error). Go 1.27 moved
+  `encoding/json` onto the v2 implementation without changing these results. The now-standard
+  `encoding/json/v2` rejects both trailing data and duplicate keys, so the v1 and v2 entry
+  points disagree on duplicates too. `xml.Unmarshal` and `xml.Decoder.Decode` both accept
+  trailing data after a valid document, silently. Go has no standard-library YAML parser; YAML
+  support always comes from a third-party module, and its behavior on duplicate keys and
+  trailing data depends on which module and which strictness mode is in use, so it cannot be
+  assumed either way.
 
 - **A request with a small body causes a huge, uncontrolled memory allocation.** Sizing a
   buffer or allocation directly from a user-controlled input value, such as a length field in
