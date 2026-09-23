@@ -44,7 +44,7 @@ writing or changing Go, and load the domain files below on demand by topic.
 
 ## House rules for new Go code
 
-These two rules govern the Go you write. They are inline here, rather than only in
+These three rules govern the Go you write. They are inline here, rather than only in
 `references/go-style-preferences.md`, because a rule the model must choose to open a file to find
 is a rule that does not reliably fire.
 
@@ -54,16 +54,26 @@ variable's scope is visibly limited to that statement. Everywhere else, use `var
 use grouped `var (...)` blocks; write one `var` per line.
 
 Naming: descriptiveness scales with the scope's nesting depth and complexity. Avoid one-
-and two-letter names. `ok` (map access, channel receive, type assertion) and `err` (local
-error values) are the standing exceptions. Use three- to five-letter names sparingly. The
-more nested or complex the scope, the more descriptive the name must be.
+and two-letter names. The standing exceptions are `ok` (map access, channel receive, type
+assertion), `err` (local error values), `t *testing.T`, `b *testing.B`, and `f *testing.F`
+in tests, and a short integer loop index such as `i` or `j`, declared by a `for` clause or by
+`for i := range`. Range values are not exempt: write `for _, user := range users`, never
+`for _, u := range users`. Method receivers are not exempt either: write
+`func (cache *Cache) Get`, not `func (c *Cache) Get`, and neither are handler parameters:
+`writer http.ResponseWriter, request *http.Request`, not `w` and `r`. Use three- to five-letter
+names sparingly. The more nested or complex the scope, the more descriptive the name must be.
 
-Most code examples inside the reference files are upstream Go idiom and are exempt from these two
-rules by a settled decision; each file says so in a note at the top. Keeping them in upstream form
-keeps them comparable to the external Go a reader would cross-check them against. Apply the rules
-to new code, not to those examples. Sections marked as written in house style are the exception:
-their examples are exemplars to follow. When asked about one of those examples directly, say plainly
-that it is upstream idiom carried deliberately, rather than defending the line on other grounds.
+Returns: do not name result parameters, and so never write a naked `return`. Write every
+result out in the `return` statement.
+
+Most code examples inside the reference files are upstream Go idiom and are exempt from the
+declaration and naming rules by a settled decision; each file says so in a note at the top.
+Keeping them in upstream form keeps them comparable to the external Go a reader would
+cross-check them against. Apply the rules to new code, not to those examples. The returns rule
+has no such exemption: no example in the reference files uses a named result. Sections marked
+as written in house style are the exception: their examples are exemplars to follow. When asked
+about one of those examples directly, say plainly that it is upstream idiom carried
+deliberately, rather than defending the line on other grounds.
 
 ## Canonical shapes
 
@@ -78,12 +88,12 @@ that it is upstream idiom carried deliberately, rather than defending the line o
 
 ## Reference routing
 
-- `references/go-style-preferences.md` - declaration style, naming, and the logging position.
-  Overrides the files below.
+- `references/go-style-preferences.md` - declaration style, naming, no named or naked returns,
+  and the logging position. Overrides the files below.
 - `references/go-style-conventions.md` - project structure, consumer-defined interfaces, naming
   conventions, type safety, linting.
-- `references/go-error-handling.md` - wrapping, sentinel errors, error classification, errors from
-  a deferred `Close`, and combining errors with `errors.Join`.
+- `references/go-error-handling.md` - wrapping, sentinel errors, error classification, close
+  errors on a write path, and combining errors with `errors.Join`.
 - `references/go-concurrency.md` - goroutine ownership, `errgroup`, worker pools, channels, sync
   primitives.
 - `references/go-context-patterns.md` - cancellation, timeouts, and the narrow case for context

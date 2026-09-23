@@ -790,9 +790,10 @@ Shared conventions for every skill spec:
   what belongs in one and how a project is laid out around it, not dependency version
   resolution - see Non-goals.
 - Knowledge sources: the nine files under `references/`. `go-style-preferences.md`
-  carries this user's positions - declaration style, naming, and the logging position
-  (`go.uber.org/zap` with its typed field API for application code, `log/slog` confined to a
-  bridge package and to `slog.LogValuer` secret redaction, enforced by `depguard`) - and
+  carries this user's positions - declaration style, naming, no named returns, and the
+  logging position (`go.uber.org/zap` with its typed field API for application code,
+  `log/slog` confined to a bridge package and to `slog.LogValuer` secret redaction, enforced
+  by `depguard`) - and
   overrides the others where they disagree,
   `go-gotchas.md` carries the traps worth recognizing, and the remaining seven are
   domain references loaded on demand.
@@ -829,6 +830,18 @@ Shared conventions for every skill spec:
   not the reference examples, which stay comparable to the external Go a reader would
   cross-check them against. Each domain file says so in a framing note at the top. A section
   that says it is written in house style is the exception: its examples are exemplars to follow.
+- Settled decision (2026-09-23): the naming rule's standing exceptions are `ok`, `err`,
+  `t *testing.T`, `b *testing.B`, `f *testing.F`, and a short integer loop index declared by a
+  `for` clause or by `for i := range`. Range values and method receivers are not exempt and
+  take descriptive names like any other name, so the evals grade a one-letter receiver as a
+  naming failure. HTTP handler parameters are not exempt either: `writer` and `request`, not
+  `w` and `r`.
+- Settled decision (2026-09-23): no named result parameters, and therefore no naked returns.
+  This is a house rule for new code, stated inline in `SKILL.md` and in
+  `go-style-preferences.md`, and unlike the declaration and naming rules it also binds every
+  example in the skill, upstream idiom included: no file under `references/` shows a named
+  result. The house `.golangci.yml` enforces it with `nonamedreturns` and
+  `report-error-in-defer: true`, since the linter's default exempts the deferred-`Close` case.
 - Evals: `skills/go-dev/evals/trigger-evals.json` (did it fire) and
   `skills/go-dev/evals/evals.json` (did it behave), both authored from this section before
   `SKILL.md` was generated and both kept as the gate on any future regeneration. The two
@@ -836,9 +849,9 @@ Shared conventions for every skill spec:
 - Acceptance criteria:
   - Triggers on Go work described in the user's own words, without the skill being named.
   - Does not trigger on non-Go work.
-  - Go that the model writes with this skill active follows the declaration-style and
-    naming rules in `go-style-preferences.md`. The domain files' own examples are exempt
-    and are framed as upstream idiom.
+  - Go that the model writes with this skill active follows the declaration-style, naming,
+    and returns rules in `go-style-preferences.md`. The domain files' own examples are exempt
+    from the first two and are framed as upstream idiom; no example uses a named result.
   - Asked to add logging to Go application code, the model reaches for `zap` with typed
     fields and an injected logger rather than `log/slog` or the standard `log` package, and
     places `log/slog` only in a bridge or a `slog.LogValuer` redaction role. Where a

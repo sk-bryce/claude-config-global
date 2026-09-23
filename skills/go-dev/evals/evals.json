@@ -9,10 +9,10 @@
       "expectations": [
         "[deterministic] Wraps errors using %w in fmt.Errorf, not %v or a bare string, when returning an error from the file-open or parse path",
         "[deterministic] Closes the file handle via a deferred Close call",
-        "[deterministic] Does not silently discard the error returned by a deferred Close on a handle that was written to - it captures the error into a named return, logs it, or wraps it. A bare deferred Close on a read-only handle is acceptable when the response says why it is safe there.",
+        "[deterministic] Does not silently discard the error returned by Close on a handle that was written to - it returns it, joined or wrapped, or logs it, and does not use a named return to do so. A bare deferred Close on a read-only handle is acceptable when the response says why it is safe there.",
         "[deterministic] Uses explicit `var` declarations for variables outside any if/for/switch/select initializer expression (e.g. the slice of rows being built up), not `:=`",
         "[deterministic] Does not use a grouped `var (...)` block anywhere; each `var` declaration is on its own line",
-        "[judgment] Chooses names whose descriptiveness scales with scope depth and complexity, avoiding one- and two-letter names outside the `ok`/`err` exceptions"
+        "[judgment] Chooses names whose descriptiveness scales with scope depth and complexity, avoiding one- and two-letter names outside the house exceptions (`ok`, `err`, `t *testing.T`, `b *testing.B`, `f *testing.F`, and a short integer loop index declared by a `for` clause or by `for i := range`); range values, method receivers, and HTTP handler parameters are not exempt"
       ]
     },
     {
@@ -25,7 +25,7 @@
         "[deterministic] Defines a named struct type for the test cases (e.g. `type testCase struct { ... }` or similarly named), rather than only an inline anonymous struct literal with no type name",
         "[deterministic] Calls t.Parallel() inside the subtests",
         "[deterministic] Uses explicit `var` declarations outside if/for/switch/select initializers and does not use a grouped `var (...)` block",
-        "[judgment] Field and variable names scale in descriptiveness with scope complexity, avoiding one- and two-letter names outside the `ok`/`err` exceptions"
+        "[judgment] Field and variable names scale in descriptiveness with scope complexity, avoiding one- and two-letter names outside the house exceptions (`ok`, `err`, `t *testing.T`, `b *testing.B`, `f *testing.F`, and a short integer loop index declared by a `for` clause or by `for i := range`); range values, method receivers, and HTTP handler parameters are not exempt"
       ]
     },
     {
@@ -38,7 +38,7 @@
         "[deterministic] Closes the response body via a deferred Close call",
         "[deterministic] Checks the response status code before attempting to decode the response body",
         "[deterministic] Wraps errors using %w in fmt.Errorf, not %v or a bare string",
-        "[judgment] Declaration style and naming in the new code follow the house rules (explicit var outside initializer expressions, no grouped var block, descriptive names scaled to scope)"
+        "[judgment] Declaration style and naming in the new code follow the house rules (explicit var outside initializer expressions, no grouped var block, descriptive names scaled to scope), avoiding one- and two-letter names outside the house exceptions (`ok`, `err`, `t *testing.T`, `b *testing.B`, `f *testing.F`, and a short integer loop index declared by a `for` clause or by `for i := range`); range values, method receivers, and HTTP handler parameters are not exempt"
       ]
     },
     {
@@ -69,24 +69,25 @@
     {
       "id": 6,
       "prompt": "Write a Go function that parses a slice of \"key=value\" config strings into a map[string]string, returning an error for any malformed entry.",
-      "expected_output": "Declaration-style rule is followed: explicit var outside if/for/switch/select initializers, := confined to those initializers, no grouped var (...) block.",
+      "expected_output": "Declaration-style rule is followed: explicit var outside if/for/switch/select initializers, := confined to those initializers, no grouped var (...) block; no named results or naked return.",
       "files": [],
       "expectations": [
         "[deterministic] Declares the result map and any accumulator/loop-scoped variable that lives outside an if/for/switch/select initializer with an explicit `var`, not `:=`",
         "[deterministic] Uses `:=` only as part of an initializer expression inside an if, for, switch, or select statement where the declared variable's scope is visibly limited to that statement",
         "[deterministic] Does not use a grouped `var (...)` block anywhere in the function",
+        "[deterministic] Does not name its result parameters and does not use a naked return",
         "[deterministic] Wraps the malformed-entry error using %w in fmt.Errorf, not %v or a bare string"
       ]
     },
     {
       "id": 7,
       "prompt": "Write a Go function that, given a map[string][]int and a slice of candidate keys, returns the candidate whose slice has the largest sum, using nested loops to compute each sum. Skip any candidate that is not in the map; a candidate that is present with an empty slice counts, with a sum of zero.",
-      "expected_output": "Naming descriptiveness scales with nesting depth and complexity; one- and two-letter names are avoided outside the ok/err exceptions; declaration style is followed for the running best-key/best-sum state; absent candidates are detected with a comma-ok lookup rather than a nil or length check.",
+      "expected_output": "Naming descriptiveness scales with nesting depth and complexity; one- and two-letter names are avoided outside the house exceptions (ok, err, t/b/f, and short integer loop indices); declaration style is followed for the running best-key/best-sum state; absent candidates are detected with a comma-ok lookup rather than a nil or length check.",
       "files": [],
       "expectations": [
         "[deterministic] Declares the running best-key and best-sum tracking variables with explicit `var`, not `:=`, since they live outside any if/for/switch/select initializer",
         "[deterministic] Detects an absent candidate with a comma-ok map lookup, not by comparing the looked-up slice to nil or checking its length (a nil comparison wrongly skips a present candidate stored with a nil slice, and a length check wrongly skips one stored with an empty slice), and names the boolean `ok` or a descriptive name such as `found`, never another one- or two-letter name",
-        "[judgment] Names inside the nested loop bodies grow more descriptive with nesting depth and complexity, avoiding one- and two-letter names other than the `ok`/`err` exceptions and idiomatic short-lived loop indices"
+        "[judgment] Names inside the nested loop bodies grow more descriptive with nesting depth and complexity, avoiding one- and two-letter names outside the house exceptions (`ok`, `err`, `t *testing.T`, `b *testing.B`, `f *testing.F`, and a short integer loop index declared by a `for` clause or by `for i := range`); range values, method receivers, and HTTP handler parameters are not exempt"
       ]
     },
     {

@@ -188,9 +188,14 @@ package authHelper
 **Variable names**:
 
 Naming: descriptiveness scales with the scope's nesting depth and complexity. Avoid one-
-and two-letter names. `ok` (map access, channel receive, type assertion) and `err` (local
-error values) are the standing exceptions. Use three- to five-letter names sparingly. The
-more nested or complex the scope, the more descriptive the name must be.
+and two-letter names. The standing exceptions are `ok` (map access, channel receive, type
+assertion), `err` (local error values), `t *testing.T`, `b *testing.B`, and `f *testing.F`
+in tests, and a short integer loop index such as `i` or `j`, declared by a `for` clause or by
+`for i := range`. Range values are not exempt: write `for _, user := range users`, never
+`for _, u := range users`. Method receivers are not exempt either: write
+`func (cache *Cache) Get`, not `func (c *Cache) Get`, and neither are handler parameters:
+`writer http.ResponseWriter, request *http.Request`, not `w` and `r`. Use three- to five-letter
+names sparingly. The more nested or complex the scope, the more descriptive the name must be.
 
 In a larger scope that means a name like `userRepository` or `configLoader`.
 
@@ -452,6 +457,10 @@ linters:
     - ireturn
 
   settings:
+    nonamedreturns:
+      # The default exempts a named error assigned in a deferred function,
+      # which is the one case the house returns rule exists to remove.
+      report-error-in-defer: true
     govet:
       enable:
         - shadow

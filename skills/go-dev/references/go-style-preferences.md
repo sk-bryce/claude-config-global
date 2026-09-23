@@ -57,7 +57,7 @@ func NewClosable() (*Closable, error) {
 	return &Closable{}, fmt.Errorf("THIS IS NOT THE ERROR YOU SHOULD SEE")
 }
 
-func (c *Closable) Close() error {
+func (closable *Closable) Close() error {
 	return fmt.Errorf("THIS IS THE INTENDED ERROR")
 }
 
@@ -271,13 +271,39 @@ of prefixing each line, so a search for `var <name>` cannot match a name that on
 inside the parens. It is also arguably less readable at a glance, since the block's
 context-giving `var (` token is separated from each variable it declares.
 
+## No named or naked returns
+
+```
+Returns: do not name result parameters, and so never write a naked `return`. Write every
+result out in the `return` statement.
+```
+
+A naked `return` makes the reader search the function body for what is actually being
+returned, and it cannot exist without a named result, so banning named results bans both. This
+rule binds the reference examples too, not only new code: no file in this skill shows a named
+result.
+
+The case that seems to need a named result is reporting an error from `Close` on a handle that
+was written to, usually done by assigning to a named `err` inside a deferred closure. Close
+explicitly and join the errors at the return site instead; `go-error-handling.md` shows the
+shape.
+
+The house `.golangci.yml` in `go-style-conventions.md` enforces this with `nonamedreturns` and
+sets `report-error-in-defer: true`. At its default the linter exempts a named error that a
+deferred function assigns, which is exactly the case this rule exists to remove.
+
 ## Naming
 
 ```
 Naming: descriptiveness scales with the scope's nesting depth and complexity. Avoid one-
-and two-letter names. `ok` (map access, channel receive, type assertion) and `err` (local
-error values) are the standing exceptions. Use three- to five-letter names sparingly. The
-more nested or complex the scope, the more descriptive the name must be.
+and two-letter names. The standing exceptions are `ok` (map access, channel receive, type
+assertion), `err` (local error values), `t *testing.T`, `b *testing.B`, and `f *testing.F`
+in tests, and a short integer loop index such as `i` or `j`, declared by a `for` clause or by
+`for i := range`. Range values are not exempt: write `for _, user := range users`, never
+`for _, u := range users`. Method receivers are not exempt either: write
+`func (cache *Cache) Get`, not `func (c *Cache) Get`, and neither are handler parameters:
+`writer http.ResponseWriter, request *http.Request`, not `w` and `r`. Use three- to five-letter
+names sparingly. The more nested or complex the scope, the more descriptive the name must be.
 ```
 
 Non-descriptive names add cognitive overhead when reading or maintaining code, and they

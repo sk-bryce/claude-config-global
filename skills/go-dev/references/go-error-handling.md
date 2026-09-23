@@ -114,7 +114,7 @@ func HandleRequest(w http.ResponseWriter, r *http.Request) {
 
 ---
 
-## Errors From Deferred Close
+## Errors From Close on a Write Path
 
 Examples in this section are written in house style.
 
@@ -125,31 +125,32 @@ a file, a buffered writer, a network connection, or an HTTP request body you are
 `Close` is often where a buffered-write or flush failure actually surfaces. Discarding that
 error means the function can report success for data that never reached the disk or the wire.
 
-**Capture the close error with a named return**:
+**Close explicitly and join the errors at the return site.** House style has no named returns,
+so the usual trick of assigning to a named `err` inside a deferred closure is unavailable by
+design. Move the body into a function that takes the open handle, so every path through the
+body reaches the one `Close`:
 
 ```go
-func writeReport(path string) (err error) {
- var reportFile *os.File
- reportFile, err = os.Create(path)
+func writeReport(path string, report Report) error {
+ var reportFile, err = os.Create(path)
  if err != nil {
   return fmt.Errorf("create report %s: %w", path, err)
  }
- defer func() {
-  var closeErr = reportFile.Close()
-  if closeErr != nil && err == nil {
-   err = fmt.Errorf("close report %s: %w", path, closeErr)
-  }
- }()
- // ... write the report body to reportFile here ...
- return err
+ var writeErr = writeReportBody(reportFile, report)
+ var closeErr = reportFile.Close()
+ if closeErr != nil {
+  closeErr = fmt.Errorf("close report %s: %w", path, closeErr)
+ }
+ return errors.Join(writeErr, closeErr)
 }
 ```
 
-The deferred closure only assigns to `err` when `err` is still nil, so a real error from the
-body of the function is never masked by a close error that happened afterward.
+`errors.Join` (Go 1.20+) drops nil arguments and returns nil when both are nil, so no guard is
+needed, and a close failure is still reported when the body has already failed. Where only the
+first failure matters, return `writeErr` when it is non-nil and `closeErr` otherwise.
 
-For a read-only handle, skip all of this: discarding the close error is the right call, and the
-named-return pattern there would only clutter the read path. Say so where the linter can see it.
+For a read-only handle, skip all of this: discarding the close error is the right call, and
+this pattern there would only clutter the read path. Say so where the linter can see it.
 The house `.golangci.yml` in `go-style-conventions.md` runs `errcheck` with `check-blank: true`,
 so it flags both a bare `defer f.Close()` and `defer func() { _ = f.Close() }()`. Mark the
 deliberate discard instead:
@@ -162,19 +163,6 @@ Name only the linters that actually fire on the line and give the reason after t
 reader can tell a deliberate discard from a forgotten check. Under the house config that is
 `errcheck` alone for a deferred `Close`; an unchecked `Close` called directly, not deferred, also
 trips `gosec` (G104) and needs `//nolint:errcheck,gosec`.
-
-**When both errors matter, keep both with `errors.Join`** (Go 1.20+). The pattern above keeps
-the first error and drops a later close error. If the close error is worth reporting even when
-the body already failed, join them instead:
-
-```go
- defer func() {
-  var closeErr = reportFile.Close()
-  if closeErr != nil {
-   err = errors.Join(err, fmt.Errorf("close report %s: %w", path, closeErr))
-  }
- }()
-```
 
 ---
 
