@@ -17,8 +17,7 @@
 #   docs/features/skills.md                 -> skills/skill-author/references/skills.md
 #   reference/document-generation.md        -> skills/review-md/references/document-generation.md
 #   reference/research-discipline.md        -> skills/research/references/research-discipline.md
-#   reference/subagent-orchestration.md     -> skills/write-plan/references/subagent-orchestration.md
-#                                            -> skills/execute-plan/references/subagent-orchestration.md
+#   reference/subagent-orchestration.md     -> skills/planner/references/subagent-orchestration.md
 #
 # Usage:
 #   scripts/sync.sh            apply (idempotent)
@@ -125,8 +124,7 @@ sync_reference_copies() {
   sync_one_reference "docs/features/skills.md" "skills/skill-author/references/skills.md"
   sync_one_reference "reference/document-generation.md" "skills/review-md/references/document-generation.md"
   sync_one_reference "reference/research-discipline.md" "skills/research/references/research-discipline.md"
-  sync_one_reference "reference/subagent-orchestration.md" "skills/write-plan/references/subagent-orchestration.md"
-  sync_one_reference "reference/subagent-orchestration.md" "skills/execute-plan/references/subagent-orchestration.md"
+  sync_one_reference "reference/subagent-orchestration.md" "skills/planner/references/subagent-orchestration.md"
 }
 
 main() {

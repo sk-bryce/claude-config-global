@@ -1,8 +1,9 @@
 <!--
 created: 2026-07-27
-updated: 2026-08-31
+updated: 2026-09-25
 spec: specs/behaviors.md (Plan and Execute section)
-generated-by: Opus subagent, spec-driven migration plan execution (Phase 3 Workstream A)
+generated-by: Opus subagent, spec-driven migration plan execution (Phase 3 Workstream A); updated
+  by hand on 2026-09-25 to the self-running plan shape
 model: claude-opus-5-thinking-high
 harness: Claude Code
 note: illustrative sample artifact for a fictional orders-api service; the paths are not real
@@ -35,22 +36,38 @@ Verified at final verification, not by the per-unit gates alone:
 - `supertest` and `@types/supertest` are already in `devDependencies`; no unit installs dependencies.
 - The service exports a shared `pg` `Pool` from `src/db/pool.ts` as the named export `pool`.
 
+## Execution requirements
+
+- Minimum orchestrator tier: Sonnet. The embedded protocol halts before doing anything if the
+  session running it is on a lower tier.
+- To run this plan, tell any agent:
+  `execute the plan at /path/to/orders-api/.claude/plans/health-endpoint.md`. The filled-in
+  orchestration protocol at the end makes the plan self-running: telling any agent to execute it
+  is enough, and no separate skill is required.
+
 ## Working directory
 
-`/path/to/orders-api/.worktrees/health-endpoint`
+`/path/to/orders-api/.worktrees/health-endpoint`, a dedicated git worktree so a failed run is
+rolled back by deleting it. It sits under the project directory so it inherits the project's tool
+permissions. Every path below is absolute under this root.
 
-A dedicated git worktree, created from the project root with
-`git worktree add .worktrees/health-endpoint -b health-endpoint origin/main`, so a failed run is rolled
-back by `git worktree remove .worktrees/health-endpoint`. It sits under the project directory so it
-inherits the project's tool permissions. Every path below is absolute under this root.
+While planning, `git remote` in `/path/to/orders-api` printed `origin`, and the current branch
+tracks `origin/main`. Pre-flight runs, in order:
+
+1. `git -C /path/to/orders-api status --porcelain` - must print nothing.
+2. `git -C /path/to/orders-api worktree add .worktrees/health-endpoint -b health-endpoint origin/main`
+   - skipped when `/path/to/orders-api/.worktrees/health-endpoint` already exists from an earlier
+   run of this plan.
+
+Rollback: `git -C /path/to/orders-api worktree remove .worktrees/health-endpoint`.
 
 ## Model-role map
 
 | Role | Tier | Alias |
 | --- | --- | --- |
-| Orchestrator | the model running the executing turn (Sonnet) | `sonnet` |
-| Units 1 and 2 (new files, exact content given) | Haiku | `haiku` |
-| Unit 3 (edits an existing file whose current content must be matched, plus new tests) | Sonnet | `sonnet` |
+| Orchestrator | the session model running the plan; minimum Sonnet | `sonnet` or above |
+| Units 1 and 2 (new files, exact content given) | Haiku, via the `executor` agent | `haiku` |
+| Unit 3 (edits an existing file whose current content must be matched, plus new tests) | Sonnet, via the `executor` agent | `sonnet` |
 | Escalation | one tier above the unit's default (Haiku -> Sonnet -> Opus), then step back down | per the row above |
 
 The Haiku-first default holds here: Units 1 and 2 create new files whose full content is given
@@ -242,8 +259,22 @@ dependency.
 
 ---
 
-This plan carries a filled-in orchestration protocol, which makes it self-triggering: telling any
-agent to execute this plan is enough, and no separate skill is required to run it correctly.
+## Progress
+
+- [ ] Unit 1 (Wave 1): Add the database connectivity check - gate: `npx tsc --noEmit` exits 0, and
+  `rg -q "export async function checkDatabase" src/health/checkDatabase.ts` exits 0.
+- [ ] Unit 2 (Wave 2): Add the health router - gate: `npx tsc --noEmit` exits 0, and
+  `rg -q "createHealthRouter" src/health/router.ts` exits 0.
+- [ ] Unit 3 (Wave 3): Mount the router before auth and add tests - gate:
+  `npm test -- test/health.test.ts` exits 0 with both cases passing, `npx tsc --noEmit` exits 0,
+  `npm run lint` exits 0, and `rg -n "app.use" src/app.ts` shows
+  `app.use(createHealthRouter(pool));` on a lower line number than `app.use(requireAuth);`.
+
+## Run log
+
+- No entries yet.
+
+---
 
 ## Orchestration protocol (read before executing this plan)
 
@@ -252,15 +283,45 @@ being told again, and MUST NOT perform a unit's initial implementation itself. T
 sequences units, launches subagents, runs verification gates, makes bounded corrective edits (see
 below), and enforces the escalation and halt rules below. Use plain subagents only: even if an
 agent-team feature is enabled in this environment, do NOT propose or spawn an agent team for this
-work.
+work. If this plan contradicts itself, or still contains unfilled placeholder text, STOP and ask
+rather than picking an interpretation.
 
-- **Pre-flight (orchestrator, before any dispatch):** read this plan in full; confirm the working
-  state is clean (no uncommitted changes that would corrupt diffs or tests) and that every tool,
-  build, and test command this plan needs is available; run any known-good baseline check the plan
-  defines; create a durable, per-unit progress record that survives an interrupted session (so a
-  re-run resumes where it stopped rather than restarting); and summarize the blast radius (the waves,
-  the files each will touch, and the model plan) before dispatching. If any precondition fails, STOP
-  and report rather than dispatching.
+- **Minimum orchestrator tier (check first):** before any other step, identify the model running
+  this turn from your own system context and map it to its tier, ordered Haiku < Sonnet < Opus. If
+  that tier is below this plan's minimum, or you cannot determine it, HALT before touching anything:
+  name the model you are running as and the required tier, and ask the user to switch models (for
+  example with `/model`) and ask again. Continue on a lower tier only if the user then explicitly
+  tells you to, and record that override in the Run log. Minimum tier for this plan:
+  Sonnet.
+- **Pre-flight (orchestrator, before any dispatch):** do these in order. If any step fails, STOP and
+  report rather than dispatching.
+  1. Read this plan in full, including its Progress and Run log sections.
+  2. Set up the working directory exactly as this plan's Working directory section states. Before
+     creating a worktree or touching the live checkout, confirm the repository is clean
+     (`git status --porcelain` prints nothing); uncommitted changes corrupt diffs and test results,
+     so if it is dirty, STOP and report - never stash, commit, or revert anything on your own. On a
+     resumed run, where Progress already has `[x]` marks, changes limited to the files this plan's
+     units name are expected; only changes outside them count as dirty. If the worktree already
+     exists from an earlier run of this plan, reuse it rather than recreating it. Every path handed
+     to a subagent must be absolute and under the working-directory root.
+  3. Confirm every tool, build, and test command this plan needs is available, and run any
+     known-good baseline check the plan defines.
+  4. Resume check: for every unit already marked `[x]` in the Progress section, re-run that unit's
+     gate before trusting the mark. If it passes, skip the unit. If it fails, change the mark back
+     to `[ ]`, log the stale mark in the Run log, and dispatch the unit normally. Restore the run's
+     retry/escalation count from the Run log rather than starting again from zero.
+  5. Summarize the blast radius: the model running this turn against the minimum tier, the working
+     directory, the waves and the files each touches, the model plan, the circuit-breaker threshold
+     and the count carried over, and which units are already done.
+  6. PAUSE for the user's explicit confirmation of that summary. Do not dispatch any unit until they
+     confirm, and never treat silence as approval. If this run cannot receive a reply (a
+     backgrounded subagent, a non-interactive session), STOP and report instead of proceeding.
+- **Progress record (durable):** this plan file is the progress record, so an interrupted run
+  resumes where it stopped. Change a unit's Progress line from `- [ ]` to `- [x]` only after that
+  unit's gate has passed; never mark ahead of the work. Append one line to the Run log for every
+  retry, escalation, halt, stale mark found on resume, and tier override, in the form
+  `- 2026-09-25 Unit 3: retried at haiku with failure context; breaker 1/5`. The Progress and Run
+  log sections are the only parts of this plan the orchestrator edits.
 - **Automatic delegation (default on):** every substantive unit of work defined below is dispatched
   to a subagent; the orchestrator does not implement a unit itself. It does only this: launching
   subagents, reading files back, running verification/build/test/lint commands in the shell, making
@@ -269,16 +330,18 @@ work.
   trivial, low-risk unit for direct execution instead of fan-out; delegation is the default, not a
   mandate for work that does not warrant it.
 - **Models (role -> tier; fill per plan):** a default executor tier for prescriptive units, an
-  escalation one tier up (Haiku -> Sonnet -> Opus), and an orchestrator that stays on the model
-  running this plan. Name each tier by its harness equivalent; prefer an alias over a frozen slug.
-  If a required model cannot be launched, STOP and ask; never silently substitute. Units 1 and 2 run
-  on Haiku (new files with exact content given); Unit 3 runs on Sonnet (it must match an existing
-  file's content and add tests); escalation is one tier up from each unit's default; the orchestrator
-  stays on Sonnet. There are no reviewer, builder, or collator roles in this plan.
-- **Worker type:** dispatch a read/write worker subagent for any unit that edits files; use a
-  read-only subagent only for pure investigation or independent verification that writes nothing. The
-  orchestrator runs git, build, test, and lint commands itself in the shell rather than delegating
-  them, so it keeps authority over the gates.
+  escalation one tier up (Haiku -> Sonnet -> Opus), and an orchestrator that is the model running
+  this plan, at or above the minimum tier. Name each tier by its harness equivalent; prefer an alias
+  over a frozen slug. If a required model cannot be launched, STOP and ask; never silently
+  substitute.
+  Units 1 and 2 run on Haiku (new files with exact content given) and Unit 3 on Sonnet (it must match an existing file's content and add tests), all through the `executor` agent; escalation is one tier up from each unit's default; the orchestrator is the session model, Sonnet or above. There are no reviewer, builder, or collator roles in this plan.
+- **Worker type:** dispatch every unit that edits files to the `executor` subagent
+  (`subagent_type: executor`) with `model:` set to that unit's tier alias, unless this plan's
+  model-role map assigns the unit a different worker. If this harness has no `executor` agent, use
+  a general read/write worker subagent (`general-purpose`) instead and say so in the blast-radius
+  summary. Use a read-only subagent (`Explore`) only for pure investigation or independent
+  verification that writes nothing. The orchestrator runs git, build, test, and lint commands itself
+  in the shell rather than delegating them, so it keeps authority over the gates.
 - **Self-contained prompts:** subagents share no memory of this plan or this conversation. Each
   dispatched prompt MUST inline, verbatim: the absolute file path(s) to touch, a one-sentence "why",
   the exact content or diff to apply (copied from the relevant section below), and the standing
@@ -305,33 +368,41 @@ work.
   error, (b) reports the instructions did not match the file (a snippet is not found, a line
   drifted), (c) makes no progress, or (d) produces a weak or incorrect result on a unit whose
   requirements were clear:
-  1. Retry the SAME unit once, same model, same self-contained prompt.
+  1. Retry the SAME unit once, same model, same self-contained prompt plus the failure context
+     (what the subagent reported, verbatim).
   2. If it still fails, re-dispatch the SAME unit one model tier up, with the same prompt plus the
-     failure context (what went wrong). Do not skip, half-apply, or improvise. Step back to the
-     default tier for later units.
+     failure context. Do not skip, half-apply, or improvise. Step back to the default tier for later
+     units: an escalation applies only to the unit that needed it.
   3. If the escalated tier also cannot resolve it, or cannot be launched, STOP and ask the user.
      Never leave work partially applied or guess past a blocker.
-- **Run circuit breaker:** track the count of retries and escalations across the whole run. If it
-  exceeds the threshold below, pause and report instead of continuing - a run that keeps escalating
-  usually signals a bad plan or a systemic issue a stronger model will not fix, and unbounded
-  escalation runs up cost. Threshold for this plan: 3 combined retries plus escalations across the
-  whole run.
+
+  Log every retry and escalation in the Run log as it happens.
+- **Run circuit breaker:** keep one cumulative count of retries and escalations across the whole
+  run - every unit's attempts added together, carried in the Run log so it survives an interrupted
+  session. Before starting each new retry or escalation, compare the count to the threshold below;
+  if it has reached the threshold, pause and report instead of continuing: give the count, which
+  units consumed it, and the current failure, then ask whether to continue, raise the threshold, or
+  re-plan. A run that keeps escalating usually signals a bad plan or a systemic issue a stronger
+  model will not fix, and unbounded escalation runs up cost.
+  Threshold for this plan: 3 combined retries plus escalations across the whole run.
 - **Halt vs escalate (route by cause):** escalating the model is only for the mechanical trouble
   above - a unit that is hard but well specified. If a subagent instead stops because a decision is
   missing or contradictory, or information the task needs is not present in the prompt (genuine
   ambiguity), do NOT retry or escalate the model: a stronger model would only guess at the same
-  missing decision. Halt and report the specifics to the user.
+  missing decision. Halt and report: which unit stopped, the exact missing or contradictory decision
+  (quote the subagent's question), the options as you understand them and what is needed to choose,
+  and that this is a halt rather than an escalation because it is a gap in the plan. Log the halt in
+  the Run log.
 - **Verification gates (orchestrator, after each unit or wave):** do not trust self-reports. Before
   starting dependent work, read the modified file(s) back to confirm intent, run the applicable
   checks for the changed scope (the linter, and the unit's acceptance check), and independently
   confirm each acceptance criterion. Prefer acceptance criteria expressed as a command that returns
   pass/fail, and run it, rather than judging subjectively. For a high-risk or reasoning-heavy unit,
   optionally dispatch a separate read-only verifier subagent to check the output against the criteria
-  independently instead of self-verifying. Mark the unit's progress record complete only after the
-  checks pass. If an edit is wrong or drifted, make a bounded corrective edit yourself or dispatch
-  one narrowly-scoped corrective unit before proceeding. The authoritative gates for this plan, all
-  run from `/path/to/orders-api/.worktrees/health-endpoint`, are: `npx tsc --noEmit`,
-  `npm run lint`, and `npm test` (per-unit, the narrower `npm test -- test/health.test.ts`).
+  independently instead of self-verifying. Mark the unit `[x]` in the Progress section only after
+  the checks pass. If an edit is wrong or drifted, make a bounded corrective edit yourself or
+  dispatch one narrowly-scoped corrective unit before proceeding.
+  The authoritative gates for this plan, all run from `/path/to/orders-api/.worktrees/health-endpoint`, are: `npx tsc --noEmit`, `npm run lint`, and `npm test` (per-unit, the narrower `npm test -- test/health.test.ts`).
 - **Sequencing and isolation:** dispatch independent units in one message (multiple subagent calls)
   so they run concurrently, then gate before the next wave. Before dispatching any parallel wave,
   verify the units' declared file sets are disjoint; if they overlap, serialize them regardless of
@@ -340,10 +411,8 @@ work.
   because each subagent reads the file fresh and concurrent edits would clobber each other. Parallel
   document-producing subagents must each write ONLY their own output file, must NOT read another
   parallel agent's file, and must NOT communicate; merging or reconciling their outputs is a
-  separate, later dispatch. Waves for this plan: Wave 1 is Unit 1 (no dependencies); Wave 2 is Unit 2
-  and depends on Unit 1's `checkDatabase` export; Wave 3 is Unit 3 and depends on Unit 2's
-  `createHealthRouter` export. All three waves are strictly sequential, one unit at a time; there is
-  no parallel wave in this plan.
+  separate, later dispatch.
+  Waves for this plan: Wave 1 is Unit 1 (no dependencies); Wave 2 is Unit 2 and depends on Unit 1's `checkDatabase` export; Wave 3 is Unit 3 and depends on Unit 2's `createHealthRouter` export. All three waves are strictly sequential, one unit at a time; there is no parallel wave in this plan.
 - **Corrective units (verification):** if a build, test, or lint command fails, do not retry blindly.
   Read the exact failure output, trace it to the single file or unit responsible, dispatch one
   narrowly-scoped corrective unit with the failing message included verbatim, then re-run the check.
@@ -352,22 +421,33 @@ work.
   (Docker, ports, local databases or services) from genuine regressions. If a check fails only
   because its harness could not start, capture the output, note it as environmental, and do not
   block; if it fails to compile or a non-harness assertion fails, treat it as a real regression to
-  fix. There are no environmental harnesses in this plan: every gate runs without Docker, a live
-  database, or a bound port, because the tests inject a fake pool. Any failure here is a real
-  regression.
+  fix.
+  There are no environmental harnesses in this plan: every gate runs without Docker, a live database, or a bound port, because the tests inject a fake pool. Any failure here is a real regression.
 - **Recovery and re-planning:** the ladder above is for unit-level trouble. If a failure instead
   reveals the plan itself is wrong (an assumption does not hold, a phase's premise is invalid), do
   NOT push through or silently re-plan. Halt execution, surface the failure context, and offer to
   re-enter planning with that context folded in.
-- **Commit policy:** subagents never run any git command. Do not add, commit, push, or open a PR at
-  any point unless the user explicitly requested it; if requested, the orchestrator does it as a
-  final, separate step. Stop at ready for review: leave the `health-endpoint` worktree and branch in
-  place, uncommitted, and report the diff for the user to inspect.
-- **Final verification (orchestrator-owned):** after the last unit, run the full authoritative gates
-  named above yourself (not via a subagent) to confirm the whole target is green, and confirm the
-  plan's stated goal and definition of done are actually met - all units passing their local checks
-  does not by itself prove the overall objective was achieved. Resolve any stragglers with a bounded
-  corrective edit or one narrowly-scoped corrective unit before reporting.
-- **Final report:** report which units completed vs were stopped and not resumed; the count of units
-  that required a retry or an escalation; any acceptance checks or goal/definition-of-done items that
-  could not be satisfied and why; and the paths of any artifacts produced.
+- **Commit policy:** subagents never run any git command, and every dispatched prompt says so. Do not
+  add, commit, push, or open a PR at any point unless the user explicitly requested it; if
+  requested, the orchestrator does it as a final, separate step after final verification passes.
+  Leave any worktree in place unless the user asks to remove it.
+  Stop at ready for review: leave the `health-endpoint` worktree and branch in place, uncommitted, and report the diff for the user to inspect.
+- **Final verification (orchestrator-owned):** after the last unit:
+  1. Run the full authoritative gates named above yourself, not via a subagent.
+  2. Walk the Definition of Done item by item and check each one against the actual working tree or
+     running behavior. A unit's passing gate is not evidence for a Definition-of-Done item: a
+     requirement no unit implemented passes every unit gate and still fails the plan.
+  3. Classify any failure as environmental or real, per the rule above.
+  4. If any Definition-of-Done item is unmet, name it and what is missing, do not report the run
+     complete, and offer either one narrowly-scoped corrective unit or re-planning when the gap is
+     a planning miss rather than an implementation miss.
+
+  Report the run complete only when every Definition-of-Done item is verified satisfied.
+- **Final report:** end every run with: this plan's absolute path and the working directory used (a
+  worktree, or the live checkout with this plan's stated reason); the model that orchestrated,
+  against the minimum tier; units completed, units skipped as already `[x]` and re-verified, and
+  units not run; every retry and escalation (which unit, from which tier to which, and the outcome)
+  and the final breaker count against the threshold; any halt and the exact missing or
+  contradictory decision behind it; the final gate results and the per-item Definition-of-Done
+  verification, naming any unmet item; and the artifacts produced plus commit status (or
+  `stop at ready for review`).
