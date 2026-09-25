@@ -157,8 +157,9 @@ names one.
   scope decision rather than a cost one, and never dispatch more than one at a time.
 - **Executing a plan by name.** Asked to execute a plan given by slug rather than path, check in
   order a `plansDirectory` set in settings.json, `<cwd>/.claude/plans/` (`<cwd>/plans/` when the
-  working directory is itself a `.claude` directory), then `./plans/`; use the first `<slug>.md`
-  found, and ask if none or several fit. The plan's embedded protocol then governs the run.
+  working directory is itself a `.claude` directory), then `./plans/`; in the first directory with
+  a match, use `plan-*-<slug>.md` or the legacy `<slug>.md`, and ask if none or several fit. The
+  plan's embedded protocol then governs the run.
 - Tier detail, the full effort mechanics, and the delegation-shape rules:
   `./reference/model-selection.md`.
 

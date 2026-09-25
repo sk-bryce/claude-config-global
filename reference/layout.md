@@ -240,11 +240,14 @@ section.
     scaffolding and evals. See `specs/skills.md`'s skill-author section.
   - `review-md` - proofread a single Markdown document, tracking settled/deferred findings in
     `review-tracking.md`. See `specs/skills.md`'s review-md section.
-  - `planner` - plan a multi-step piece of work into a self-contained Markdown plan file that
-    runs itself when any agent is told to execute it: the embedded protocol from
-    `reference/subagent-orchestration.md` carries the tier check, pre-flight, escalation ladder,
-    circuit breaker, `[x]` progress, and Definition-of-Done gate (auto-invocable). Ships a
-    filled-in example under `examples/`.
+  - `planner` - plan a multi-step piece of work into a self-contained Markdown plan file
+    (`plan-YYYY-MM-DD-<slug>.md`) that runs itself when any agent is told to execute it: work is
+    split into Phases, Clusters, and Units, and the embedded protocol from
+    `reference/subagent-orchestration.md` carries the model guard, run policies, usage gating,
+    pre-flight, escalation ladder, circuit breaker, `[x]` progress and decisions appendices,
+    Definition-of-Done gate, decisions review, and self-archiving (auto-invocable). Ships
+    `scripts/usage-check.sh` (reports account usage against the warn and stop thresholds, with
+    fixture tests under `scripts/usage-check-tests/`) and a filled-in example under `examples/`.
   - `health-check` - the judgment half of the periodic self-evaluation (Opus tier). Runs
     `scripts/health-check.sh`, triages its findings, then assesses cross-document coherence,
     staleness, and whether each artifact still earns its place. Read-only by default; proposes
