@@ -1,12 +1,12 @@
 ---
 created: 2026-07-26
-updated: 2026-08-31
+updated: 2026-09-25
 ---
 
 # 2. Plan-and-execute framework as two skills over one orchestration reference
 
-- Status: Accepted (implemented 2026-07-27; see `specs/behaviors.md`'s Plan and Execute section
-  for current build/eval status - this record stays the fixed historical rationale)
+- Status: Superseded by `decisions/0010-single-planner-skill-with-self-running-plans.md` on
+  2026-09-25 (accepted 2026-07-24, implemented 2026-07-27; this record stays the fixed history)
 - Date: 2026-07-24
 - Deciders: repository owner
 - Related: `specs/behaviors.md` (buildable intent), `reference/subagent-orchestration.md`
