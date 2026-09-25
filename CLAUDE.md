@@ -155,10 +155,10 @@ names one.
   than delegating; the `research` skill loads the full workflow automatically. Reserve the
   `researcher` subagent for work that must not carry this context's history and tools, which is a
   scope decision rather than a cost one, and never dispatch more than one at a time.
-- **Executing a plan by name.** Asked to execute a plan given by slug rather than path, look for
-  `<slug>.md` in the first of: a `plansDirectory` set in settings.json; `<cwd>/.claude/plans/`
-  (`<cwd>/plans/` when the working directory is itself a `.claude` directory); `./plans/`. Ask if
-  none or several match. The plan's embedded protocol then governs the run; no skill is needed.
+- **Executing a plan by name.** Asked to execute a plan given by slug rather than path, check in
+  order a `plansDirectory` set in settings.json, `<cwd>/.claude/plans/` (`<cwd>/plans/` when the
+  working directory is itself a `.claude` directory), then `./plans/`; use the first `<slug>.md`
+  found, and ask if none or several fit. The plan's embedded protocol then governs the run.
 - Tier detail, the full effort mechanics, and the delegation-shape rules:
   `./reference/model-selection.md`.
 

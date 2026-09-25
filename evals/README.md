@@ -423,7 +423,8 @@ threshold gate above binds starting from that skill's next regeneration, not ret
 a baseline that was never actually run.
 
 **That default does not extend to a skill that has been run and held.** A HOLD is a result, not an
-absence of one, so neither `write-plan` nor `deep-review` is a de-facto baseline; each carries a
+absence of one, so neither `planner` (held as `write-plan`) nor `deep-review` is a de-facto
+baseline; each carries a
 named remedy in its own run file and needs the affected cases re-run before it becomes one. This distinction matters because the
 "binds from the next regeneration" clause would otherwise exempt precisely the regeneration a HOLD
 exists to force.
