@@ -349,11 +349,11 @@ rather than picking an interpretation.
   document to find or interpret its task; paste any context it needs directly into the prompt.
   1. "Read the target file(s) in full first; do not trust line numbers - locate code by content,
      not position."
-  2. "Edit only the file(s) named in this prompt. Do not modify any other file. Do not run
-     git add/commit/push. Do not run dependency or tidy commands unless this prompt explicitly says
-     to."
+  2. "Edit only the file(s) named in this prompt. Do not modify any other file. Do not run any
+     git command. Do not run dependency or tidy commands unless this prompt explicitly says to."
   3. "After editing, run the project's configured formatter/linter on each changed file and fix
-     anything it flags."
+     anything it flags. If a fix would change content this prompt gives verbatim, STOP and report
+     instead."
   4. "Report a terse summary of what changed, and explicitly flag anything in these instructions
      that did not match what you found in the file."
   5. "If anything here is ambiguous or needs information not present in this prompt, STOP and report
