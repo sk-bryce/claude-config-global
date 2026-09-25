@@ -234,6 +234,45 @@
         "[deterministic] The embedded protocol states that a destructive/irreversible action not listed as authorized stops for confirmation under every halt policy, Unattended included",
         "[deterministic] The embedded protocol requires every decision the orchestrator makes in place of the user to be logged as a line in `## Appendix C: Decisions log`, even though Unattended never pauses to ask"
       ]
+    },
+    {
+      "id": 21,
+      "prompt": "Plan a large refactor of our billing service into separate invoicing and payments modules - about 25 files across four areas. I'm near my usage limits this week, so don't let the run blow through them.",
+      "expected_output": "Produces a plan whose Run policies set usage thresholds (warn 85, stop 95 unless the planner states a reason to change them) and whose embedded protocol gates usage with the usage-check script: a check before every Cluster, a check before every Unit once a check returns warn or unknown, an hourly background sleep at the stop threshold that resumes once usage is below stop, and a halt on a spend cap.",
+      "files": [],
+      "expectations": [
+        "[deterministic] The `## Run policies` section states the usage thresholds, and the embedded block's usage-thresholds placeholder is filled with the same values",
+        "[deterministic] The embedded protocol runs `usage-check.sh` before dispatching each Cluster, and before each Unit after a check returns `warn` or `unknown`",
+        "[deterministic] The embedded protocol pauses on `stop` with a background `sleep 3600` (never a foreground sleep) and resumes once a re-check returns `ok` or `warn`, below the stop threshold rather than below the warn threshold",
+        "[deterministic] The embedded protocol halts rather than sleeps on `stop-cap`, and never treats `unknown` as headroom",
+        "The Phases split the work into several Clusters, so the per-Cluster usage check has natural pause points"
+      ]
+    },
+    {
+      "id": 22,
+      "prompt": "Plan renaming our `customer_id` column to `account_id` across the reporting SQL views and the dashboards that read them. Run it Sparse - make the small calls yourself, I'll look them over at the end.",
+      "expected_output": "Produces a plan with a Sparse halt policy whose embedded protocol logs every decision made in place of the user in Appendix C, walks each pending Appendix C entry with the user after the final report (keep or reopen), runs and commits any corrective Unit a reopened decision needs, and then moves the plan into its plans directory's archive/ subdirectory; Appendix A ends with the Decisions review and Archive lines.",
+      "files": [],
+      "expectations": [
+        "[deterministic] The Run policies section records the halt policy as Sparse, and the plan has `## Appendix C: Decisions log` starting as `- No entries yet.`",
+        "[deterministic] `## Appendix A: Progress` ends with the closing lines Holistic review, Final verification, Commit and push (per policy), Decisions review, Archive, in that order",
+        "[deterministic] The embedded protocol's Decisions review asks, with `AskUserQuestion`, whether to keep or reopen each `review: pending` entry, and a reopened decision's corrective Unit is gated, re-verified, and committed per policy before archiving",
+        "[deterministic] The embedded protocol's Archive step moves the plan file into the `archive/` subdirectory of its plans directory, keeping its filename, only after the decisions review is done",
+        "[deterministic] When no reply can arrive, the embedded protocol leaves the plan in place with Decisions review unchecked instead of archiving"
+      ]
+    },
+    {
+      "id": 23,
+      "prompt": "Plan adding structured logging to all nine handlers in our notifications service: replace the printf-style log calls, add a request ID to each, and add a test per handler. Keep it cheap - Haiku for the mechanical edits.",
+      "expected_output": "Produces a plan where at least one Cluster of 3 or more Units names a Sonnet Cluster orchestrator subagent as its orchestrator, and whose embedded protocol dispatches it in the foreground as general-purpose with model sonnet, inlines each Unit's tier and escalation tier, the run policies, thresholds, and the return-status contract, never lets it ask the user, and has it return done, halted, usage-pause, or breaker; each Cluster names review criteria checked by a fresh read-only reviewer before the next Cluster starts.",
+      "files": [],
+      "expectations": [
+        "[deterministic] At least one Cluster with 3 or more Units names \"Sonnet Cluster orchestrator subagent\" as its orchestrator, and the embedded block's Cluster-orchestrator placeholder is filled with each Cluster ID and its orchestrator",
+        "[deterministic] The embedded protocol dispatches a Cluster orchestrator in the foreground as `general-purpose` with `model: sonnet`, with a prompt that inlines each Unit's tier alias and escalation tier and the return-status contract",
+        "[deterministic] The embedded protocol states that a Cluster orchestrator never uses `AskUserQuestion` and returns exactly one of `done`, `halted`, `usage-pause`, or `breaker`",
+        "[deterministic] Every Cluster names review criteria, and the embedded protocol runs a fresh read-only reviewer after each Cluster before the next one starts",
+        "Mechanical edit Units default to Haiku in the model-role map, with Sonnet as their escalation tier"
+      ]
     }
   ]
 }
