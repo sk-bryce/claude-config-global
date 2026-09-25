@@ -444,9 +444,9 @@ check_spec_coverage() {
     name="$(basename "$d")"
     [[ -f "$d/SKILL.md" ]] || continue
     skill_is_foreign "$name" && continue
-    # A loose substring match, not a heading match: write-plan and execute-plan are specified
-    # together under specs/behaviors.md's "Plan and Execute" heading rather than under their own
-    # names, so requiring "## <name>" would flag two correctly-specified skills.
+    # A loose substring match, not a heading match: planner is specified under
+    # specs/behaviors.md's "Plan and Execute" heading rather than under its own name, so
+    # requiring "## <name>" would flag a correctly-specified skill.
     if ! grep -qF -- "$name" specs/skills.md specs/behaviors.md 2>/dev/null; then
       fail spec-coverage "skills/$name/SKILL.md" 0 "not mentioned in specs/skills.md or specs/behaviors.md"
     fi

@@ -10,12 +10,12 @@ description: |
   sub-topics; the dedicated researcher subagent only for the narrow-tool-contract case) from
   reference/research-discipline.md. Does not apply to a quick single-fact lookup, reviewing or
   editing already-written content (see review-md), or planning non-documentation work (see
-  write-plan). Scope: personal (~/.claude/skills/).
+  planner). Scope: personal (~/.claude/skills/).
 ---
 
 <!--
 created: 2026-08-10
-updated: 2026-09-11
+updated: 2026-09-25
 spec: specs/skills.md (research section)
 generated-by: skill-author + skill-creator, dispatched from Claude Code main thread (Sonnet 5)
 model: claude-sonnet-5

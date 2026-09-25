@@ -62,7 +62,7 @@
     {
       "id": 6,
       "prompt": "Plan out how we're going to migrate the billing service off Stripe.",
-      "expected_output": "Does not trigger research. This is planning non-documentation work, which belongs to write-plan.",
+      "expected_output": "Does not trigger research. This is planning non-documentation work, which belongs to planner.",
       "files": [],
       "expectations": [
         "[deterministic] Does not load references/research-discipline.md",

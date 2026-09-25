@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# read-only-plan-guard.sh - PreToolUse hook logic backing write-plan's "do not write the plan
-# artifact during Plan Mode" rule (decisions/0002-plan-and-execute-framework.md, specs/behaviors.md
-# Plan and Execute section).
+# read-only-plan-guard.sh - PreToolUse hook logic backing planner's "do not write the plan
+# artifact during Plan Mode" rule (decisions/0010-single-planner-skill-with-self-running-plans.md,
+# specs/behaviors.md Plan and Execute section).
 #
 # Per decisions/0003-hooks-and-scripts-authoring-policy.md, this file (hook logic) may be
 # model-generated and is reviewed in full before commit; the registration that activates it (a
-# `hooks` entry in write-plan/SKILL.md's frontmatter) is a separate, human step - see that
+# `hooks` entry in planner/SKILL.md's frontmatter) is a separate, human step - see that
 # SKILL.md's body for the exact snippet to add. This script does nothing until a human wires it in.
 #
 # Why this exists even though native Plan Mode already blocks writes: Claude Code's own
@@ -39,7 +39,7 @@ if [[ "$mode" == "plan" ]]; then
         hookSpecificOutput: {
           hookEventName: "PreToolUse",
           permissionDecision: "deny",
-          permissionDecisionReason: "write-plan read-only guard: writes are blocked while permission_mode is \"plan\". Finish drafting, exit Plan Mode, then let write-plan write the plan artifact."
+          permissionDecisionReason: "planner read-only guard: writes are blocked while permission_mode is \"plan\". Finish drafting, exit Plan Mode, then let planner write the plan artifact."
         }
       }'
       exit 0

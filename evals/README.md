@@ -1,6 +1,6 @@
 ---
 created: 2026-07-27
-updated: 2026-09-23
+updated: 2026-09-25
 ---
 
 # Evals: Repo-Wide Run Procedure
@@ -35,7 +35,7 @@ regeneration needs this gate at all):
 1. **Trigger evals (deterministic), in `skills/<name>/evals/trigger-evals.json`.** Positive queries
    that must invoke the skill and negative queries that must not, derived from the trigger phrases
    and non-goals in the skill's spec section (`specs/skills.md`, or `specs/behaviors.md`'s Plan and
-   Execute section for `write-plan` and `execute-plan`). The assertion is binary (did it fire?) and
+   Execute section for `planner`). The assertion is binary (did it fire?) and
    needs no model judge.
 
    **These cannot live in `evals.json`, and putting them there produces a silent false pass.** The
@@ -362,8 +362,8 @@ positives and lower bounds on negatives.
 **No artifact in this table has a pinned baseline ref.** Run procedure step 5 says a passing run's
 artifact commit becomes the pinned ref, and step 2 tells a future regenerator to check out the ref
 recorded in the most recent run file - but no run file records a commit-shaped string, and
-`skills/execute-plan/SKILL.md` was edited by the 2026-08-31 "Complete the public-repo preparation
-pass" commit, after its 2026-08-03 run. The
+`skills/execute-plan/SKILL.md` (since deleted) was edited by the 2026-08-31 "Complete the
+public-repo preparation pass" commit, after its 2026-08-03 run. The
 paired comparison has never had a valid input. Fixing that is a prerequisite for the next
 regeneration of any of these three.
 
@@ -399,7 +399,12 @@ proposing a mechanism for the difference, not your memory of its conclusion.
 ## Baselines
 
 Run records exist for `write-plan` and `execute-plan` (both 2026-08-03) and `deep-review`
-(2026-09-05, two records: the gate run and the ablation/self-review follow-up). `execute-plan` shipped on a waiver; `write-plan` and `deep-review` are held. See the
+(2026-09-05, two records: the gate run and the ablation/self-review follow-up). `execute-plan`
+shipped on a waiver; `write-plan` and `deep-review` are held. On 2026-09-25 `write-plan` was
+renamed `planner` and `execute-plan` was deleted: its run procedure moved into the protocol every
+plan embeds, and its cases were ported into `skills/planner/evals/evals.json`
+(`decisions/0010-single-planner-skill-with-self-running-plans.md`). The rows and run records
+keep the old names, and `planner` inherits the `write-plan` HOLD. See the
 Results log footnotes. None of the three is a pinned baseline, because no run file records a ref to
 pin. No baseline runs
 exist yet for `skill-author`, `review-md`, `cursor-projection`, `health-check`, or `research`.
@@ -436,7 +441,7 @@ exists to force.
 - `skills/skill-author/evals/evals.json`, `skills/review-md/evals/evals.json`,
   `skills/cursor-projection/evals/evals.json`, `skills/health-check/evals/evals.json`,
   `skills/research/evals/evals.json`, `skills/deep-review/evals/evals.json`,
-  `skills/write-plan/evals/evals.json`, `skills/execute-plan/evals/evals.json` - the per-artifact
+  `skills/planner/evals/evals.json` - the per-artifact
   case sets this procedure runs.
 
 [^9]: Second 2026-09-07 entry, after the description repair and the deletion of the "strong review"

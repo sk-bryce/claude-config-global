@@ -17,13 +17,12 @@
 /skills/*
 !/skills/cursor-projection/
 !/skills/deep-review/
-!/skills/execute-plan/
 !/skills/go-dev/
 !/skills/health-check/
+!/skills/planner/
 !/skills/research/
 !/skills/review-md/
 !/skills/skill-author/
-!/skills/write-plan/
 !/agents/
 !/commands/
 !/hooks/

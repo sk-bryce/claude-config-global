@@ -1,6 +1,6 @@
 ---
 created: 2026-09-14
-updated: 2026-09-23
+updated: 2026-09-25
 ---
 
 # Repository layout
@@ -133,7 +133,7 @@ section.
     then ignored would reset the clock exactly as a clean one did. See README.md's Health check
     section, and `specs/behaviors.md`'s Config Health Check section.
   - `read-only-plan-guard.sh` - logic only, deliberately NOT registered; activating it needs that
-    same explicit direction and the snippet to do it lives in `skills/write-plan/SKILL.md`.
+    same explicit direction and the snippet to do it lives in `skills/planner/SKILL.md`.
   - `pre-commit-check.sh` - registered as `.git/hooks/pre-commit` (a git hook, not a Claude
     Code lifecycle hook - see `specs/behaviors.md`'s Pre-commit Drift Check section for why
     that's a different risk class). Runs four read-only checks: `settings.json` JSON validity,
@@ -240,12 +240,11 @@ section.
     scaffolding and evals. See `specs/skills.md`'s skill-author section.
   - `review-md` - proofread a single Markdown document, tracking settled/deferred findings in
     `review-tracking.md`. See `specs/skills.md`'s review-md section.
-  - `write-plan` - plan a multi-step piece of work into a self-contained, agent-executable
-    Markdown plan file (auto-invocable). Ships a filled-in example under `examples/`.
-  - `execute-plan` - execute an already-written plan by dispatching its units to subagents, with
-    the escalation ladder, a circuit breaker, and a Definition-of-Done gate (manual invocation
-    only). Both plan skills share the orchestration protocol in
-    `reference/subagent-orchestration.md`.
+  - `planner` - plan a multi-step piece of work into a self-contained Markdown plan file that
+    runs itself when any agent is told to execute it: the embedded protocol from
+    `reference/subagent-orchestration.md` carries the tier check, pre-flight, escalation ladder,
+    circuit breaker, `[x]` progress, and Definition-of-Done gate (auto-invocable). Ships a
+    filled-in example under `examples/`.
   - `health-check` - the judgment half of the periodic self-evaluation (Opus tier). Runs
     `scripts/health-check.sh`, triages its findings, then assesses cross-document coherence,
     staleness, and whether each artifact still earns its place. Read-only by default; proposes
@@ -299,7 +298,7 @@ section.
   - `executor` - Sonnet-tier mechanical implementer for one fully-specified plan step: the
     file(s), the exact change, and a verification command, all supplied in the dispatch. No scope
     widening; halts and reports rather than guessing when a step is ambiguous. Intended for the
-    prescriptive units `write-plan` produces and `execute-plan` dispatches.
+    prescriptive units `planner` produces and each plan's orchestration protocol dispatches.
   - `researcher` - Sonnet-tier research-and-write worker for one self-contained documentation
     topic, used only when its raw WebSearch/WebFetch output would flood the caller's own
     context. Works incrementally (skeleton first, then section by section) with progress

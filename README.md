@@ -138,9 +138,9 @@ What it sets up:
   `scrub-check.sh`, `session-setup-check.sh`, `setup.sh`, `statusline.sh`, `sync.sh`. See
   `reference/layout.md` for what each script does and its registration state.
 - `evals/` - the repo-wide eval run procedure, thresholds, and results log; see `evals/README.md`.
-- `skills/` - personal agent skills (`skill-author`, `review-md`, `write-plan`, `execute-plan`,
-  `health-check`, `research`, `cursor-projection`, `deep-review`, `go-dev`). `.gitignore` ignores
-  this directory by default and whitelists those nine by name, because org-synced skills
+- `skills/` - personal agent skills (`skill-author`, `review-md`, `planner`, `health-check`,
+  `research`, `cursor-projection`, `deep-review`, `go-dev`). `.gitignore` ignores
+  this directory by default and whitelists those eight by name, because org-synced skills
   (`skills/synced/`) and anything installed from a third party land here too and are not part of
   this config. Adding a skill means adding its `!/skills/<name>/` line; forgetting one is caught
   by `health-check.sh`'s `skill-tracking` check, which fails on any skill directory git tracks

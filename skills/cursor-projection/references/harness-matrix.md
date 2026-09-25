@@ -1,6 +1,6 @@
 ---
 created: 2026-07-24
-updated: 2026-08-31
+updated: 2026-09-25
 ---
 
 # Harness Compatibility Matrix
@@ -127,7 +127,7 @@ Location is dual-read, but frontmatter and body content are not fully portable.
   forks the whole skill (see `skills/review-md/SKILL.md`'s "Do the review with a subagent" note
   for the pattern). `agent:` names a read-only agent (for example `Explore`) for pure research
   isolation, or a read/write one (`general-purpose`) when the forked run itself needs to edit
-  files, as `review-md` and `execute-plan` (EXPERIMENTAL, see `specs/behaviors.md`) both do.
+  files, as `review-md` does.
   `context: fork` dispatches cold: the forked agent's starting prompt is synthesized from the
   invocation line, not the full prior conversation, so only pin it on skills whose work is
   fully specified by their trigger and arguments.
@@ -276,7 +276,7 @@ exceptions are servers that depend on a specific working directory or host-only 
 
 ## Plans
 
-Already harness-aware in `subagent-orchestration.md` and the `write-plan`/`execute-plan` skills.
+Already harness-aware in `subagent-orchestration.md` and the `planner` skill.
 Claude uses `plansDirectory` (default `${CLAUDE_CONFIG_DIR:-~/.claude}/plans`); Cursor uses
 `~/.cursor/plans`, which is not configurable. A plan made through a native plan mode and one made
 through the skill can therefore land in different places; the skill's own resolution is the

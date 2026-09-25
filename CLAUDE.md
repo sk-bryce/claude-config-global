@@ -1,6 +1,6 @@
 <!--
 created: 2026-07-22
-updated: 2026-09-21
+updated: 2026-09-25
 
 Section order is deliberate. Rules that apply on every turn come first; conditional sections
 (Repository Maintenance) and time-scoped ones (Compact Instructions, which only fires at
@@ -17,7 +17,7 @@ the placement as settled; move the section back up if it turns out to matter.
 
 Keep both headings verbatim regardless. `## Subagents & Models` is cited by name from the
 immutable decisions/0007 and decisions/0008, as well as specs/agents.md,
-reference/subagent-orchestration.md, and the write-plan and skill-author skills.
+reference/subagent-orchestration.md, and the planner and skill-author skills.
 -->
 # Global Agent Configuration
 
@@ -155,6 +155,10 @@ names one.
   than delegating; the `research` skill loads the full workflow automatically. Reserve the
   `researcher` subagent for work that must not carry this context's history and tools, which is a
   scope decision rather than a cost one, and never dispatch more than one at a time.
+- **Executing a plan by name.** Asked to execute a plan given by slug rather than path, look for
+  `<slug>.md` in the first of: a `plansDirectory` set in settings.json; `<cwd>/.claude/plans/`
+  (`<cwd>/plans/` when the working directory is itself a `.claude` directory); `./plans/`. Ask if
+  none or several match. The plan's embedded protocol then governs the run; no skill is needed.
 - Tier detail, the full effort mechanics, and the delegation-shape rules:
   `./reference/model-selection.md`.
 

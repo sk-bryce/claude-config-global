@@ -3,7 +3,7 @@ name: executor
 description: |
   Implements exactly one fully-specified change step: the file(s) to touch, the exact change or
   content, and a verification command, all supplied verbatim in the dispatch. Intended for the
-  prescriptive units `write-plan` produces and `execute-plan` dispatches - each unit in a plan file
+  prescriptive units `planner` produces and each plan's protocol dispatches - each unit in a plan file
   is meant to be self-contained enough to hand straight to this agent with no interpretation
   required. It is a mechanical implementer, not a designer: it does not decide what the change
   should be, only carries out a change that has already been decided.
@@ -21,7 +21,7 @@ tools: Read, Edit, Write, Bash, Grep, Glob
 
 <!--
 created: 2026-07-30
-updated: 2026-07-30
+updated: 2026-09-25
 spec: specs/agents.md (executor section)
 generated-by: Sonnet subagent dispatched from Claude Code main thread (Opus 5)
 model: claude-sonnet-5
