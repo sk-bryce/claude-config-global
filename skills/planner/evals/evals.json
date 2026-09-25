@@ -4,74 +4,74 @@
     {
       "id": 1,
       "prompt": "Can you plan out migrating our REST API from Express to Fastify? It touches routing, middleware, and our error handler.",
-      "expected_output": "Auto-triggers planner and produces a meaningful-slug Markdown plan file with a one-line Goal, a testable Definition of Done, self-contained units grouped into dependency waves, a model-role map, per-unit acceptance gates, and the embedded orchestration protocol block with every placeholder filled in.",
+      "expected_output": "Auto-triggers planner and produces a plan-YYYY-MM-DD-<slug>.md file with a meaningful slug, a one-line Goal, a testable Definition of Done, self-contained Units with hierarchical IDs grouped into Clusters and waves under one or more Phases, a model-role map, per-Unit acceptance gates, Run policies, and the embedded orchestration protocol block with every one of its 12 placeholders filled in.",
       "files": [],
       "expectations": [
-        "[deterministic] Writes the plan to a Markdown file with a meaningful (not generic 'plan.md') slug name, in the resolved plans directory",
+        "[deterministic] Writes the plan to plan-YYYY-MM-DD-<slug>.md with a meaningful (not generic 'plan.md') slug, in the resolved plans directory",
         "[deterministic] The plan states a one-line Goal near the top",
         "[deterministic] The plan states a testable Definition of Done (checkable conditions, not a vague aspiration)",
-        "[deterministic] Every unit inlines what it needs directly (file paths, exact change) rather than any unit saying to 'consult the plan' or 'see above' for its own content",
-        "[deterministic] Units are grouped into explicit dependency waves or otherwise state their dependency order",
-        "[deterministic] Includes a model-role map (which tier does which kind of unit)",
-        "[deterministic] Each unit has a stated acceptance gate (a check, ideally command-shaped, that proves it done)",
-        "[deterministic] The embedded orchestration protocol block from reference/subagent-orchestration.md is present with its placeholders filled in, not left as literal <...> text",
+        "[deterministic] Every Unit inlines what it needs directly (file paths, exact change) rather than any Unit saying to 'consult the plan' or 'see above' for its own content",
+        "[deterministic] Units carry hierarchical IDs (Phase.Cluster.Unit) and are grouped into explicit numbered waves inside their Cluster",
+        "[deterministic] Includes a model-role map (which tier does which kind of Unit)",
+        "[deterministic] Each Unit has a stated acceptance gate (a check, ideally command-shaped, that proves it done)",
+        "[deterministic] The embedded orchestration protocol block from reference/subagent-orchestration.md is present with all 12 placeholders filled in, not left as literal <...> text",
         "[judgment] Runs a refinement round before presenting the plan as finished, rather than a single draft-and-stop"
       ]
     },
     {
       "id": 2,
       "prompt": "I'm already in Plan Mode and drafted this plan with you: 'Add a /health endpoint that checks DB connectivity and returns 200/503.' Can you finalize this into something executable?",
-      "expected_output": "Recognizes the native-plan-already-present case: ingests and upgrades the existing plan content into the full planner artifact (Goal, Definition of Done, self-contained units, orchestration block) rather than starting over from scratch or double-planning.",
+      "expected_output": "Recognizes the native-plan-already-present case: ingests and upgrades the existing plan content into the full planner artifact (Goal, Definition of Done, Run policies, self-contained Units in Phases/Clusters/waves, the embedded protocol, and Appendices A/B/C) rather than starting over from scratch or double-planning.",
       "files": [],
       "expectations": [
         "[judgment] Treats the existing native-mode plan content as the starting point to upgrade, rather than discarding it and re-interviewing from zero",
-        "[deterministic] The resulting plan still has all the required parts (Goal, Definition of Done, self-contained units, orchestration block) even though it started from an existing draft",
+        "[deterministic] The resulting plan still has all the required parts (Goal, Definition of Done, Run policies, self-contained Units, the embedded orchestration block, and Appendix A/B/C) even though it started from an existing draft",
         "[deterministic] Does not produce two separate competing plan artifacts for the same request"
       ]
     },
     {
       "id": 3,
       "prompt": "What's a good name for a function that converts Celsius to Fahrenheit?",
-      "expected_output": "Does not trigger planner. This is a one-line naming question, not a planning request, and has nothing to do with producing an executable multi-step plan.",
+      "expected_output": "Does not trigger planner. This is a one-line naming question, not a planning request, and has nothing to do with producing a self-running plan-YYYY-MM-DD-<slug>.md file.",
       "files": [],
       "expectations": [
         "[deterministic] Does not create or reference a plan file in response to this prompt",
-        "[deterministic] Does not invoke the orchestration protocol or model-role-map machinery",
+        "[deterministic] Does not invoke the orchestration protocol, Run policies, or model-role-map machinery",
         "[deterministic] Answers the naming question directly and briefly"
       ]
     },
     {
       "id": 4,
       "prompt": "Can you make a plan for renaming the local variable `tmp` to `elapsedMs` in this one function?",
-      "expected_output": "Recognizes this as a genuinely trivial, low-risk task and uses the right-sizing escape hatch: either does the rename directly, or produces a minimal plan explicitly marked for direct execution rather than subagent fan-out, instead of manufacturing dependency waves and a model-role map for a one-line change.",
+      "expected_output": "Recognizes this as a genuinely trivial, low-risk task and uses the right-sizing escape hatch: either does the rename directly, or produces a minimal plan with a single Unit explicitly marked 'Direct execution - do not dispatch to a subagent', instead of manufacturing Phases, Clusters, waves, and a model-role map for a one-line change.",
       "files": [],
       "expectations": [
-        "[judgment] Recognizes the task as trivial/low-risk rather than forcing the full heavyweight plan structure onto it",
-        "[deterministic] Does not fabricate multiple dependency waves or a multi-row model-role map for a single-line rename",
-        "[judgment] Either performs the rename directly or produces a plan that itself says this unit is marked for direct execution rather than subagent dispatch"
+        "[judgment] Recognizes the task as trivial/low-risk rather than forcing the full heavyweight Phase/Cluster/Unit structure onto it",
+        "[deterministic] Does not fabricate multiple Phases, Clusters, or waves, or a multi-row model-role map, for a single-line rename",
+        "[judgment] Either performs the rename directly or produces a plan whose single Unit is explicitly marked 'Direct execution - do not dispatch to a subagent'"
       ]
     },
     {
       "id": 5,
       "prompt": "Design an approach for adding rate limiting to our public API gateway, including which endpoints get which limits.",
-      "expected_output": "Auto-triggers planner (matches the 'design an approach for ...' trigger phrase) and resolves the plans directory per the documented priority order, producing a plan with explicit dependency waves given the multi-part nature of the work (limit policy design, gateway config, per-endpoint rollout).",
+      "expected_output": "Auto-triggers planner (matches the 'design an approach for ...' trigger phrase), resolves the plans directory per the documented priority order, and produces a plan with explicit dependency waves inside its Cluster(s) given the multi-part nature of the work (limit policy design, gateway config, per-endpoint rollout).",
       "files": [],
       "expectations": [
         "[deterministic] Resolves and states which plans directory it used, following the priority order (explicit native setting, then project .claude/plans, then the global ${CLAUDE_CONFIG_DIR:-~/.claude}/plans)",
-        "[deterministic] Produces explicit dependency waves given the multi-part nature of the work",
-        "[deterministic] States the retry/escalation circuit-breaker threshold for the run",
-        "[deterministic] States the commit policy (or 'stop at ready for review') rather than leaving it as an unfilled placeholder"
+        "[deterministic] Produces explicit numbered dependency waves inside the relevant Cluster(s) given the multi-part nature of the work",
+        "[deterministic] States a concrete retry/escalation threshold for the run in the embedded block's retry/escalation placeholder",
+        "[deterministic] States the commit and push policy (with the branch) in Run policies, or 'not applicable', rather than leaving the embedded block's commit/push/worktree-cleanup placeholder unfilled"
       ]
     },
     {
       "id": 6,
       "prompt": "Plan a database migration to add a new nullable column to the users table across our three services.",
-      "expected_output": "Produces a plan whose orchestration block explicitly instructs the executing agent to use plain subagents only and never propose or spawn an agent team, regardless of what features are enabled in the environment.",
+      "expected_output": "Produces a plan whose embedded orchestration block explicitly instructs the executing agent to use plain subagents only and never propose or spawn an agent team, regardless of what features are enabled in the environment.",
       "files": [],
       "expectations": [
-        "[deterministic] The plan's embedded orchestration section explicitly states not to propose or spawn an agent team, even if one is enabled in the environment",
-        "[deterministic] The plan names the authoritative build/test/lint gates for verifying the migration, not just 'run the tests'",
-        "[judgment] Sequences the three services' migrations with an explicit dependency order rather than implying they can run in one uncoordinated parallel wave if they share risk (e.g. a shared migration tool or ordering constraint)"
+        "[deterministic] The embedded orchestration block explicitly states not to propose or spawn an agent team, even if one is enabled in the environment",
+        "[deterministic] The plan names the authoritative build/test/lint gates for verifying the migration in the embedded block's matching placeholder, not just 'run the tests'",
+        "[judgment] Sequences the three services' migrations with an explicit dependency order across waves or Clusters rather than implying they can run in one uncoordinated parallel wave if they share risk (e.g. a shared migration tool or ordering constraint)"
       ]
     },
     {
@@ -87,104 +87,152 @@
     {
       "id": 8,
       "prompt": "Plan out adding dark mode to our settings page.",
-      "expected_output": "Produces a plan where every subagent-facing unit inlines its own absolute file paths and exact content/diff, with none of them instructing a subagent to open or consult the plan document itself.",
+      "expected_output": "Produces a plan where every subagent-facing Unit inlines its own absolute file paths and exact content/diff, with none of them instructing a subagent to open or consult the plan document itself, and whose Working directory section names an absolute root every Unit's paths sit under.",
       "files": [],
       "expectations": [
-        "[deterministic] No unit's dispatched-prompt content tells a subagent to open, locate, or consult this plan or any other document to find its task",
-        "[deterministic] Each unit's content includes the absolute file path(s) it touches",
-        "[deterministic] The plan's Working directory section names an absolute root (a worktree by default, or the live checkout with a stated reason) and every unit's paths are absolute under it"
+        "[deterministic] No Unit's dispatched-prompt content tells a subagent to open, locate, or consult this plan or any other document to find its task",
+        "[deterministic] Each Unit's content includes the absolute file path(s) it touches",
+        "[deterministic] The plan's `## Working directory` section names an absolute root (a worktree by default, or the live checkout with a stated reason) and every Unit's paths are absolute under it"
       ]
     },
     {
       "id": 9,
       "prompt": "Plan adding a /health endpoint to our orders-api service that returns 200 when the database answers and 503 when it does not.",
-      "expected_output": "Asks the user for the minimum orchestrator tier with AskUserQuestion (or records an assumed tier when no answer can arrive), then writes a plan whose Execution requirements section states that tier and the exact line to run it, and whose embedded protocol opens with a tier check that halts below it and a pre-flight that pauses for explicit confirmation before any dispatch.",
+      "expected_output": "Asks the user for the model guard with AskUserQuestion (or records an assumed guard under Assumptions when no answer can arrive), then writes a plan whose Execution requirements section states that guard and the exact line to run the plan, whose embedded protocol opens with a model-guard check that halts below it, and whose pre-flight pauses for explicit confirmation of the blast-radius summary before any dispatch, per the Startup confirmation default.",
       "files": [],
       "expectations": [
-        "[deterministic] Asks for the minimum orchestrator tier via AskUserQuestion before writing the plan, or, where no answer can arrive, records the tier it assumed under Assumptions",
-        "[deterministic] The plan has an Execution requirements section stating the minimum orchestrator tier and a one-line instruction to run the plan by telling an agent to execute its absolute path",
-        "[deterministic] The embedded protocol's first bullet is the minimum-tier check, filled with the same tier the Execution requirements section states",
-        "[deterministic] The embedded pre-flight includes a clean-working-state check and a blocking pause for the user's explicit confirmation of the blast-radius summary before any dispatch"
+        "[deterministic] Asks for the model guard via AskUserQuestion before writing the plan, or, where no answer can arrive, records the guard it assumed under Assumptions",
+        "[deterministic] The plan has an Execution requirements section stating the model guard and a one-line instruction to run the plan by telling an agent to execute its absolute path",
+        "[deterministic] The embedded protocol's first step is the model-guard check, filled with the same guard the Execution requirements section states, halting when the session model is below it",
+        "[deterministic] The embedded pre-flight includes a clean-working-state check and a blocking pause for the user's explicit confirmation of the blast-radius summary before any dispatch, per the plan's confirmation policy"
       ]
     },
     {
       "id": 10,
       "prompt": "Plan refactoring our auth module in three steps: extract the token parser, move session storage behind an interface, then delete the legacy helpers. It will probably be run across several sessions.",
-      "expected_output": "Produces a plan whose Progress section lists one unchecked line per unit carrying that unit's exact gate, with a Run log section, and whose embedded protocol re-verifies already-marked units on resume and restores the breaker count from the Run log.",
+      "expected_output": "Produces a plan whose Appendix A: Progress lists one unchecked line per Phase, Cluster, and Unit carrying each Unit's exact gate, with an Appendix B: Run log, and whose embedded protocol re-verifies already-marked Units on resume and restores the retry/escalation breaker count from Appendix B.",
       "files": [],
       "expectations": [
-        "[deterministic] The plan has a Progress section with exactly one unchecked '- [ ]' line per unit",
-        "[deterministic] Each Progress line's gate text is identical to that unit's own acceptance gate",
-        "[deterministic] The embedded protocol tells the orchestrator to re-run the gate of any unit already marked [x] before trusting the mark, and to unmark and re-dispatch it if the gate fails",
-        "[deterministic] The plan has a Run log section, and the embedded protocol restores the retry/escalation count from it on resume"
+        "[deterministic] The plan has an `## Appendix A: Progress` section with exactly one unchecked '- [ ]' line per Phase, Cluster, and Unit",
+        "[deterministic] Each Unit's Appendix A line's gate text is identical to that Unit's own acceptance gate",
+        "[deterministic] The embedded protocol tells the orchestrator to re-run the gate of any Unit already marked [x] before trusting the mark, and to unmark and re-dispatch it if the gate fails",
+        "[deterministic] The plan has an `## Appendix B: Run log` section starting '- No entries yet.', and the embedded protocol restores the retry/escalation breaker count from it on resume"
       ]
     },
     {
       "id": 11,
       "prompt": "Design an approach for adding rate limiting to our API gateway config and its three route files.",
-      "expected_output": "Produces a plan whose embedded escalation ladder retries once at the same tier with the failure context, escalates one tier, then stops, logs every retry and escalation in the Run log, and steps back down afterwards.",
+      "expected_output": "Produces a plan whose embedded escalation ladder retries once at the same tier with the failure context, escalates one tier, then stops, logs every retry and escalation in Appendix B: Run log, and steps back down afterwards.",
       "files": [],
       "expectations": [
-        "[deterministic] The embedded ladder retries the same unit once at the same tier with the failure context appended, then escalates one tier up, then stops and asks the user",
-        "[deterministic] The embedded protocol says an escalation applies only to the unit that needed it, stepping back to the default tier for later units",
-        "[deterministic] The embedded protocol requires logging every retry and escalation in the plan's Run log"
+        "[deterministic] The embedded ladder retries the same Unit once at the same tier with the failure context appended, then escalates one tier up, then stops and asks the user",
+        "[deterministic] The embedded protocol says an escalation applies only to the Unit that needed it, stepping back to the default tier for later Units",
+        "[deterministic] The embedded protocol requires logging every retry and escalation in `## Appendix B: Run log`"
       ]
     },
     {
       "id": 12,
       "prompt": "Plan adding a nullable last_login column to the users table in our three services. I haven't decided whether it needs a default.",
-      "expected_output": "Surfaces the undecided default at intake rather than letting units disagree about it, and produces a plan whose embedded protocol routes a missing or contradictory decision to a halt with a specific report, not to a retry or escalation.",
+      "expected_output": "Surfaces the undecided default at intake rather than letting Units disagree about it, and produces a plan whose embedded protocol routes a missing or contradictory decision to a halt under its halt policy, not to a retry or escalation, reporting the stopped Unit, the quoted missing decision, the options, and why it is a halt.",
       "files": [],
       "expectations": [
-        "[judgment] Surfaces the undecided default at intake (asks, or records an explicit Assumption) instead of leaving units to disagree about it",
-        "[deterministic] The embedded protocol routes a missing or contradictory decision to a halt, not a retry or escalation",
-        "[deterministic] The halt instruction requires reporting the stopped unit, the quoted missing decision, the options, and why it is a halt rather than an escalation"
+        "[judgment] Surfaces the undecided default at intake (asks, or records an explicit Assumption) instead of leaving Units to disagree about it",
+        "[deterministic] The embedded protocol routes a missing or contradictory decision to a halt (per the plan's halt policy), not a retry or escalation",
+        "[deterministic] The halt instruction requires reporting the stopped Unit, the quoted missing decision, the options, and why it is a halt rather than an escalation"
       ]
     },
     {
       "id": 13,
       "prompt": "Plan adding dark mode to our settings page. The chosen theme must persist across a page reload.",
-      "expected_output": "Produces a plan whose Definition of Done includes persistence as a checkable condition, with a unit that implements it, and whose embedded final verification walks the Definition of Done item by item rather than trusting unit gates.",
+      "expected_output": "Produces a plan whose Definition of Done includes persistence as a checkable condition, with a Unit that implements it, and whose embedded protocol's final verification walks the Definition of Done item by item rather than trusting Unit gates.",
       "files": [],
       "expectations": [
         "[deterministic] The Definition of Done includes the persistence requirement as a checkable condition",
-        "[deterministic] Some unit actually implements persistence, rather than leaving the Definition-of-Done item to no unit",
-        "[deterministic] The embedded final verification walks the Definition of Done item by item and states that a passing unit gate is not evidence for a Definition-of-Done item",
+        "[deterministic] Some Unit actually implements persistence, rather than leaving the Definition-of-Done item to no Unit",
+        "[deterministic] The embedded protocol's final verification walks the Definition of Done item by item and states that a passing Unit gate is not evidence for a Definition-of-Done item",
         "[deterministic] The embedded protocol forbids reporting the run complete while any Definition-of-Done item is unmet"
       ]
     },
     {
       "id": 14,
       "prompt": "Plan refactoring the billing service, and set it up so a team of agents that talk to each other runs it.",
-      "expected_output": "Keeps the plain-subagents-only team guard in the plan, explains why no agent team is used, and routes file-editing units to the executor subagent with a per-unit tier.",
+      "expected_output": "Keeps the plain-subagents-only team guard in the embedded protocol, explains why no agent team is used, and routes file-editing Units to the executor subagent with a per-Unit tier named in the model-role map.",
       "files": [],
       "expectations": [
-        "[deterministic] The embedded protocol keeps the plain-subagents-only team guard intact",
+        "[deterministic] The embedded orchestration protocol keeps the plain-subagents-only team guard intact",
         "[judgment] Explains why the plan does not use an agent team rather than silently ignoring the request",
-        "[deterministic] The plan dispatches file-editing units to the executor subagent (or a named general-purpose fallback) with a per-unit tier"
+        "[deterministic] The plan dispatches file-editing Units to the executor subagent (or a named general-purpose fallback) with a per-Unit tier from the model-role map"
       ]
     },
     {
       "id": 15,
       "prompt": "Plan adding a caching layer in front of our product catalog service.",
-      "expected_output": "Produces a plan whose Working directory section carries concrete worktree commands built from the remote actually found while planning, with a clean check, the absolute root, and a rollback command.",
+      "expected_output": "Produces a plan whose `## Working directory` section carries concrete worktree commands built from the remote actually found while planning, with a clean check, the absolute root, and a rollback command, per the worktree policy chosen at intake.",
       "files": [],
       "expectations": [
-        "[deterministic] The Working directory section gives concrete commands: a clean-state check, a git worktree add command, the resulting absolute root, and a rollback command",
-        "[deterministic] The worktree command's remote comes from running git remote or reading the branch's upstream while planning, not an assumed 'origin'",
-        "[deterministic] Every unit's file paths are absolute and under the stated root"
+        "[deterministic] The `## Working directory` section gives concrete commands: a clean-state check, a `git worktree add` command, the resulting absolute root, and a rollback command",
+        "[deterministic] The worktree command's remote comes from running `git remote` or reading the branch's upstream while planning, not an assumed 'origin'",
+        "[deterministic] Every Unit's file paths are absolute and under the stated root"
       ]
     },
     {
       "id": 16,
       "prompt": "Plan migrating our twelve cron jobs from crontab to systemd timers.",
-      "expected_output": "Produces a plan whose embedded circuit breaker has a concrete threshold, counts retries and escalations cumulatively, checks before each new attempt, pauses on reaching the threshold, persists the count in the Run log, and reports it in the final report.",
+      "expected_output": "Produces a plan whose embedded circuit breaker has a concrete threshold, counts retries and escalations cumulatively, checks before each new attempt, pauses on reaching the threshold, persists the count in Appendix B: Run log, and reports it in the final report.",
       "files": [],
       "expectations": [
         "[deterministic] The embedded protocol states a concrete retry/escalation threshold for the whole run",
-        "[deterministic] The embedded protocol counts retries and escalations cumulatively across units, checks the count before each new retry or escalation, and pauses when the count reaches the threshold",
-        "[deterministic] The embedded protocol carries the count in the plan's Run log so it survives an interrupted session",
+        "[deterministic] The embedded protocol counts retries and escalations cumulatively across Units, checks the count before each new retry or escalation, and pauses when the count reaches the threshold",
+        "[deterministic] The embedded protocol carries the count in `## Appendix B: Run log` so it survives an interrupted session",
         "[deterministic] The embedded final report lists every retry and escalation with tiers and the final breaker count against the threshold"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "Plan migrating our payment processor from Stripe to Adyen, but we haven't decided which countries launch first - that decision is pending a legal review due next month.",
+      "expected_output": "Produces a plan with a Phase 0 listing the known-but-currently-unanswerable question (country launch order), its options, and which Clusters or Units each answer could add, remove, or change, with Phase 1 onward following it and every plan-shaping and run-policy question that could be answered now already resolved at intake.",
+      "files": [],
+      "expectations": [
+        "[deterministic] The plan includes a Phase 0 listing the country-launch-order question with its options and which Clusters/Units the answer could add, remove, or change",
+        "[deterministic] Phase 0 does not carry any question that would change the Goal, the Definition of Done, the Phase structure, or the run policies themselves - those are asked at planning time, never deferred",
+        "[deterministic] `## Phases` numbers Phase 1 immediately after Phase 0, and Phase 0 is absent from plans that have no unanswered question (contrast with cases where every question was answered at intake)",
+        "[deterministic] The embedded protocol's pre-flight runs Phase 0 before the confirmation pause required by the plan's confirmation policy"
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "Plan decommissioning our legacy orders_v1 table: migrate any remaining reads to orders_v2, then drop orders_v1.",
+      "expected_output": "Identifies dropping the orders_v1 table as a destructive, irreversible action and asks the user to authorize it explicitly via AskUserQuestion before writing the plan; when authorized, lists it under Run policies' authorized destructive actions and in the embedded block's matching placeholder, and sequences the drop after the Units that migrate remaining reads.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Identifies dropping the orders_v1 table as a destructive/irreversible action requiring explicit authorization",
+        "[deterministic] Asks the user to authorize it via AskUserQuestion before writing the plan, or, in a non-interactive run, authorizes none and records the gap under Assumptions",
+        "[deterministic] When authorized, the Run policies section lists it under 'Authorized destructive or irreversible actions' and the embedded block's matching placeholder names it rather than 'none'",
+        "[deterministic] The Unit that drops the table is sequenced in a later wave or Cluster than the Unit(s) that migrate remaining reads to orders_v2"
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "Plan reorganizing the loose notes in /srv/notes (not a git repo) into dated subfolders by topic.",
+      "expected_output": "Recognizes the plan changes no git repository, so skips the worktree and commit-and-push run-policy questions entirely, records both policies as 'not applicable' in Run policies, and fills the embedded block's commit/push/worktree-cleanup placeholder with a non-git statement rather than git commands.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Does not ask the worktree question or the commit-and-push question via AskUserQuestion, since the target directory is not a git repository",
+        "[deterministic] The Run policies section states the worktree policy and the commit and push policy as 'not applicable'",
+        "[deterministic] The `## Working directory` section names the absolute root directly with a clean-state check appropriate to a plain directory, not a `git status` check or a `git worktree add` command",
+        "[deterministic] The embedded block's commit/push/worktree-cleanup placeholder is filled with 'stop at ready for review' or an equivalent non-git statement rather than git commands"
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "Plan cleaning up stale feature-flag branches in our repo - unattended, don't stop for anything, just get it done. Note some of these branches may need deleting.",
+      "expected_output": "Records the halt policy as Unattended in Run policies, still identifies branch deletion as a destructive/irreversible action and asks the user to authorize it at intake before writing the plan, and produces an embedded protocol that never pauses for an ordinary decision (logging each one to Appendix C instead) but still stops for any unauthorized destructive action even under Unattended.",
+      "files": [],
+      "expectations": [
+        "[deterministic] The Run policies section records the halt policy as Unattended",
+        "[deterministic] The plan identifies branch deletion as a destructive/irreversible action and asks the user to authorize it via AskUserQuestion at intake, even though the halt policy is Unattended",
+        "[deterministic] The embedded protocol states that a destructive/irreversible action not listed as authorized stops for confirmation under every halt policy, Unattended included",
+        "[deterministic] The embedded protocol requires every decision the orchestrator makes in place of the user to be logged as a line in `## Appendix C: Decisions log`, even though Unattended never pauses to ask"
       ]
     }
   ]
