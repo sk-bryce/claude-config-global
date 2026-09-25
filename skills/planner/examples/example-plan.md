@@ -614,22 +614,22 @@ placeholders.
 ## Appendix A: Progress
 
 - [ ] Phase 1: Add the health endpoint
-- [ ] Cluster 1.1: Database check and health router - review: a fresh read-only Sonnet reviewer
-  confirms `checkDatabase` and `createHealthRouter` match the exact content given in Units 1.1.1
-  and 1.1.2 verbatim, that `npx tsc --noEmit` exits 0, and that neither file was modified outside
-  what its Unit specifies.
-  - [ ] Unit 1.1.1 (Wave 1): Add the database connectivity check - gate: `npx tsc --noEmit` exits
-    0, and `rg -q "export async function checkDatabase" src/health/checkDatabase.ts` exits 0.
-  - [ ] Unit 1.1.2 (Wave 2): Add the health router - gate: `npx tsc --noEmit` exits 0, and
-    `rg -q "createHealthRouter" src/health/router.ts` exits 0.
-- [ ] Cluster 1.2: Mount the router and add tests - review: a fresh read-only Sonnet reviewer
-  confirms `src/app.ts` mounts `createHealthRouter(pool)` before `requireAuth`, that
-  `test/health.test.ts` matches the exact content given in Unit 1.2.1 verbatim, and that
-  `npm test -- test/health.test.ts`, `npx tsc --noEmit`, and `npm run lint` all exit 0.
-  - [ ] Unit 1.2.1 (Wave 1): Mount the router before auth and add tests - gate:
-    `npm test -- test/health.test.ts` exits 0 with both cases passing, `npx tsc --noEmit` exits 0,
-    `npm run lint` exits 0, and `rg -n "app.use" src/app.ts` shows
-    `app.use(createHealthRouter(pool));` on a lower line number than `app.use(requireAuth);`.
+  - [ ] Cluster 1.1: Database check and health router - review: a fresh read-only Sonnet reviewer
+    confirms `checkDatabase` and `createHealthRouter` match the exact content given in Units 1.1.1
+    and 1.1.2 verbatim, that `npx tsc --noEmit` exits 0, and that neither file was modified outside
+    what its Unit specifies.
+    - [ ] Unit 1.1.1 (Wave 1): Add the database connectivity check - gate: `npx tsc --noEmit` exits
+      0, and `rg -q "export async function checkDatabase" src/health/checkDatabase.ts` exits 0.
+    - [ ] Unit 1.1.2 (Wave 2): Add the health router - gate: `npx tsc --noEmit` exits 0, and
+      `rg -q "createHealthRouter" src/health/router.ts` exits 0.
+  - [ ] Cluster 1.2: Mount the router and add tests - review: a fresh read-only Sonnet reviewer
+    confirms `src/app.ts` mounts `createHealthRouter(pool)` before `requireAuth`, that
+    `test/health.test.ts` matches the exact content given in Unit 1.2.1 verbatim, and that
+    `npm test -- test/health.test.ts`, `npx tsc --noEmit`, and `npm run lint` all exit 0.
+    - [ ] Unit 1.2.1 (Wave 1): Mount the router before auth and add tests - gate:
+      `npm test -- test/health.test.ts` exits 0 with both cases passing, `npx tsc --noEmit` exits 0,
+      `npm run lint` exits 0, and `rg -n "app.use" src/app.ts` shows
+      `app.use(createHealthRouter(pool));` on a lower line number than `app.use(requireAuth);`.
 - [ ] Holistic review
 - [ ] Final verification
 - [ ] Commit and push (per policy)
