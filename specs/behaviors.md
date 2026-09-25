@@ -14,47 +14,232 @@ buildable intent.
 
 ## Plan and Execute
 
-- Decisions recorded in `decisions/0010-single-planner-skill-with-self-running-plans.md`, which
-  supersedes `decisions/0002-plan-and-execute-framework.md`; shared protocol in
-  `reference/subagent-orchestration.md`.
+- Decisions recorded in `decisions/0010-single-planner-skill-with-self-running-plans.md` (one
+  skill whose plans run themselves), which supersedes `decisions/0002-plan-and-execute-framework.md`,
+  and `decisions/0011-planner-work-hierarchy-run-policies-and-usage-gating.md` (work hierarchy,
+  run policies, usage gating, in-plan tracking, decisions review, and archiving), which extends
+  0010. Shared protocol in `reference/subagent-orchestration.md`.
 - Purpose: produce a self-contained, agent-executable plan that also carries its own run
-  procedure, so telling any agent to execute the plan file dispatches its units to subagents with
-  per-unit verification. There is no separate execution skill.
-- Shape: one skill, `planner`, over one shared orchestration reference that every plan embeds.
+  procedure, so telling any agent to execute the plan file runs it: work is dispatched to
+  subagents with per-Unit verification, per-Cluster review, usage gating, and in-file tracking.
+  There is no separate execution skill.
+- Shape: one skill, `planner`, over one shared orchestration reference that every plan embeds,
+  plus one script the plans call.
   - `planner`: auto-invocable, reasoning-heavy (Opus tier, `effort: high` - a wrong plan is
     expensive to unwind, so reasoning depth is pinned rather than left to the session's baseline
-    effort). Triggers: "plan this", "design an approach for ...", "make a plan for ...".
-    Produces a meaningful-slug Markdown plan with a one-line Goal, a testable Definition of
-    Done, an Execution requirements section naming the minimum orchestrator tier, a Working
-    directory section with concrete worktree commands, self-contained units, dependency waves, a
-    model-role map, per-unit acceptance gates, a Progress checklist, a Run log, and an embedded
-    orchestration block; runs the refinement loop (2 to 5 rounds) and a plan-level
-    verification gate. Whenever two or more units share an interface (one implements it,
-    another tests or consumes it), the exact literal contract is authored once and pasted
-    verbatim into every unit that touches it - never independently re-described - and both the
-    refinement loop and the verification gate check this by diffing literal values across
-    such unit pairs, since self-containment alone does not catch two units each inventing a
-    plausible-looking but different literal (a health-endpoint plan whose implementation unit and
-    test unit assert different JSON response shapes - `db`/`unavailable` vs
-    `database`/`degraded` - is exactly the defect a static-only verification pass, with no runtime
-    available to execute the code, cannot catch). Composes with native Plan Mode
-    (ingest-and-upgrade rather than double-plan) and does not write the artifact during Plan
-    Mode. Ships a filled-in example plan under `skills/planner/examples/` to anchor the
-    planner and give the testing gate a concrete artifact.
-  - Minimum orchestrator tier: asked of the user with `AskUserQuestion` at intake (recorded as an
-    Assumption when no answer can arrive), written into the plan, and enforced by the protocol's
-    first step, which halts before touching anything when the session model is below it. This
-    replaces the `model:` pin a separate execution skill used to carry, which a plan file cannot.
-- Execution, carried by the embedded block rather than a skill: pre-flight (clean-state check,
-  worktree setup or reuse, tool and baseline checks, resume by re-running the gate of every `[x]`
-  unit, a blast-radius summary, and a blocking pause for the user's confirmation that becomes a halt
-  where no reply can arrive); dispatch of file-editing units to the `executor` subagent at each
-  unit's tier; the escalation ladder and halt-vs-escalate; a circuit breaker whose count persists in
-  the plan's Run log; `[x]` marks in the plan's Progress section only after a gate passes; a final
-  gate run plus an item-by-item Definition-of-Done check; and a fixed final-report format.
+    effort). Triggers: "plan this", "design an approach for ...", "make a plan for ...". Runs
+    intake (below), then writes a plan file with, in order: Goal; Definition of Done;
+    Assumptions (only when something was assumed); Run policies; Execution requirements;
+    Working directory; Model-role map; Phases (Phase 0 only when needed, then Phase 1 onward,
+    each holding Clusters, each holding Units grouped into waves); the embedded orchestration
+    protocol with every placeholder filled; Appendix A: Progress; Appendix B: Run log;
+    Appendix C: Decisions log. Runs the refinement loop (2 to 5 rounds) and a plan-level
+    verification gate. Whenever two or more Units share an interface (one implements it, another
+    tests or consumes it), the exact literal contract is authored once and pasted verbatim into
+    every Unit that touches it - never independently re-described - and both the refinement loop
+    and the verification gate check this by diffing literal values across such Unit pairs, since
+    self-containment alone does not catch two Units each inventing a plausible-looking but
+    different literal (a health-endpoint plan whose implementation Unit and test Unit assert
+    different JSON response shapes - `db`/`unavailable` vs `database`/`degraded` - is exactly the
+    defect a static-only verification pass, with no runtime available to execute the code, cannot
+    catch). Composes with native Plan Mode (ingest-and-upgrade rather than double-plan) and does
+    not write the artifact during Plan Mode. Ships a filled-in example plan under
+    `skills/planner/examples/` to anchor the planner and give the testing gate a concrete
+    artifact.
+  - `skills/planner/scripts/usage-check.sh`: reports account usage against the plan's warn and
+    stop thresholds (interface below). Model-generated logic, reviewed in full before commit, per
+    `decisions/0003-hooks-and-scripts-authoring-policy.md`. It copies `scripts/statusline.sh`'s
+    token resolution rather than sharing it; the two copies are kept in step by hand.
+- Plan filename: `plan-YYYY-MM-DD-<slug>.md`, where the date is the day the plan is written and the
+  kebab-case slug names the goal and the work it contains (`plan-2026-09-25-express-to-fastify-migration.md`).
+  Never a generic slug such as `plan` or `work`.
+- Work hierarchy:
+  - Phase: the largest unit of work, sized for the top-level orchestrator (an Opus or Sonnet
+    session). Numbered from 1. Phase 0 exists only when questions for the user are known at
+    planning time but could not be answered then; Phase 0 answers may add, remove, or change
+    Clusters and Units. Anything that would change the Goal, the Definition of Done, the Phase
+    structure, or the run policies is asked during planning instead, never deferred to Phase 0.
+  - Cluster: a logical grouping of Units inside a Phase, sized for a Sonnet orchestrator. Clusters
+    run one at a time, in order. Each Cluster names its orchestrator (the top orchestrator, or a
+    Sonnet Cluster orchestrator subagent - the default for a Cluster of 3 or more Units or with
+    verbose gates) and its review criteria.
+  - Unit: the smallest unit of work, clearly and concretely defined and self-contained, sized
+    for a Haiku (sometimes Sonnet) executor. The name "Unit" is kept rather than "Task" because
+    "Task" collides with the `Task` dispatch tool and `TaskCreate`/`TaskUpdate`.
+  - Waves: parallel groupings of Units inside one Cluster. Units in a wave touch disjoint files
+    and do not depend on each other. Waves are not a fourth level and never span Clusters.
+  - IDs are hierarchical: Phase 2, Cluster 2.1, Unit 2.1.3. Wave numbers are local to their
+    Cluster.
+- Intake (before writing the plan):
+  - Identify as many ambiguities and open questions as possible up front, and ask every question
+    that affects the shape of the plan with `AskUserQuestion`, at most four questions per call,
+    recommendation first and labelled "(Recommended)". Skip anything the user already answered.
+    Questions that remain and could only add or change Clusters or Units become Phase 0.
+  - Ask the five run-policy questions, with this option text; the default is the recommendation
+    unless the task gives a reason to recommend another:
+    1. "Which model guard should the plan include?" - Opus (default), Sonnet, Fable, None. The
+       plan's first protocol step checks the session model and refuses to run when it is below
+       the guard, in the order Haiku < Sonnet < Opus < Fable. None skips the check. This replaces
+       the minimum orchestrator tier.
+    2. "What should the halt policy of this plan be?" - Sparse: only stop on genuine ambiguity or
+       issues, otherwise the agent makes decisions to the best of its ability (default);
+       Unattended: do not stop, the agent makes all decisions to the best of its ability;
+       Attended: the agent can stop and ask the user for any decision or ambiguity.
+    3. "How much confirmation should the plan aim to have?" - Startup: confirm to proceed only
+       after pre-flight and Phase 0 (default); Attended: also confirm between each Phase;
+       Unattended: skip all confirmation, including pre-flight and Phase 0.
+    4. "Should changes be made using a worktree?" (only when the plan changes a git repository) -
+       Yes, use a worktree and clean it up after (default); Yes, use a worktree and leave it when
+       finished; No, work directly in the main checkout of the repo.
+    5. "What should the commit and push policy of this plan be?" (only when the plan changes a git
+       repository) - Commit and push to the indicated branch; Commit to the indicated branch
+       locally only, no push; Do not commit or push any changes. No fixed default; recommend from
+       the repository's own convention and name the branch.
+  - Identify every destructive or irreversible action the plan will need (deleting or overwriting
+    files the run did not create, history rewrites, force pushes, branch or tag deletion, dropping
+    or migrating data, publishing or pushing outward, sending messages, changing shared or
+    external systems) and ask the user to authorize each one explicitly. Actions implied by the
+    chosen commit and push policy and worktree policy, and the final archive move, count as
+    authorized.
+  - Flag conflicting answers before writing: "clean up the worktree" with "do not commit" would
+    delete the work, so ask which one to change.
+  - When no answer can arrive (a non-interactive run), use the defaults (for commit and push, the
+    recommendation from the repository's convention), authorize no destructive action, and record
+    each under Assumptions.
+- Run policies section: lists the model guard, halt policy, confirmation policy, worktree policy,
+  commit and push policy with the branch, usage thresholds (warn 85, stop 95 unless the plan says
+  otherwise; the planner may change them without asking), and the authorized destructive or
+  irreversible actions (or "none"). The same values fill the embedded block's placeholders.
+- Execution, carried by the embedded block rather than a skill:
+  - Model guard first: identify the session model, map it to its tier, and halt before touching
+    anything when it is below the guard or cannot be determined; continue on a lower tier only on
+    the user's explicit instruction, logged in Appendix B.
+  - Pre-flight: read the plan and all three appendices; set up the working directory per the
+    Run policies (clean-state check, worktree creation or reuse, or the main checkout); confirm
+    tools and run any baseline; resume check; first usage check; blast-radius summary; Phase 0;
+    then the confirmation pause per the confirmation policy.
+  - Resume is part of pre-flight, not a separate section: re-run the gate of every Unit marked
+    `[x]` and un-mark and log any that fail; trust a Cluster or Phase mark only when all of its
+    children re-verify; restore the circuit-breaker count from Appendix B; reuse the worktree; if
+    every line except "Decisions review" and "Archive" is marked, go straight to the decisions
+    review.
+  - Halt policy: Sparse stops only on genuine ambiguity, contradictions, or issues and otherwise
+    decides and logs in Appendix C; Unattended never stops for a decision and logs every one in
+    Appendix C (Phase 0 questions are answered by the orchestrator's best judgment); Attended
+    stops and asks on any decision or ambiguity. Where a stop is required but no reply can arrive,
+    halt and report rather than decide.
+  - Confirmation policy: Startup pauses once, after pre-flight and Phase 0; Attended also pauses
+    before each Phase after the first; Unattended never pauses for confirmation. Silence is never
+    approval.
+  - Destructive and irreversible actions override both policies: any such action not listed as
+    authorized stops for explicit confirmation under every policy, Unattended included, and halts
+    when no reply can arrive.
+  - Usage gating, using the script below. The top orchestrator checks before dispatching each
+    Cluster. After any check returns `warn` or `unknown`, the orchestrator running the Cluster
+    checks before each Unit, until a check returns `ok`. On `stop`, a Cluster orchestrator
+    finishes the gate of the Unit in flight, starts nothing new, and returns `usage-pause`; the
+    top orchestrator logs it, sleeps one hour with a background shell `sleep 3600` (never a
+    foreground sleep), re-checks, and repeats until the check returns `ok` or `warn` (below the
+    stop threshold), then resumes from Appendix A. On `stop-cap`, halt and report: a spend cap does
+    not reset within hours. `unknown` is never treated as headroom: log it and keep checking
+    before every Unit. Every check that changes the status, and every sleep, is logged in
+    Appendix B.
+  - Nested orchestration: the top-level session is the plan orchestrator. It alone talks to the
+    user (subagents never have `AskUserQuestion`), sleeps for usage, runs Cluster reviews,
+    commits, and archives. A Cluster whose orchestrator is a Sonnet Cluster orchestrator subagent
+    is dispatched in the foreground as `general-purpose` with `model: sonnet`, with a prompt that
+    inlines the Cluster's Units, gates, each Unit's tier and escalation tier, run policies with the
+    halt policy's definition, thresholds, the script path, the last usage status, the current
+    breaker count, the return-status contract, and the protocol rules it must follow, including
+    Recovery and re-planning. It dispatches its Units to `executor`
+    subagents (top session, then Cluster orchestrator, then executor uses two of the three default
+    subagent layers), and returns exactly one status: `done`, `halted` (with
+    the question or blocker verbatim), `usage-pause`, or `breaker`; one with no `Agent` tool
+    returns `halted` and the top orchestrator runs the Cluster itself. The top orchestrator resolves
+    a halt with the user and re-dispatches with the answer inlined. Because Clusters run one at a
+    time, one agent at a time edits the plan file: a running Cluster orchestrator marks its own
+    Units and appends to Appendices B and C; the top orchestrator edits otherwise.
+  - Delegation, models, and failures carry forward from 0010: file-editing Units go to the
+    `executor` subagent at each Unit's tier; the one-tier escalation ladder; halt-vs-escalate
+    routed through the halt policy; a circuit breaker whose count persists in Appendix B; `[x]`
+    marks only after a gate passes.
+  - Review and refine: after each Cluster, a fresh read-only reviewer subagent (Sonnet by default,
+    Opus where the Cluster's output needs judgment) checks the Cluster's changes against its review
+    criteria and its Units' intent; findings become corrective Units before the next Cluster
+    starts, and the Cluster is marked `[x]` only after the review passes. After the last Cluster,
+    a holistic review (Opus by default) checks the whole change set against the Goal and the
+    Definition of Done, then final verification runs the gates and walks the Definition of Done
+    item by item.
+  - Commit and worktree: per the Run policies, as a final step after final verification. A
+    worktree is removed only after its changes are committed, and never with `--force`; otherwise
+    it is left in place and the final report says so.
+  - Final report, in a fixed format, as in 0010, plus the run policies used, usage pauses, and the
+    number of Appendix C entries.
+  - Decisions review: after the final report, walk every Appendix C entry marked
+    `review: pending`, one at a time or in batches of up to four: give its context (what was
+    decided, where, why, and the alternatives), then ask with `AskUserQuestion` whether to keep
+    it or reopen it. Keep marks it `review: kept`. Reopen discusses it, records the outcome as
+    `review: reopened - <outcome>`, and runs any corrective Unit the outcome needs before
+    archiving, reusing the working directory or re-creating it on its existing branch, gating
+    the Unit, re-running final verification, and committing and cleaning up per policy. When no
+    reply can arrive, leave the plan in place with "Decisions review" unchecked and the final
+    report saying it awaits the decisions review; the next "execute this plan" runs only the
+    review and the archive.
+  - Archive: once the decisions review is done (or Appendix C has no entries), mark "Archive"
+    `[x]`, then move the plan file into the `archive/` subdirectory of its plans directory
+    (creating it if needed), keeping its filename. The plan authorizes this move itself.
+- Tracking inside the plan file:
+  - Appendix A: Progress: a nested checklist, one line per Phase, Cluster, and Unit, in order, each
+    starting `- [ ]`. Unit lines carry the Unit's gate verbatim
+    (`- [ ] Unit 1.2.1 (Wave 1): <title> - gate: <gate>`); Cluster lines carry the review
+    criteria. It ends with these lines: Holistic review, Final verification, Commit and push (per
+    policy), Decisions review, Archive. A line is marked `[x]` only after its gate or step passes.
+  - Appendix B: Run log: starts as `- No entries yet.`; one line per retry, escalation, halt,
+    stale mark found on resume, guard override, usage status change or sleep, and breaker count,
+    in the form `- 2026-09-25 Unit 1.2.1: retried at haiku with failure context; breaker 1/5`.
+  - Appendix C: Decisions log: starts as `- No entries yet.`; one line per decision the agent
+    made in place of the user, deviation from the plan, or anomaly, in the form
+    `- D3 | 2026-09-25 | Unit 1.2.1 | decision | <what> | why: <reason> | review: pending`, where
+    the fourth field is `decision`, `deviation`, or `anomaly`.
+  - Appendices A, B, and C, and Phase 0's own Clusters and Units when Phase 0 changes them (each
+    change logged in Appendix C), are the only parts of the plan the orchestrators edit.
+- Usage-check script interface:
+
+  ```text
+  Path:   ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/planner/scripts/usage-check.sh
+  Usage:  usage-check.sh [--warn N] [--stop N]
+          N is an integer from 1 to 100. Defaults: --warn 85, --stop 95. warn must be less than
+          stop. On an invalid argument: usage text on stderr, nothing on stdout, exit 2.
+  Source: GET https://api.anthropic.com/api/oauth/usage with the OAuth access token, resolved the
+          same way as scripts/statusline.sh's get_usage_token (copied into the script, not
+          shared). The token is never printed, logged, or written to disk.
+          Test hook: when PLANNER_USAGE_JSON names a file, read the response from that file and
+          skip the token lookup and the network call.
+  Values: each floored to an integer; null, absent, or non-numeric -> "-".
+          five_hour = .five_hour.utilization   (0-100)
+          seven_day = .seven_day.utilization   (0-100)
+          spend     = .spend.percent, only when .spend.limit is non-null (a real spend cap);
+                      otherwise "-"
+  Output: exactly one line on stdout:
+          status=<status> pct=<pct> source=<source> five_hour=<v> seven_day=<v> spend=<v>
+          pct    = the largest present value, or "-" when none is present
+          source = the value pct came from; ties prefer spend, then seven_day, then five_hour;
+                   "none" when no value is present
+  Status and exit code, first match wins:
+          unknown   30  no value present; or no token, a token error, a network failure, or a
+                        response that is not JSON (pct=- source=none, every value "-")
+          stop-cap  21  spend >= stop   (spend cap: does not reset within hours; halt, never sleep)
+          stop      20  pct >= stop     (5-hour or 7-day window: pause, re-check hourly)
+          warn      10  pct >= warn     (check before every Unit)
+          ok         0  otherwise       (check before every Cluster)
+  ```
+
 - Lookup by name: `CLAUDE.md`'s Subagents & Models section tells an agent asked to execute a plan
-  by slug where to look, in the same order as the plans-directory resolution below, because the
-  planner skill is not loaded when a plan runs.
+  by slug where to look, in the same order as the plans-directory resolution below, matching
+  `plan-*-<slug>.md` or the legacy `<slug>.md`, because the planner skill is not loaded when a plan
+  runs. Plans written before 0011 keep their embedded protocol and still run; they are not
+  migrated.
+
 - Plans directory resolution: `planner` writes plans, and the `CLAUDE.md` lookup rule finds them,
   in priority order - (1) an explicitly-set native setting (a `plansDirectory` the user actually
   set; the built-in `${CLAUDE_CONFIG_DIR:-~/.claude}/plans` default does not count as set); (2) else
@@ -64,10 +249,12 @@ buildable intent.
   `${CLAUDE_CONFIG_DIR:-~/.claude}/plans`. Keep project-local plans ephemeral by
   default (gitignore `.claude/plans/`, for example via `core.excludesfile`); to version and share
   them instead, do not ignore the directory. Native plan modes do not follow step 2, so this
-  resolution is authoritative for the framework.
+  resolution is authoritative for the framework. Completed plans move to that directory's
+  `archive/` subdirectory.
 - Tier delivery: a `model:` pin carries the planner's tier where the harness honors it, and the
   skill body also names the tier at subagent dispatch so the guidance survives a harness that drops
-  the pin. The orchestrator is not pinned; each plan states its minimum tier and halts below it.
+  the pin. The orchestrator is not pinned; each plan's model guard, chosen at intake, is enforced
+  by the protocol's first step.
 - Read-only enforcement: a skill-first `PreToolUse` hook, `scripts/read-only-plan-guard.sh`,
   denies `Write`/`Edit`/`MultiEdit` while `permission_mode` is `"plan"` - a backstop for the
   case where native Plan Mode enforcement
@@ -79,24 +266,36 @@ buildable intent.
   `Explore` subagent, or an equivalent) for its own research fan-out, so the constraint holds
   where a coarser permission model is all that is available.
 - Team guard: every plan's embedded block must instruct the orchestrator to use plain subagents
-  and not propose or spawn an agent team.
-- Executor default: code units take the shared reference's Haiku-first executor default, which
+  and not propose or spawn an agent team. A Sonnet Cluster orchestrator is a plain subagent that
+  dispatches plain subagents, not an agent team.
+- Executor default: code Units take the shared reference's Haiku-first executor default, which
   holds only as long as it is confirmed empirically; where mechanical edits escalate often, they
   default to the Sonnet tier instead (see `reference/subagent-orchestration.md`).
 - Acceptance criteria:
-  - `planner` auto-triggers on planning prompts and produces a plan meeting the
-    plan-level verification gate (self-contained units, explicit dependency order, testable
-    criteria, a named working directory with concrete worktree commands, named gates, a minimum
-    orchestrator tier, a Progress line per unit whose gate matches the unit's own, a Run log, no
-    unit that says "consult the plan", and no two units sharing an interface asserting different
-    literal contracts). The gate's orchestration-block check is performed by **diffing the
-    embedded block against its source in `reference/subagent-orchestration.md`**, not by reading
-    it: a hand-transcribed block can drop a whole bullet and still read as complete prose, which
-    every other gate item passes (observed 2026-09-08).
-  - A plan executed by an agent with no skill loaded halts below its minimum tier, pauses for
-    confirmation before the first dispatch, dispatches every substantive unit to a subagent,
-    re-verifies `[x]` marks on resume, and verifies the Definition of Done, not just a green build.
-  - Escalation ladder and halt-vs-escalate behave per the recorded decision.
+  - `planner` auto-triggers on planning prompts, asks the plan-shaping questions and the
+    applicable run-policy questions before writing, asks to authorize each destructive or
+    irreversible action it identifies, and produces a `plan-YYYY-MM-DD-<slug>.md` file meeting the
+    plan-level verification gate: self-contained Units with hierarchical IDs; Phases numbered from
+    1 (Phase 0 only for unanswered questions); every Cluster naming its orchestrator and review
+    criteria; explicit wave order inside each Cluster; testable criteria; a Run policies section
+    matching the filled placeholders; a named working directory with concrete commands; named
+    gates; Appendix A with one line per Phase, Cluster, and Unit plus the closing lines, each Unit
+    line's gate matching the Unit's own; Appendices B and C; no Unit that says "consult the plan";
+    and no two Units sharing an interface asserting different literal contracts. The gate's
+    orchestration-block check is performed by **diffing the embedded block against its source in
+    `reference/subagent-orchestration.md`**, not by reading it: a hand-transcribed block can drop a
+    whole bullet and still read as complete prose, which every other gate item passes (observed
+    2026-09-08).
+  - A plan executed by an agent with no skill loaded halts below its model guard, confirms per its
+    confirmation policy, stops per its halt policy, stops for any unauthorized destructive action
+    even when Unattended, dispatches every substantive Unit to a subagent, checks usage before
+    each Cluster (and each Unit at or above the warn threshold), pauses hourly at the stop
+    threshold and halts on a spend cap, re-verifies `[x]` marks on resume, reviews each Cluster
+    before the next, verifies the Definition of Done, walks Appendix C with the user, and archives
+    itself.
+  - `skills/planner/scripts/usage-check-tests/run.sh` passes, and `usage-check.sh` never prints or
+    writes the token.
+  - Escalation ladder and halt-vs-escalate behave per the recorded decisions.
   - No plan proposes or spawns an agent team.
   - Testing gate (including a "native plan already present" case) passes.
 
