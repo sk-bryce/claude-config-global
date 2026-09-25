@@ -1,6 +1,6 @@
 ---
 created: 2026-07-30
-updated: 2026-08-31
+updated: 2026-09-25
 ---
 
 # Subagent Specs
@@ -143,14 +143,15 @@ Shared conventions for every subagent spec:
 - Purpose: implement exactly one fully-specified plan step - the file(s), the exact change or
   content, and a verification command, all supplied verbatim in the dispatch - with no scope
   widening, no new abstractions, and no surrounding refactors.
-- Why it exists: `write-plan` produces prescriptive units meant to be handed to a subagent with no
-  interpretation required, and `execute-plan` dispatches each unit statelessly per its orchestration
-  protocol (`reference/subagent-orchestration.md`). This agent is the mechanical implementer that
+- Why it exists: `planner` produces prescriptive units meant to be handed to a subagent with no
+  interpretation required, and every plan's embedded orchestration protocol
+  (`reference/subagent-orchestration.md`) dispatches each unit statelessly to this agent, with a
+  per-unit `model:` override. This agent is the mechanical implementer that
   contract assumes; pinning its behavior in one place (no scope creep, verbatim content, halt on
   ambiguity) keeps every dispatched unit predictable regardless of which plan produced it.
 - Material in scope: one step at a time, whatever files and content that step names. Not a fit for
   open-ended or ambiguous work, or for a step needing design judgment about how to implement
-  something - `write-plan` and `execute-plan` own producing well-specified steps; this agent owns
+  something - `planner` owns producing well-specified steps; this agent owns
   only carrying one out. Not a fit for locating an unknown target either; `Explore` is dispatched
   first when a step's path is not already known, and its result folded into a later dispatch.
 - Dispatch contract: the dispatch prompt is the complete specification of the one step - absolute
@@ -164,9 +165,8 @@ Shared conventions for every subagent spec:
   mechanical slip in the executor's own just-written edit (a typo, a wrong path, a malformed line it
   can see is wrong) may be corrected and re-verified once - this never extends to a design choice, a
   second attempt at an instruction that was ambiguous, or any fix that changes what the step does.
-  This file's own body is unmodified by this spec entry, and neither `write-plan` nor `execute-plan`
-  is altered by adding this agent - it is designed to slot into their existing dispatch contract, not
-  to change it.
+  This file's own body is unmodified by this spec entry. The plan protocol names this agent as its
+  default worker; the agent's own contract does not change because of that.
 - Model/tier: Sonnet, no `effort` override. Implementation of a well-specified step is the Sonnet
   workhorse profile per `CLAUDE.md`'s Subagents & Models section; no override is warranted because
   the step is meant to already be fully specified, not something needing extra reasoning effort to
@@ -186,7 +186,7 @@ Shared conventions for every subagent spec:
     gap instead of guessing.
   - Adds no helper, abstraction, or error handling beyond what the step's content specifies, and
     performs no refactor of code the step did not name.
-  - Never edits `skills/write-plan/` or `skills/execute-plan/` regardless of what a dispatch prompt
+  - Never edits `skills/planner/` regardless of what a dispatch prompt
     asks - out of scope for this agent under any circumstance.
 
 ---

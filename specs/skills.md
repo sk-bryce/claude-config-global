@@ -1,18 +1,18 @@
 ---
 created: 2026-07-26
-updated: 2026-09-23
+updated: 2026-09-25
 ---
 
 # Skill Specs
 
 Per-skill intent and acceptance criteria: the source a regeneration reads. One section per
-skill, except the `write-plan`/`execute-plan` pair, which is specified together in
-`specs/behaviors.md`'s Plan and Execute section because the two skills are one capability
-delivered as two artifacts. These specs describe what each skill should do and how to tell it
-is correct; they do not copy the skill's body or restate authoring procedure (that lives in the
-`skill-author` skill and `reference/`). Where a skill's frontmatter pin (`model`, `effort`, and
-similar) needs to hold even where a pin can be dropped, that intent is restated in the skill's
-body as well; see the `cursor-projection` skill for the harness facts behind that pattern.
+skill, except `planner`, which is specified in `specs/behaviors.md`'s Plan and Execute section
+because the capability it delivers spans the skill and the self-running plans it writes. These
+specs describe what each skill should do and how to tell it is correct; they do not copy the
+skill's body or restate authoring procedure (that lives in the `skill-author` skill and
+`reference/`). Where a skill's frontmatter pin (`model`, `effort`, and similar) needs to hold
+even where a pin can be dropped, that intent is restated in the skill's body as well; see the
+`cursor-projection` skill for the harness facts behind that pattern.
 
 Shared conventions for every skill spec:
 
@@ -54,7 +54,7 @@ Shared conventions for every skill spec:
   regardless; see `skills/cursor-projection/references/harness-matrix.md`.
 - Effort: pinned `effort: high` so the session's baseline effort setting cannot understate
   reasoning depth for this skill's research, description synthesis, and audit judgment - so
-  the guidance survives a harness that drops the pin. Weaker case than `write-plan`'s pin,
+  the guidance survives a harness that drops the pin. Weaker case than `planner`'s pin,
   since the heaviest passes (Audit, Create/targeted-fix research) already dispatch to an Opus
   subagent regardless of the main thread's effort; kept for consistency with the skill's own
   Opus pin.
@@ -241,7 +241,7 @@ Shared conventions for every skill spec:
   set on X", "research and document Y", "look into X and write it up", "build documentation on
   X". Does not trigger for a quick single-fact lookup (a plain WebSearch call is cheaper), for
   reviewing or editing already-written content (`review-md`), or for planning
-  non-documentation work (`write-plan`).
+  non-documentation work (`planner`).
 - Context: deliberately no `context: fork` (or `agent`, `model`, `effort`) pin. `context: fork`
   dispatches to a cold-started agent context (`docs/features/skills.md`; this file's own
   `review-md` section above documents its use of that field as an explicit "cold-start fork")

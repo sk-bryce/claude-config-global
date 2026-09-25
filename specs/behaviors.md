@@ -1,6 +1,6 @@
 ---
 created: 2026-07-26
-updated: 2026-09-21
+updated: 2026-09-25
 ---
 
 # Behavior Specs
@@ -14,17 +14,20 @@ buildable intent.
 
 ## Plan and Execute
 
-- Decisions recorded in `decisions/0002-plan-and-execute-framework.md`; shared protocol in
+- Decisions recorded in `decisions/0010-single-planner-skill-with-self-running-plans.md`, which
+  supersedes `decisions/0002-plan-and-execute-framework.md`; shared protocol in
   `reference/subagent-orchestration.md`.
-- Purpose: produce a self-contained, agent-executable plan, then dispatch it to subagents
-  with per-unit verification.
-- Shape: two skills over one shared orchestration reference.
-  - `write-plan`: auto-invocable, reasoning-heavy (Opus tier, `effort: high` - a wrong plan is
+- Purpose: produce a self-contained, agent-executable plan that also carries its own run
+  procedure, so telling any agent to execute the plan file dispatches its units to subagents with
+  per-unit verification. There is no separate execution skill.
+- Shape: one skill, `planner`, over one shared orchestration reference that every plan embeds.
+  - `planner`: auto-invocable, reasoning-heavy (Opus tier, `effort: high` - a wrong plan is
     expensive to unwind, so reasoning depth is pinned rather than left to the session's baseline
     effort). Triggers: "plan this", "design an approach for ...", "make a plan for ...".
     Produces a meaningful-slug Markdown plan with a one-line Goal, a testable Definition of
-    Done, self-contained units, dependency waves, a model-role map, per-unit acceptance
-    gates, and an embedded
+    Done, an Execution requirements section naming the minimum orchestrator tier, a Working
+    directory section with concrete worktree commands, self-contained units, dependency waves, a
+    model-role map, per-unit acceptance gates, a Progress checklist, a Run log, and an embedded
     orchestration block; runs the refinement loop (2 to 5 rounds) and a plan-level
     verification gate. Whenever two or more units share an interface (one implements it,
     another tests or consumes it), the exact literal contract is authored once and pasted
@@ -36,65 +39,65 @@ buildable intent.
     `database`/`degraded` - is exactly the defect a static-only verification pass, with no runtime
     available to execute the code, cannot catch). Composes with native Plan Mode
     (ingest-and-upgrade rather than double-plan) and does not write the artifact during Plan
-    Mode. Ships a filled-in example plan under `skills/write-plan/examples/` to anchor the
+    Mode. Ships a filled-in example plan under `skills/planner/examples/` to anchor the
     planner and give the testing gate a concrete artifact.
-  - `execute-plan`: manual only (`disable-model-invocation: true`), orchestrator turn at
-    the Sonnet tier. Trigger: `/execute-plan <plan path or slug>`. Dispatches each unit to
-    a subagent (never implements the initial unit itself), applies the escalation ladder
-    and halt-vs-escalate, verifies per-unit and against the Definition of Done, runs in a
-    worktree by default, is resumable via per-unit marks, confirms blast radius before
-    spawning, and enforces a per-run circuit breaker.
-    - Context: pinned `context: fork` (`agent: general-purpose`, `background: false`).
-      Rationale for forking at all: the orchestrator's own job is high tool-call-volume
-      (dispatch, verify, repeat per unit) over a run that can span many units, which is
-      exactly the transcript-noise this skill most wants out of the calling conversation. It
-      runs in the foreground because pre-flight step 5 requires pausing for an interactive,
-      blocking user confirmation of the blast-radius summary before any unit is dispatched, and
-      a backgrounded fork has no tool that can pause execution and receive a real reply mid-run
-      - whatever it writes is delivered once, as a final report, when the subagent terminates.
-      `background: false` sacrifices the fire-and-forget benefit but keeps the
-      transcript-isolation benefit, preserves a real blocking confirmation, and is known-safe by
-      the same reasoning already applied to `review-md`.
-- Plans directory resolution: both skills resolve the plans directory identically, in priority
-  order - (1) an explicitly-set native setting (a `plansDirectory` the user actually set; the
-  built-in `${CLAUDE_CONFIG_DIR:-~/.claude}/plans` default does not count as set); (2) else a
-  project agent-config directory under the working directory (`<cwd>/.claude/plans/`, or
+  - Minimum orchestrator tier: asked of the user with `AskUserQuestion` at intake (recorded as an
+    Assumption when no answer can arrive), written into the plan, and enforced by the protocol's
+    first step, which halts before touching anything when the session model is below it. This
+    replaces the `model:` pin a separate execution skill used to carry, which a plan file cannot.
+- Execution, carried by the embedded block rather than a skill: pre-flight (clean-state check,
+  worktree setup or reuse, tool and baseline checks, resume by re-running the gate of every `[x]`
+  unit, a blast-radius summary, and a blocking pause for the user's confirmation that becomes a halt
+  where no reply can arrive); dispatch of file-editing units to the `executor` subagent at each
+  unit's tier; the escalation ladder and halt-vs-escalate; a circuit breaker whose count persists in
+  the plan's Run log; `[x]` marks in the plan's Progress section only after a gate passes; a final
+  gate run plus an item-by-item Definition-of-Done check; and a fixed final-report format.
+- Lookup by name: `CLAUDE.md`'s Subagents & Models section tells an agent asked to execute a plan
+  by slug where to look, in the same order as the plans-directory resolution below, because the
+  planner skill is not loaded when a plan runs.
+- Plans directory resolution: `planner` writes plans, and the `CLAUDE.md` lookup rule finds them,
+  in priority order - (1) an explicitly-set native setting (a `plansDirectory` the user actually
+  set; the built-in `${CLAUDE_CONFIG_DIR:-~/.claude}/plans` default does not count as set); (2) else
+  a project agent-config directory under the working directory (`<cwd>/.claude/plans/`, or
   `<cwd>/plans/` when the working directory is itself a `.claude` directory such as this repo,
   `~/.claude`, so no nested `.claude/` is created); (3) else the global
   `${CLAUDE_CONFIG_DIR:-~/.claude}/plans`. Keep project-local plans ephemeral by
   default (gitignore `.claude/plans/`, for example via `core.excludesfile`); to version and share
   them instead, do not ignore the directory. Native plan modes do not follow step 2, so this
   resolution is authoritative for the framework.
-- Tier delivery: a `model:` pin carries the tier where the harness honors it, and the skill body
-  also names the tier at subagent dispatch so the guidance survives a harness that drops the pin.
+- Tier delivery: a `model:` pin carries the planner's tier where the harness honors it, and the
+  skill body also names the tier at subagent dispatch so the guidance survives a harness that drops
+  the pin. The orchestrator is not pinned; each plan states its minimum tier and halts below it.
 - Read-only enforcement: a skill-first `PreToolUse` hook, `scripts/read-only-plan-guard.sh`,
   denies `Write`/`Edit`/`MultiEdit` while `permission_mode` is `"plan"` - a backstop for the
   case where native Plan Mode enforcement
   degrades to advisory after an `ExitPlanMode` rejection. Logic is model-generated and reviewed
-  before commit; a human registers it as a `hooks` entry in `write-plan/SKILL.md`'s frontmatter
+  before commit; a human registers it as a `hooks` entry in `planner/SKILL.md`'s frontmatter
   (per `decisions/0003-hooks-and-scripts-authoring-policy.md` - see that file's body for the exact
   snippet). Where no equivalent pre-write hook event exists, the skill relies on native Plan
   Mode's write-block for the human planning phase plus a read-only subagent (the built-in
   `Explore` subagent, or an equivalent) for its own research fan-out, so the constraint holds
   where a coarser permission model is all that is available.
-- Team guard: both skills must instruct the orchestrator to use plain subagents and not
-  propose or spawn an agent team.
+- Team guard: every plan's embedded block must instruct the orchestrator to use plain subagents
+  and not propose or spawn an agent team.
 - Executor default: code units take the shared reference's Haiku-first executor default, which
   holds only as long as it is confirmed empirically; where mechanical edits escalate often, they
   default to the Sonnet tier instead (see `reference/subagent-orchestration.md`).
 - Acceptance criteria:
-  - `write-plan` auto-triggers on planning prompts and produces a plan meeting the
+  - `planner` auto-triggers on planning prompts and produces a plan meeting the
     plan-level verification gate (self-contained units, explicit dependency order, testable
-    criteria, named working directory and gates, no unit that says "consult the plan", and no
-    two units sharing an interface asserting different literal contracts). The gate's
-    orchestration-block check is performed by **diffing the embedded block against its source in
-    `reference/subagent-orchestration.md`**, not by reading it: a hand-transcribed block can drop a
-    whole bullet and still read as complete prose, which every other gate item passes (observed
-    2026-09-08).
-  - `execute-plan` only runs manually, dispatches every substantive unit to a subagent,
-    and verifies the Definition of Done, not just a green build.
+    criteria, a named working directory with concrete worktree commands, named gates, a minimum
+    orchestrator tier, a Progress line per unit whose gate matches the unit's own, a Run log, no
+    unit that says "consult the plan", and no two units sharing an interface asserting different
+    literal contracts). The gate's orchestration-block check is performed by **diffing the
+    embedded block against its source in `reference/subagent-orchestration.md`**, not by reading
+    it: a hand-transcribed block can drop a whole bullet and still read as complete prose, which
+    every other gate item passes (observed 2026-09-08).
+  - A plan executed by an agent with no skill loaded halts below its minimum tier, pauses for
+    confirmation before the first dispatch, dispatches every substantive unit to a subagent,
+    re-verifies `[x]` marks on resume, and verifies the Definition of Done, not just a green build.
   - Escalation ladder and halt-vs-escalate behave per the recorded decision.
-  - Neither skill proposes or spawns an agent team.
+  - No plan proposes or spawns an agent team.
   - Testing gate (including a "native plan already present" case) passes.
 
 ---
