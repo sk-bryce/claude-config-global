@@ -18,9 +18,9 @@ If you're just browsing, the parts worth a look are:
   skill rather than a script, why research fan-out is restricted, and more).
 - **`docs/`** - standalone long-form guides that don't depend on the rest of the config, including
   a from-zero-to-advanced generative AI and LLM primer, a cost-effective agentic tool use guide, a
-  terminal UI design reference, a DIY cyberdeck build guide, a guide to running several Claude
-  accounts on one machine, and research write-ups on context rot, progressive disclosure, and the
-  third-party plugin/skill ecosystem. These are useful on their own even if you never touch the
+  terminal UI design reference, a DIY cyberdeck build guide, a researched prompt-writing guide, a
+  guide to running several Claude accounts on one machine, and research write-ups on context rot,
+  progressive disclosure, and the third-party plugin/skill ecosystem. These are useful on their own even if you never touch the
   config itself.
 - **`reference/spec-driven-architecture.md`** - the operating model this whole repo follows:
   intent lives in `specs/`, generated or hand-authored artifacts are checked against it, and
@@ -139,8 +139,8 @@ What it sets up:
   `reference/layout.md` for what each script does and its registration state.
 - `evals/` - the repo-wide eval run procedure, thresholds, and results log; see `evals/README.md`.
 - `skills/` - personal agent skills (`skill-author`, `review-md`, `planner`, `health-check`,
-  `research`, `cursor-projection`, `deep-review`, `go-dev`). `.gitignore` ignores
-  this directory by default and whitelists those eight by name, because org-synced skills
+  `research`, `cursor-projection`, `deep-review`, `go-dev`, `prompt-author`). `.gitignore` ignores
+  this directory by default and whitelists those nine by name, because org-synced skills
   (`skills/synced/`) and anything installed from a third party land here too and are not part of
   this config. Adding a skill means adding its `!/skills/<name>/` line; forgetting one is caught
   by `health-check.sh`'s `skill-tracking` check, which fails on any skill directory git tracks
@@ -219,8 +219,8 @@ since a slow full-tree pass and its findings should not land in an unrelated ses
 Two licenses, split at one directory boundary:
 
 - **`docs/` - Creative Commons Attribution 4.0 International (CC BY 4.0).** See `docs/LICENSE`.
-  This is the prose: the `generative-ai/`, `efficient-agentic-use/`, `tui-ux/`, and `cyberdecks/`
-  guides plus the standalone research pieces. Reuse and adapt it freely, including commercially;
+  This is the prose: the `generative-ai/`, `efficient-agentic-use/`, `tui-ux/`, `cyberdecks/`, and
+  `prompt-engineering/` guides plus the standalone research pieces. Reuse and adapt it freely, including commercially;
   credit it and indicate what you changed. Several of these documents quote or summarize
   third-party material that remains under its own terms - each one's References section lists
   its sources.

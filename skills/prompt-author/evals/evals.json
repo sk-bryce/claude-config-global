@@ -1,0 +1,202 @@
+{
+  "skill_name": "prompt-author",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write me a prompt I can paste into ChatGPT to turn raw meeting notes into a list of action items. Each item needs an owner and a due date if one was mentioned; output as a Markdown table. The notes will be pasted in after the prompt.",
+      "expected_output": "One copyable prompt that asks for a Markdown table of action items, owners, and due dates, says what to do when an owner or date is missing, and uses no all-caps emphasis or Claude-only features.",
+      "files": [],
+      "expectations": [
+        "[deterministic] A1: The reply contains exactly one fenced code block, and it holds the prompt",
+        "[deterministic] A3: The prompt specifies the output as a Markdown table with columns for the action item, the owner, and the due date",
+        "[deterministic] A4: The prompt contains none of the words CRITICAL, MUST, NEVER, ALWAYS, or IMPORTANT written in all capitals",
+        "[judgment] A3: The prompt says what to do when an item has no owner or no due date",
+        "[judgment] A6: Nothing in the prompt depends on a Claude-only feature such as a prefilled response, an extended-thinking setting, or naming Claude"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "This is the system prompt I use with Claude Opus 5.5 for code review. The reviews come back bloated and slow. Improve it.\n\nYou are an EXPERT senior engineer. CRITICAL: You MUST review EVERY line. NEVER miss a bug. ALWAYS double-check your work before answering. Don't be vague. Don't use bullet points. Review the code below.",
+      "expected_output": "A revised prompt with the all-caps emphasis and the double-check instruction removed and the prohibitions turned into positive instructions, followed by a short list of changes tied to the bloated, slow reviews.",
+      "files": [],
+      "expectations": [
+        "[deterministic] A1: The reply contains exactly one fenced code block, and it holds the revised prompt",
+        "[deterministic] A4: The revised prompt contains none of CRITICAL, MUST, NEVER, ALWAYS, or EXPERT written in all capitals",
+        "[deterministic] A5: The revised prompt contains no instruction to double-check, re-check, or re-verify the work",
+        "[deterministic] A8: After the code block, the reply lists what changed, with a reason for each change",
+        "[judgment] A4: The revised prompt turns at least one of the \"Don't ...\" instructions into a positive statement of what to do instead",
+        "[judgment] A8: The explanation ties at least one change to the reported symptom of bloated or slow reviews"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Write a system prompt for a Claude Project that answers new hires' questions using our onboarding handbook, which I'll upload to the project as a document. It should say when the handbook doesn't cover something instead of guessing, and point people to #it-help on Slack for access requests.",
+      "expected_output": "One copyable system prompt that grounds answers in the handbook, says what to do when the handbook is silent and why, and routes access requests to #it-help.",
+      "files": [],
+      "expectations": [
+        "[deterministic] A1: The reply contains exactly one fenced code block, and it holds the system prompt",
+        "[deterministic] A3: The prompt tells the model what to say or do when the handbook does not cover a question",
+        "[deterministic] A3: The prompt names #it-help as the place to send access requests",
+        "[judgment] A3: The prompt gives a reason for not guessing, rather than only stating the rule",
+        "[judgment] A4: The prompt uses no all-caps emphasis and phrases its rules as what to do"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Write a prompt for Claude Sonnet 5 that compares two vendor contracts I'll paste in and lists every clause where they differ on liability, termination, or data retention. Each contract is about 30 pages.",
+      "expected_output": "One copyable prompt with separate XML-tagged slots for the two contracts placed before the instructions, placeholders in {{snake_case_name}} form listed after the block, and a defined output shape for the comparison.",
+      "files": [],
+      "expectations": [
+        "[deterministic] A1: The reply contains exactly one fenced code block, and it holds the prompt",
+        "[deterministic] A5: The prompt gives each contract its own XML-tagged slot",
+        "[deterministic] A5: Both contract slots appear before the instructions in the prompt",
+        "[deterministic] A2: The contract placeholders use the {{snake_case_name}} form and each is listed with its meaning after the code block",
+        "[judgment] A3: The prompt defines the output shape for the comparison, such as a table or a per-clause list naming both contracts' positions"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Write me a prompt to help with my resume.",
+      "expected_output": "Either at most three targeted questions about missing information (target tool, the role or purpose, what help means) and no prompt yet, or one copyable prompt followed by a list of the assumptions made.",
+      "files": [],
+      "expectations": [
+        "[deterministic] A7: The reply either asks no more than three questions and gives no prompt yet, or gives the prompt in one fenced code block followed by a list of the assumptions it made",
+        "[judgment] A7: If the reply asks questions, they target information the prompt depends on, such as the target tool, the role the resume is for, or what kind of help is wanted, rather than generic preferences; a reply that asks no questions meets this"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Give me a reusable prompt template for writing release notes from a list of merged PR titles. I'll use it every sprint with different product names and PR lists.",
+      "expected_output": "One copyable template whose variable parts all use {{snake_case_name}} placeholders, including the product name and the PR list, each explained after the block, with the audience and output format stated.",
+      "files": [],
+      "expectations": [
+        "[deterministic] A1: The reply contains exactly one fenced code block, and it holds the template",
+        "[deterministic] A2: Every variable part uses the {{snake_case_name}} form, including at least a product name placeholder and a PR list placeholder",
+        "[deterministic] A2: After the code block, each placeholder is listed with a one-line meaning",
+        "[judgment] A3: The template states the audience for the release notes and their output format"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Write a prompt I can give Gemini to extract the vendor name, invoice number, invoice date, and total amount from an invoice's text and return JSON.",
+      "expected_output": "One copyable prompt naming the four JSON keys, saying what value to use when a field is missing, and carrying no Claude-only features.",
+      "files": [],
+      "expectations": [
+        "[deterministic] A1: The reply contains exactly one fenced code block, and it holds the prompt",
+        "[deterministic] A3: The prompt names a JSON key for each of the four fields",
+        "[deterministic] A3: The prompt says what value to use when a field is not found in the invoice",
+        "[judgment] A6: The prompt carries no Claude-only instruction, such as a prefilled response, an extended-thinking setting, or naming Claude"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Write a prompt for a fresh Claude Code session in /tmp/pa-eval-8 (it has a .claude/ directory) that will run unattended for several hours to migrate the whole codebase's HTTP client from requests to httpx across many files.",
+      "expected_output": "The prompt is written to /tmp/pa-eval-8/.claude/prompts/ and, without being asked, carries the content defaults: the working directory near the top, the goal first, decide-instead-of-asking with a decision log kept in the prompt file, a usage check with pause and resume, plain wording, and a length that fits a multi-hour migration.",
+      "files": [],
+      "expectations": [
+        "[deterministic] D2: The prompt (in the reply, or the file's copy in outputs/prompts/) tells the agent not to stop and ask the user",
+        "[judgment] D2: The prompt (in the reply, or the file's copy in outputs/prompts/) tells the agent to decide on evidence, favor correct over easy, record each decision, and continue past blockers",
+        "[deterministic] D3: The prompt (in the reply, or the file's copy in outputs/prompts/) states /tmp/pa-eval-8 as the target working directory explicitly near the top",
+        "[deterministic] D4: The prompt (in the reply, or the file's copy in outputs/prompts/) includes a dedicated section, inside the prompt file itself, where the agent logs each deferred decision and the evidence behind it",
+        "[deterministic] D7: The prompt (in the reply, or the file's copy in outputs/prompts/) instructs the agent to check usage periodically and pause then resume rather than fail",
+        "[deterministic] D11: The prompt (in the reply, or the file's copy in outputs/prompts/) states the goal of migrating the HTTP client from requests to httpx before any background or setup detail",
+        "[judgment] D12: The prompt's instructions are written in short sentences and common words rather than precise-sounding jargon",
+        "[judgment] D14: The prompt's length and level of detail matches the scope of a multi-hour, many-file migration task"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "I'm working in /tmp/pa-eval-9, which has a .claude/ directory. Write me a long, detailed prompt covering schema design, resolver implementation, and deprecation of the old endpoints for migrating the project's REST API to GraphQL. It'll take well over 40 lines.",
+      "expected_output": "The prompt is written to a file rather than pasted inline, and the reply states the file's path instead of repeating the prompt's contents.",
+      "files": [],
+      "expectations": [
+        "[deterministic] D6: After writing the prompt to a file, the reply states the file's path and does not paste the prompt's contents back inline"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Write me a prompt for a fresh Claude Code session in /tmp/pa-eval-10 (it has a .claude/ directory) that migrates all 8 microservices to a shared retry-with-backoff library, working across many files over a long session. The repo's main branch is shared with the rest of the team.",
+      "expected_output": "The prompt is written to /tmp/pa-eval-10/.claude/prompts/; without being asked, it sets a git-safety boundary, reads as consistent with a resume path, and archives itself only on a genuine finish.",
+      "files": [],
+      "expectations": [
+        "[deterministic] D1: The prompt (in the reply, or the file's copy in outputs/prompts/) states an explicit git-safety boundary limiting the agent to a worktree or branch, forbidding force-push or history rewrite, and forbidding merge or push to main unless asked",
+        "[judgment] D5: The prompt (in the reply, or the file's copy in outputs/prompts/) reads as internally consistent between its steps, accurate about the project's stated state, and gives a way to resume if the run is interrupted",
+        "[deterministic] D8: The prompt file's archive instruction (in the file's copy in outputs/prompts/) explicitly excludes an early stop, a blocker, or an open question",
+        "[judgment] D8: The archive step in the prompt file is conditioned on the migration being genuinely finished"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Write a prompt for a long, unattended Claude Code run in /tmp/pa-eval-11 (it has a .claude/ directory) that cleans up all flaky tests across the suite.",
+      "expected_output": "The prompt is written to /tmp/pa-eval-11/.claude/prompts/; without being asked, it keeps required fixes apart from optional improvements, uses only ASCII punctuation, and states instructions without hedging.",
+      "files": [],
+      "expectations": [
+        "[deterministic] D9: The prompt (in the reply, or the file's copy in outputs/prompts/) keeps the required fixes in a list separate from any speculative improvements the agent notices along the way",
+        "[deterministic] D10: The delivered prompt text (in the reply, or the file's copy in outputs/prompts/) contains no em dash, en dash, curly quote, or ellipsis character",
+        "[judgment] D13: The prompt's instructions (in the reply, or the file's copy in outputs/prompts/) state each requirement directly, with no hedging phrases such as \"try to\" or \"consider\""
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "I'm working in /tmp/pa-a11-project, which has a .claude/ directory but no plans directory setting. Write me a prompt I'll run later in a fresh Claude Code session there, to migrate the project's 12 Go services from logrus to zap: the order to migrate them in, the per-service steps, how to confirm each service still builds and its tests pass, and how to roll back a service that fails. Don't run the migration.",
+      "expected_output": "The prompt is written to a file /tmp/pa-a11-project/.claude/prompts/prompt-<date>-<slug>.md rather than pasted inline, the reply gives that path, and the prompt ends with an instruction to move its own file into /tmp/pa-a11-project/.claude/prompts/archive/ once executed.",
+      "files": [],
+      "expectations": [
+        "[deterministic] A11: A file named prompt-YYYY-MM-DD-<slug>.md was written under /tmp/pa-a11-project/.claude/prompts/ (the run's copy is in outputs/prompts/) and holds the prompt",
+        "[deterministic] A11: The reply gives the path of that file",
+        "[deterministic] A11: The prompt file ends with an instruction to move the file into the archive/ subdirectory of that prompts/ directory once the prompt has been executed",
+        "[deterministic] A11: The reply does not also paste the whole prompt inline in a fenced code block",
+        "[judgment] A11: The prompt file is longer than about 40 lines, so writing it to a file rather than inline was warranted"
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "I'm about to dispatch a subagent to add input validation to the three handlers in /srv/app/handlers/ (users.go, orders.go, billing.go). It has no access to our chat. Write the brief.",
+      "expected_output": "A self-contained brief naming the three files by absolute path, the scope boundary, checkable acceptance criteria with a verify step, and the report shape, with no reference to the conversation.",
+      "files": [],
+      "expectations": [
+        "[deterministic] B1: The brief names all three files by absolute path",
+        "[deterministic] B1: The brief contains checkable acceptance criteria and a verification command or step",
+        "[deterministic] B1: The brief states what the agent must report back and in what shape",
+        "[deterministic] B2: The brief contains no reference to the conversation, to \"above\", to \"as discussed\", or to another document for its task",
+        "[judgment] B1: The brief states what the agent must leave alone, such as files outside the three handlers"
+      ]
+    },
+    {
+      "id": 21,
+      "prompt": "Draft a handoff prompt so a fresh Claude Code session can continue the billing module refactor. We finished extracting the tax calculator into internal/tax. The spec is at docs/specs/billing-refactor.md. What's left is moving invoice rendering out of the billing package.",
+      "expected_output": "A handoff prompt stating what is done and what remains, pointing to the spec by path instead of restating it, and naming skills the next session should load.",
+      "files": [],
+      "expectations": [
+        "[deterministic] B4: The prompt references docs/specs/billing-refactor.md by path",
+        "[deterministic] B4: The prompt states that the tax calculator extraction into internal/tax is done and that moving invoice rendering remains",
+        "[deterministic] B4: The prompt names at least one skill the next session should load, or states that none applies",
+        "[judgment] B2: An agent with no access to this conversation could act on the prompt as written"
+      ]
+    },
+    {
+      "id": 22,
+      "prompt": "Write the system prompt body for a new read-only agent definition, agents/log-analyzer.md, that reads application logs and reports the top error patterns with counts.",
+      "expected_output": "A system prompt stating the read-only role, the scope, the steps it follows, and the report format, with no all-caps emphasis.",
+      "files": [],
+      "expectations": [
+        "[deterministic] B5: The prompt states the agent's role and that it does not edit or write files",
+        "[deterministic] B5: The prompt specifies the output format of the report, including counts per error pattern",
+        "[deterministic] B5: The prompt uses none of CRITICAL, MUST, NEVER, ALWAYS, or IMPORTANT in all capitals as emphasis; a literal value the task names, such as a CRITICAL log level, is not emphasis",
+        "[judgment] B5: The prompt describes the process the agent follows, step by step",
+        "[judgment] B6: The reply offers a test run of the agent on a subagent and does not run one"
+      ]
+    },
+    {
+      "id": 23,
+      "prompt": "Write the prompt for a subagent that renames the variable cfg to config in /srv/app/main.go.",
+      "expected_output": "A short paragraph naming the file by absolute path and the exact rename, sized to a one-step task.",
+      "files": [],
+      "expectations": [
+        "[deterministic] B3: The prompt handed to the subagent is at most 150 words",
+        "[deterministic] B1: The prompt names /srv/app/main.go and the rename from cfg to config",
+        "[judgment] B3: The prompt is not wrapped in a full multi-section brief template"
+      ]
+    }
+  ]
+}

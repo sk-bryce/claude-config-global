@@ -1,6 +1,6 @@
 ---
 created: 2026-07-26
-updated: 2026-09-25
+updated: 2026-09-26
 ---
 
 # Skill Specs
@@ -884,3 +884,126 @@ Shared conventions for every skill spec:
   - Error-wrap messages the model writes are gerund-form (`fetching manifest: %w`), and new
     exported symbols it writes carry doc comments.
   - `scripts/md-checks.sh` reports no typography or placeholder findings across the skill.
+
+## prompt-author
+
+- Purpose: write, rewrite, and check prompts the user will use somewhere else, or that an agent
+  will receive (briefs, handoffs, agent definitions), so each delivered prompt carries this user's
+  defaults and has passed a check before handoff, instead of the user restating the same
+  preferences every time.
+- Trigger conditions: the user asks for a prompt to be written, drafted, rewritten, improved, or
+  critiqued for use in another chat, another vendor's model, a Claude Project or custom GPT system
+  prompt they will paste in by hand, or a reusable template (user-facing); or asks for a prompt
+  an agent will receive: a subagent dispatch brief, a handoff or continuation prompt for a fresh
+  session, the body of an `agents/*.md` definition, or a prompt for a background or looped agent
+  (agent-facing). "Prompt" here never means a shell prompt, a permission prompt, or the
+  `UserPromptSubmit` hook. It does not fire on a request to simply do a task through a subagent.
+- Knowledge sources: `references/prompt-writing.md`, a condensed, cited digest of
+  `docs/prompt-engineering/` chapters 01 to 04, and `references/agent-prompts.md`, a digest of
+  chapter 06. The doc set is the source of record; the reference files are hand-written from it, not
+  a `scripts/sync.sh` copy.
+- Design: a knowledge-loading skill in the shape of `go-dev`. `SKILL.md` inlines the user's
+  confirmed defaults and the pre-handoff checklist, because a rule the model must choose to open a
+  file to find does not reliably fire, and routes technique and model-specific questions to the
+  reference file. Claude-first, portable: the core rules hold for any model, with a Claude layer
+  (XML tags for long input, no all-caps emphasis, no blanket self-check on Opus 5 and 5.5).
+  Content is selected by one test: does it change what the model writes, rather than what it can
+  recall?
+- Frontmatter: no `context: fork` and no `model`/`effort` pin, for the same reason as `go-dev`: it
+  carries knowledge into the invoking context and must share its warm prompt cache.
+- Defaults (confirmed by the user on 2026-09-26):
+  - D1 (check): Verify the prompt states an explicit git-safety boundary: worktree or branch
+    only, no force-push or history rewrite, and no merge or push to main unless asked.
+  - D2 (content): For an unattended, multi-step prompt, tell the agent to never stop and ask;
+    instead decide on evidence, favor correct over easy, record the decision, then continue past
+    blockers.
+  - D3 (content): State the target working directory or repo path explicitly near the top of the
+    prompt.
+  - D4 (content): Give the prompt a dedicated section, inside the prompt file itself rather than
+    a separate doc, where the agent logs each deferred decision and the evidence behind it.
+  - D5 (check): Before handing over a drafted prompt, re-read it for factual accuracy against
+    the current repo state, internal consistency between its steps, and a resume path for an
+    interrupted run.
+  - D6 (format): After writing a prompt file, end the turn by stating the file's path rather
+    than pasting its contents back.
+  - D7 (content): For a prompt expected to run long enough to hit account limits, add an
+    instruction to check usage periodically and pause-then-resume rather than fail.
+  - D8 (check): For a prompt file meant to archive itself on completion, confirm the archive
+    step fires only on a genuine finish, not on an early stop, a blocker, or an open question.
+  - D9 (avoid): Do not let a "decide instead of asking" instruction widen scope; keep
+    speculative improvements in a separate suggestions list, apart from required changes.
+  - D10 (avoid): Never use em or en dashes, curly quotes, the ellipsis character, or other
+    non-ASCII typographic substitutions in the delivered prompt text.
+  - D11 (content): Lead the prompt with the goal stated plainly, before background or setup
+    detail.
+  - D12 (content): Write prompt instructions in short sentences and common words rather than
+    precise-sounding jargon.
+  - D13 (avoid): Avoid hedging phrases in prompt instructions; state each instruction directly.
+  - D14 (content): Size the prompt's length and level of detail to the size of the task it
+    describes.
+- Non-goals: it does not author skills or skill descriptions (see `skill-author`), write plan
+  Units (see `planner`), write prompts inside application code that calls the Claude API (see
+  `claude-api`), or proofread Markdown (see `review-md`). It does not run a prompt against a model
+  unless the user asks. Other skills' descriptions are not edited to point here; overlaps are
+  tracked as follow-ups.
+- Agent-facing prompts: added after the user-facing build, covering criteria B1 to B6 below.
+  Prompts the `planner` skill writes into plan Units stay with `planner`.
+- Evals: `skills/prompt-author/evals/trigger-evals.json` (did it fire) and
+  `skills/prompt-author/evals/evals.json` (did it behave), both authored from this section before
+  `SKILL.md` was generated and kept as the gate on any regeneration.
+- Acceptance criteria:
+  - A1. A prompt delivered inline (about 40 lines or fewer; longer ones follow A11) sits in one
+    fenced code block the user can copy whole, and nothing the user should not paste sits inside
+    that block.
+  - A2. Placeholders in a reusable prompt use one form, `{{snake_case_name}}`, and each is listed
+    with a one-line meaning after the block.
+  - A3. The prompt states the goal, the context the target model lacks, what a finished answer
+    looks like (format, length, or done-criteria), and the reason behind any constraint that is
+    not self-evident.
+  - A4. Instructions say what to do rather than only what to avoid, and the prompt uses no
+    all-caps emphasis (CRITICAL, MUST, NEVER, ALWAYS, IMPORTANT in capitals) unless the user asked
+    for it.
+  - A5. For a Claude target, long pasted input or documents go in XML tags kept apart from the
+    instructions and placed before them; for a Claude Opus 5 or Opus 5.5 target, the prompt adds no
+    blanket instruction to double-check or re-verify the work (Anthropic documents over-verification
+    on Opus 5, and its Opus 5.5 guide says Opus 5 prompt patterns carry over).
+  - A6. For a non-Claude target, the prompt relies only on techniques that work across vendors and
+    carries no Claude-only feature (prefilled responses, extended-thinking settings, or naming
+    Claude).
+  - A7. When information the prompt depends on is missing and cannot be inferred (target tool,
+    audience, or success criterion), the skill either asks at most three targeted questions before
+    writing, or writes the prompt and lists its assumptions after the block. It never asks more
+    than three.
+  - A8. When improving an existing prompt, the reply gives the revised prompt and a short list of
+    what changed and why, tied to the problem the user reported.
+  - A9. Every confirmed default in the Defaults list above is applied to each delivered prompt it
+    bears on.
+  - A10. `scripts/md-checks.sh` reports no findings across the skill.
+  - A11. A prompt longer than about 40 lines is written to a file rather than inline, named
+    `prompt-YYYY-MM-DD-<slug>.md`, in a `prompts/` directory beside the plans directory the
+    `planner` skill resolves: next to a `plansDirectory` the user set; else `<cwd>/.claude/prompts/`
+    when `<cwd>/.claude/` exists, or `<cwd>/prompts/` when the working directory is itself a
+    `.claude` directory; else `${CLAUDE_CONFIG_DIR:-~/.claude}/prompts/`. The reply gives the
+    file's path instead of pasting the prompt. A file-written prompt that a Claude Code agent will
+    execute ends with an instruction to move its own file into the `archive/` subdirectory of that
+    `prompts/` directory (creating it if needed) once executed; a prompt meant for another tool
+    carries no such instruction.
+    Two agent-facing prompts are exempt from the file rule and the archive instruction: a
+    dispatch brief goes straight into the Agent tool call (or inline when the user asked for the
+    text), and an agent-definition body goes into its `agents/<name>.md` file.
+  - B1. A dispatch brief for a subagent states the goal in one sentence an agent with no chat
+    access can act on, the scope (paths it may touch and what it must leave alone), the context it
+    needs pasted in, checkable acceptance criteria, how to verify, and what to report back and in
+    what shape.
+  - B2. An agent-facing prompt never points the agent at "the conversation", "above", "as
+    discussed", or another document to find its task; anything it needs is pasted in, or named by
+    exact path as input material.
+  - B3. The prompt is sized to the task: a one-step task gets a short paragraph of at most 150
+    words rather than the full brief template.
+  - B4. A handoff prompt states what is done and what remains, references existing artifacts
+    (specs, plans, commits) by path instead of restating them, carries no secret values, and names
+    the skills the next session should load.
+  - B5. A system prompt for an agent definition states the agent's role, its scope boundaries, the
+    process it follows, and its output format, with no all-caps emphasis.
+  - B6. For an agent-facing prompt that will be reused (an agent definition, a background or looped
+    prompt), the skill offers a test run on a subagent and does not run one unasked.

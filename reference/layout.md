@@ -1,6 +1,6 @@
 ---
 created: 2026-09-14
-updated: 2026-09-25
+updated: 2026-09-26
 ---
 
 # Repository layout
@@ -52,6 +52,9 @@ section.
     Go/Rust/Python TUI framework ecosystems.
   - `cyberdecks/` - a five-part guide to the DIY cyberdeck hobby, from etymology and history
     through a component-by-component build guide.
+  - `prompt-engineering/` - a researched guide to writing prompts, for people to use elsewhere and
+    for agents to hand to agents, with a survey of published prompt-writing skills. Backs the
+    `prompt-author` skill.
 
   Standalone documents:
   - `plugin-research.md` - evaluation of a set of third-party plugin and skill repos, ranked by
@@ -284,6 +287,12 @@ section.
     examples stay in upstream Go idiom by a settled decision, framed as such at the top of each,
     except sections marked as written in house style, which are exemplars to follow.
     See `specs/skills.md`'s go-dev section.
+  - `prompt-author` - auto-invocable; writes, rewrites, and checks prompts, both for the user to
+    use elsewhere and for agents to receive (subagent briefs, handoffs, agent definitions),
+    carrying this user's confirmed defaults and a pre-handoff checklist inline, with condensed
+    reference digests of `docs/prompt-engineering/` loaded on demand. Knowledge-loading only, in
+    the shape of `go-dev`, so it has no `context: fork` pin. See `specs/skills.md`'s
+    prompt-author section.
 - `agents/` - personal subagent definitions:
   - `Explore` - read-only search agent pinned to Haiku at high effort, replacing the built-in
     `Explore` after it stopped defaulting to Haiku. Searches any file tree (code, documentation,
