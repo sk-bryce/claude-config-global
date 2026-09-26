@@ -26,8 +26,9 @@ The skill's coverage was extended from user-facing prompts (prompts a person pas
 tool) to also cover agent-facing prompts: briefs and handoffs written for a subagent or a fresh
 session. The trigger set grows from 10/10 to 15/15 queries; the behavioral set is the first
 build's cases 1 to 12 plus new cases 20 to 23, which exercise the agent-facing expectations (the
-B-group). The committed SKILL.md is the version attempt 2 measured, not the version the SHIP
-first-build run measured.
+B-group). The SKILL.md committed with this run is the version attempt 2 measured, not the
+version the SHIP first-build run measured. A later commit merged its two duplicate test-run
+paragraphs in Delivering into one, with no eval re-run.
 
 ## Trigger layer: 15 of 15 positives, 15 of 15 negatives. PASS.
 

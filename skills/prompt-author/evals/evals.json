@@ -180,7 +180,7 @@
       "expected_output": "A system prompt stating the read-only role, the scope, the steps it follows, and the report format, with no all-caps emphasis.",
       "files": [],
       "expectations": [
-        "[deterministic] B5: The prompt states the agent's role and that it does not edit or write files",
+        "[deterministic] B5: The prompt (in the reply, or in agents/log-analyzer.md, whose copy is in outputs/agents/) states the agent's role and that it does not edit or write files",
         "[deterministic] B5: The prompt specifies the output format of the report, including counts per error pattern",
         "[deterministic] B5: The prompt uses none of CRITICAL, MUST, NEVER, ALWAYS, or IMPORTANT in all capitals as emphasis; a literal value the task names, such as a CRITICAL log level, is not emphasis",
         "[judgment] B5: The prompt describes the process the agent follows, step by step",

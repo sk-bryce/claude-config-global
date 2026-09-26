@@ -221,17 +221,14 @@ For a prompt of about 40 lines or fewer, reply in this order:
 2. Each placeholder with its one-line meaning.
 3. Your assumptions, or for a revision, what changed and why.
 
-For a prompt the user will reuse, offer to test it on a subagent. Never run the test unasked. For
-a non-Claude target, say that such a run checks only clarity, not how the target model behaves.
-
-For an agent-facing prompt that will be reused, such as an agent definition or a background or
-looped prompt, offer a test run on a subagent. Never run it unasked.
+For a prompt that will be reused, including an agent definition or a background or looped prompt,
+offer to test it on a subagent. Never run the test unasked. For a non-Claude target, say that such
+a run checks only clarity, not how the target model behaves.
 
 Count the prompt's own lines as you wrote them, with each placeholder as one line; text the user
 will paste into a placeholder does not count. A prompt longer than about 40 lines goes to a file
-instead, named `prompt-YYYY-MM-DD-<slug>.md`,
-in a `prompts/` directory beside the plans directory the `planner` skill resolves. Pick the
-directory in this order:
+instead, named `prompt-YYYY-MM-DD-<slug>.md`, in a `prompts/` directory beside the plans directory
+the `planner` skill resolves. Pick the directory in this order:
 
 1. Next to a `plansDirectory` the user set.
 2. Else `<cwd>/.claude/prompts/` when `<cwd>/.claude/` exists, or `<cwd>/prompts/` when the
