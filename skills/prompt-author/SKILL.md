@@ -169,8 +169,8 @@ For the system prompt of an agent definition, state the agent's role, its scope 
 process it follows step by step, and its output format. Name a class of task, not one run's paths
 and findings, since it will be read on many future tasks.
 
-For the brief template, work that spans several context windows, and testing, read
-`references/agent-prompts.md`.
+For the brief template, background and looped agents, work that spans several context windows,
+and testing, read `references/agent-prompts.md`.
 
 ## Check before handing over
 
@@ -249,5 +249,5 @@ rule like any other prompt.
 ## Going deeper
 
 For technique detail, model-specific guidance, and system prompts for chat products, read
-`references/prompt-writing.md`. For briefs, handoffs, agent definitions, and work that spans
-several context windows, read `references/agent-prompts.md`.
+`references/prompt-writing.md`. For briefs, handoffs, agent definitions, background and looped
+agents, and work that spans several context windows, read `references/agent-prompts.md`.

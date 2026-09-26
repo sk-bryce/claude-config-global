@@ -40,8 +40,9 @@ subagent-dispatch skill names the common failure modes on the input side directl
 are "too broad," carry "no context," specify "no constraints," and ask for "vague output"
 (`skills/dispatching-parallel-agents/SKILL.md`, obra/superpowers repository, checked 2026-09-25).
 The rest of this chapter works through what closes each of those gaps: a template for the dispatch
-itself, what a handoff or continuation prompt needs that a first dispatch does not, how a system
-prompt differs from a one-shot brief, and how to size and test all of the above.
+itself, what a handoff or continuation prompt needs that a first dispatch does not, what changes
+when the prompt runs in the background or on repeat, how a system prompt differs from a one-shot
+brief, and how to size and test all of the above.
 
 ## The dispatch brief
 
@@ -133,6 +134,90 @@ Across all three variants, the load-bearing test is the same one from
 agent execute this with zero ability to ask a follow-up. If the handoff prompt depends on the
 receiving agent inferring something the departing one knew but did not write down, it will fail
 quietly, on some later turn, in a way that is hard to trace back to the handoff.
+
+## Background, scheduled, and looped agents
+
+Some agent-facing prompts run with nobody watching the turn they run in: a background subagent, a
+prompt that repeats on a timer, a session that keeps going toward a condition, or a headless run in
+CI or the cloud. Everything in [the dispatch brief](#the-dispatch-brief) still applies. What
+changes is that the prompt runs many times or long after it was written, and no one is there to
+approve an action or read a half-finished answer. Claude Code offers several of these mechanisms,
+and each one moves a different piece of the burden onto the prompt.
+
+**Background subagents.** A background subagent runs while the main conversation carries on.
+`AskUserQuestion` is removed from it, and when it reaches a tool call that needs permission,
+"Claude Code surfaces the prompt in your main session and names the subagent that is asking." Its
+result "reaches Claude as a completion notification in a later turn" (Claude Code subagents
+documentation, checked 2026-09-26). Two things follow for the brief. The report arrives after the
+main conversation has moved on, so it must make sense on its own: say what was done, what was
+found, and what is still open, without leaning on the state of the conversation when the agent
+was dispatched. And any step that needs approval waits on a person in the main session, so a
+brief meant to finish unattended should keep to tools the session already allows.
+
+**Prompts that repeat: `/loop` and scheduled tasks.** `/loop` re-runs a prompt in the same session
+on a fixed interval, or at an interval Claude picks each time, between one minute and one hour,
+based on what it saw. A scheduled prompt "fires between your turns, not while Claude is
+mid-response" (Claude Code scheduled tasks documentation, checked 2026-09-26). A prompt that runs
+many times needs three things a one-shot prompt does not:
+
+- **What to do in each state it may find, including "nothing changed."** The documentation's own
+  example `loop.md` handles red CI, new review comments, and the quiet case: "If everything is
+  green and quiet, say so in one line." Without a clause like that, a quiet iteration has no
+  stated way to end, which leaves room for made-up work or a long report about nothing.
+- **When the work is done.** In self-paced mode Claude "can also end the loop on its own once the
+  task is complete". A loop on a fixed interval keeps going until it is cancelled or the seven-day
+  expiry ends it. A prompt that names its done condition gives a self-paced loop a reason to stop.
+- **A boundary on irreversible actions.** The built-in maintenance prompt that a bare `/loop` runs
+  lets "irreversible actions such as pushing or deleting" go ahead only "when they continue
+  something the transcript already authorized". A custom loop prompt replaces that prompt, so it
+  should state its own rule.
+
+The same page notes there is "no catch-up for missed fires": a task that comes due while Claude is
+busy fires once, not once per missed interval. So a repeating prompt should check the actual state
+each time rather than count iterations or assume the previous run happened on schedule.
+
+**A condition instead of a timer: `/goal`.** `/goal` keeps the session working turn after turn
+until a condition holds. After each turn a small fast model judges the condition, and it "doesn't
+run commands or read files independently", so the condition has to be something Claude's own
+output can show. The documentation lists what a condition that holds up over many turns usually
+has: "One measurable end state", "A stated check" (such as "`npm test` exits 0"), and
+"Constraints that matter", meaning anything that must not change on the way. It suggests a clause
+such as "or stop after 20 turns" to bound the run (Claude Code `/goal` documentation, checked
+2026-09-26). These are good rules for the done condition of any looped or long-running prompt,
+whether or not `/goal` runs it.
+
+**Headless and cloud runs.** A `claude -p` run in CI has nobody to answer a question. With
+`--permission-prompts none`, anything that would prompt is denied, Claude "is told that nobody can
+approve the request and not to retry it", and tools that need a person, such as `AskUserQuestion`,
+are removed (Claude Code headless documentation, checked 2026-09-26). The prompt should therefore
+name everything the run needs up front. Routines, which run in the cloud on a schedule, an API call,
+or a GitHub event, make the same point directly: "the routine runs autonomously, so the prompt must
+be self-contained and explicit about what to do and what success looks like." Each run starts from a
+fresh clone of the repository, on its default branch unless the prompt names another, not from
+anyone's working tree. Text sent with an API trigger arrives wrapped in a `<routine-fire-payload>`
+block labeled as untrusted data, and the routine "treats the text as inert context" unless its saved
+prompt refers to that block explicitly. The run list's green status "does not mean the task in your
+prompt succeeded", so the prompt should make the run state its outcome plainly, for whoever reads
+the transcript (Claude Code routines documentation, checked 2026-09-26).
+
+**Long-running work across many sessions.** Anthropic's write-up of its harness for long-running
+coding agents adds to [the continuation guidance above](#handoff-and-continuation-prompts). It
+used two prompts: "The very first agent session uses a specialized prompt that asks the model to
+set up the initial environment," while "Every subsequent session asks the model to make
+incremental progress, then leave structured updates." Each later session starts the same way: run
+`pwd`, read the git log and a `claude-progress.txt` file, then read a feature list and pick "the
+highest-priority feature that's not yet done". The feature list is JSON, because "the model is
+less likely to inappropriately change or overwrite JSON files compared to Markdown files", and
+agents may change only its `passes` field: "It is unacceptable to remove or edit tests because
+this could lead to missing or buggy functionality." The prompts also ask for one feature at a
+time and a clean state at the end of each session, and they guard against the failure mode where
+an agent declares the job done too early (Effective harnesses for long-running agents, Anthropic,
+checked 2026-09-26).
+
+Across these cases the prompt carries what a watching person would otherwise supply: a done
+condition with a check, what to do in each state including the quiet one, a boundary on
+irreversible actions, a report that stands on its own, and an explicit rule for any outside text
+it will receive.
 
 ## System prompts for agent definitions
 
@@ -330,7 +415,21 @@ checkable rather than left to whatever the receiving agent decides to volunteer.
 
 - [Claude Code subagents](https://code.claude.com/docs/en/sub-agents) - context inheritance,
   denied tools including AskUserQuestion, nesting depth, background tool restrictions,
-  SendMessage resumption behavior, and system-prompt structure for agent definitions.
+  background permission prompts and completion notifications, SendMessage resumption behavior,
+  and system-prompt structure for agent definitions.
+- [Run prompts on a schedule](https://code.claude.com/docs/en/scheduled-tasks) - `/loop` fixed
+  and self-paced intervals, the built-in maintenance prompt, `loop.md`, ending a self-paced loop,
+  seven-day expiry, and no catch-up for missed fires.
+- [Keep Claude working toward a goal](https://code.claude.com/docs/en/goal) - how `/goal` judges
+  its condition and what an effective condition contains.
+- [Run Claude Code programmatically](https://code.claude.com/docs/en/headless) - `claude -p`,
+  `--permission-prompts none`, and permission modes for unattended runs.
+- [Automate work with routines](https://code.claude.com/docs/en/routines) - self-contained routine
+  prompts, fresh-clone runs, the untrusted `routine-fire-payload` block, and what a green run
+  status does and does not mean.
+- [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) -
+  initializer and later-session prompts, the JSON feature list, `claude-progress.txt`, and the
+  session start-up steps.
 - [Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) -
   the "smallest high-signal token set" principle, right-altitude system prompts, just-in-time
   retrieval, and long-horizon compaction and note-taking strategies.
