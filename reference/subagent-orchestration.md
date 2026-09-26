@@ -1,6 +1,6 @@
 ---
 created: 2026-07-24
-updated: 2026-09-25
+updated: 2026-09-26
 ---
 
 # Subagent Orchestration Protocol
@@ -332,7 +332,9 @@ placeholders.
   verification that writes nothing; reviews go to a `general-purpose` reviewer told to write
   nothing. Orchestrators run build, test, and lint commands themselves in
   the shell rather than delegating them, so they keep authority over the gates; only the top
-  orchestrator runs git.
+  orchestrator runs git. Dispatch every worker, verifier, and reviewer in the foreground, never
+  backgrounded, so its result arrives before the next step; a backgrounded dispatch returns
+  control while the orchestrator still waits on it.
 - **Self-contained prompts:** subagents share no memory of this plan or this conversation. Each
   dispatched Unit prompt MUST inline, verbatim: the absolute file path(s) to touch, a one-sentence
   "why", the exact content or diff to apply (copied from the relevant section below), and the
