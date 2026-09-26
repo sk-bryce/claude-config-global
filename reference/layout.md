@@ -13,7 +13,10 @@ why it exists.
 
 The inventory covers only what this repository tracks. The harness keeps its own runtime state in
 `~/.claude` as well - `cache/`, `sessions/`, `daemon/`, `plans/`, `projects/`, and more - all of it
-gitignored, none of it part of this config, and none of it listed below.
+gitignored, none of it part of this config, and none of it listed below. `prompts/` joins them:
+the `prompt-author` skill writes a long prompt there as `prompt-YYYY-MM-DD-<slug>.md` when neither
+a `plansDirectory` setting nor a project `.claude/` directory points elsewhere, and a prompt a
+Claude Code agent executes moves itself into `prompts/archive/` once finished.
 
 "Registered" means two different things below, and the difference matters to a fresh clone.
 Claude Code hooks (`PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`) are declared in the
