@@ -182,6 +182,17 @@ the 90 percent aggregate floor tolerates single-case model-judge noise without l
 regression through. Pin the judge model per run to reduce that noise, and record it in the run
 file.
 
+**Run each behavioral case three times and score each expectation by majority.** One sample per
+case cannot tell a real regression from sampling noise. In the 2026-09-26 `prompt-author`
+agent-facing run, two single-sample attempts each missed a different small set of expectations,
+and every one of those passed in the other attempt
+(`runs/2026-09-26-prompt-author-agent-facing.md`). Run each case as `run-1` to `run-3` in every
+arm you run. An expectation passes when it passes in at least 2 of the 3 runs, and the thresholds
+above apply to those majority results; a judgment expectation counts as a regression only when it
+fails in at least 2 of 3. Record each expectation that passed 2 of 3 by name as flaky, so a flake
+that keeps coming back is visible across runs. This rule applies from 2026-09-26; rows in the
+results log dated earlier were not scored by it.
+
 ## Paired comparison: first build vs. regeneration
 
 - **First build** (no prior committed version exists): there is nothing to compare against, so
@@ -228,6 +239,15 @@ the artifact count or run frequency grows.
    eval workflow (see that plugin's `SKILL.md`, "Running and evaluating test cases") against
    `skills/<name>/evals/evals.json`. Let it spawn the with-skill (and, for a first build, the
    without-skill baseline) runs, grade each expectation, and aggregate the benchmark.
+   If you dispatch executors and graders by hand instead, two details decide whether the result
+   is real:
+   - Each `grading.json` needs a `summary` object (`passed`, `failed`, `total`, `pass_rate`)
+     beside `expectations`, as the plugin's `agents/grader.md` shows. `aggregate_benchmark` reads
+     its counts only from `summary` and scores a run without one as 0 of 0, which is why both
+     2026-09-26 `prompt-author` agent-facing attempts produced an all-zero benchmark.
+   - Copy every file a case writes outside the run's `outputs/` directory (a prompt file under a
+     scratch project's `.claude/prompts/`, an agent definition under its `agents/`) into
+     `outputs/` before grading, so the grader sees the deliverable and not only the reply.
 2. If this is a regeneration, additionally check out the pinned prior version (the git ref
    recorded in that artifact's most recent run file below) into a separate copy and run the
    identical case set against it, so the comparison in step 3 is apples-to-apples.
