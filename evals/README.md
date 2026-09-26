@@ -242,9 +242,9 @@ the artifact count or run frequency grows.
    If you dispatch executors and graders by hand instead, two details decide whether the result
    is real:
    - Each `grading.json` needs a `summary` object (`passed`, `failed`, `total`, `pass_rate`)
-     beside `expectations`, as the plugin's `agents/grader.md` shows. `aggregate_benchmark` reads
-     its counts only from `summary` and scores a run without one as 0 of 0, which is why both
-     2026-09-26 `prompt-author` agent-facing attempts produced an all-zero benchmark.
+     beside `expectations`, as the plugin's grader agent definition shows. `aggregate_benchmark`
+     reads its counts only from `summary` and scores a run without one as 0 of 0, which is why
+     both 2026-09-26 `prompt-author` agent-facing attempts produced an all-zero benchmark.
    - Copy every file a case writes outside the run's `outputs/` directory (a prompt file under a
      scratch project's `.claude/prompts/`, an agent definition under its `agents/`) into
      `outputs/` before grading, so the grader sees the deliverable and not only the reply.
