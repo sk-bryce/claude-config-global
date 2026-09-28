@@ -17,7 +17,7 @@ effort: high
 
 <!--
 created: 2026-07-27
-updated: 2026-09-25
+updated: 2026-09-28
 spec: specs/behaviors.md (Plan and Execute section)
 generated-by: Opus subagent, spec-driven migration plan execution (Phase 3 Workstream A); the
   shared-contract consistency check (Units section, check 5 of the refinement round checklist,
@@ -27,7 +27,8 @@ generated-by: Opus subagent, spec-driven migration plan execution (Phase 3 Works
   plans run without a separate execution skill (see
   decisions/0010-single-planner-skill-with-self-running-plans.md); both are hand edits. Rewritten
   by an Opus executor from the Plan and Execute spec on 2026-09-25 for decision
-  decisions/0011-planner-work-hierarchy-run-policies-and-usage-gating.md.
+  decisions/0011-planner-work-hierarchy-run-policies-and-usage-gating.md. Appendix C `answer`
+  entries for the user's run-time replies are a hand edit tracked in the same spec section.
 model: claude-opus-5-thinking-high
 harness: Claude Code
 -->
@@ -414,14 +415,19 @@ the plan the orchestrators edit. The embedded protocol tells them how.
   Decisions review, Archive.
 - **`## Appendix B: Run log`:** starts as the single line `- No entries yet.` The orchestrator
   appends one line per retry, escalation, halt, stale mark found on resume, guard override, usage
-  status change or sleep, and breaker count, in the form
+  status change or sleep, breaker count, and bare go-ahead at a confirmation pause, in the form
   `- 2026-09-25 Unit 1.2.1: retried at haiku with failure context; breaker 1/5`.
 - **`## Appendix C: Decisions log`:** starts as the single line `- No entries yet.` The
   orchestrator appends one line per decision made in place of the user, deviation from the plan, or
   anomaly, in the form
   `- D3 | 2026-09-25 | Unit 1.2.1 | decision | <what> | why: <reason> | review: pending`, where the
-  fourth field is `decision`, `deviation`, or `anomaly`. After the final report the orchestrator
-  walks each pending entry with the user, then archives the plan.
+  fourth field is `decision`, `deviation`, `anomaly`, or `answer`. It also appends one `answer`
+  entry per reply the user gives during the run that decides or changes something, in the form
+  `- D4 | 2026-09-25 | Unit 1.2.1 | answer | <question> -> <reply> | why: <cause> | review: n/a`
+  (the third field names the Unit, Cluster, `Phase 0`, or `pre-flight` it arose in), so a resumed
+  or compacted run finds the answer in the plan instead of re-asking. The embedded
+  protocol carries the full rule; run answers belong in the plan, not in a memory file. After the
+  final report the orchestrator walks each pending entry with the user, then archives the plan.
 
 The usage gating these records log runs through
 `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/planner/scripts/usage-check.sh`, which the embedded block

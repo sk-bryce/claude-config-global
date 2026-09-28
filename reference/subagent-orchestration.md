@@ -1,6 +1,6 @@
 ---
 created: 2026-07-24
-updated: 2026-09-26
+updated: 2026-09-28
 ---
 
 # Subagent Orchestration Protocol
@@ -103,9 +103,9 @@ per the Claude Code subagent documentation, verified 2026-09-25). The protocol t
 most two subagent layers - top session, then a Sonnet Cluster orchestrator, then its executors and
 verifiers - which stays within the default. Because no subagent can ask the user anything, a
 Cluster orchestrator never asks: it returns a `halted` status with the question verbatim, and the
-top orchestrator resolves it with the user and re-dispatches with the answer inlined. Dispatch a
-Cluster orchestrator in the foreground so the top orchestrator receives its status before doing
-anything else.
+top orchestrator resolves it with the user, records the reply in the plan's Appendix C, and
+re-dispatches with the answer inlined. Dispatch a Cluster orchestrator in the foreground so the
+top orchestrator receives its status before doing anything else.
 
 Parallel fan-out of several fresh subagents deserves its own caution beyond the fork-vs-fresh
 choice above: each fresh subagent starts cold, so fanning N of them out multiplies the
@@ -172,14 +172,17 @@ placeholders.
   determine it, HALT before touching anything: name the model you are running as and the required
   tier, and ask the user to switch models (for example with `/model`) and ask again. Continue on a
   lower tier only if the user then explicitly tells you to, and record that override in Appendix B.
+  This check runs again in every session, even when Appendix C records an earlier override, because
+  the model can differ between sessions.
   Model guard for this plan:
   <Set the model guard for this plan here.>
 - **Pre-flight (top orchestrator, before any dispatch):** do these in order. If any step fails,
   STOP and report rather than dispatching.
   1. Read this plan in full, including Appendix A: Progress, Appendix B: Run log, and Appendix C:
-     Decisions log. If every Appendix A line except "Decisions review" and "Archive" is already
-     `[x]`, only the review and archive remain: skip the rest of pre-flight and go straight to the
-     **Decisions review** bullet.
+     Decisions log. Treat every `answer` entry in Appendix C as the user's binding reply: follow it,
+     and never ask again a question it already settles. If every Appendix A line except "Decisions
+     review" and "Archive" is already `[x]`, only the review and archive remain: skip the rest of
+     pre-flight and go straight to the **Decisions review** bullet.
   2. Set up the working directory exactly as this plan's Run policies and Working directory sections
      state (a worktree, created or reused, or the main checkout). Before creating a worktree or
      touching the live checkout, confirm the repository is clean (`git status --porcelain` prints
@@ -207,9 +210,10 @@ placeholders.
      Units are already done.
   7. Phase 0: if this plan has a Phase 0 not yet marked `[x]`, resolve its questions per the halt
      policy (ask them at the top level with `AskUserQuestion`, at most four per call, or, under
-     Unattended, answer each by best judgment). Apply the answers by editing the Clusters and Units
-     they change and the matching Appendix A lines, log each answer and each change in Appendix C,
-     then mark Phase 0 `[x]`.
+     Unattended, answer each by best judgment). Log each answer in Appendix C (the user's reply as
+     an `answer` entry, a best-judgment answer as a `decision` entry), then apply the answers by
+     editing the Clusters and Units they change and the matching Appendix A lines, log each change
+     in Appendix C, then mark Phase 0 `[x]`.
   8. Confirmation pause, per the confirmation policy: under Startup or Attended, PAUSE for the
      user's explicit confirmation of the summary and the Phase 0 outcome, and dispatch nothing until
      they confirm; never treat silence as approval. Under Unattended, do not pause. If a pause or a
@@ -271,14 +275,27 @@ placeholders.
     Units are `[x]` and its Cluster review passes; a Phase only after all its Clusters are `[x]`; a
     closing line only after its step completes. Never mark ahead of the work.
   - Appendix B: Run log gets one line per retry, escalation, halt, stale mark found on resume,
-    guard override, usage status change or sleep, and breaker count, in the form
+    guard override, usage status change or sleep, breaker count, and bare go-ahead at a
+    confirmation pause, in the form
     `- 2026-09-25 Unit 1.2.1: retried at haiku with failure context; breaker 1/5`. Replace its
     `- No entries yet.` line with the first entry.
   - Appendix C: Decisions log gets one line per decision made in place of the user, deviation from
     the plan, or anomaly, in the form
     `- D3 | 2026-09-25 | Unit 1.2.1 | decision | <what> | why: <reason> | review: pending`, where
-    the fourth field is `decision`, `deviation`, or `anomaly` and D-numbers continue from the last
-    entry. Replace its `- No entries yet.` line with the first entry.
+    the fourth field is `decision`, `deviation`, `anomaly`, or `answer` (next bullet) and D-numbers
+    continue from the last entry. Replace its `- No entries yet.` line with the first entry.
+  - Appendix C also gets one line per answer the user gives during the run that decides or changes
+    something: a halt, a Phase 0 question, a confirmation-pause reply that changes the plan, a
+    circuit-breaker or escalation stop, a destructive-action confirmation, or a model guard
+    override, in the form
+    `- D4 | 2026-09-25 | Unit 1.2.1 | answer | <question> -> <reply> | why: <cause> | review: n/a`,
+    where `<cause>` names what raised the question and the third field is the Unit, Cluster,
+    `Phase 0`, or `pre-flight` it arose in. The decisions review skips these entries,
+    since the user already decided them. Write the entry before acting on the reply, so an
+    interruption or compaction right after it cannot lose the answer. A bare go-ahead at a
+    confirmation pause is not an `answer` entry; it goes in Appendix B. Keep answers in this plan,
+    never in a memory file or any other document: they bind this run, and this plan is what a
+    resumed run reads.
   - Single writer: Clusters run one at a time, so one agent at a time edits this plan. While a
     Cluster orchestrator subagent runs, it alone marks its own Units and appends to Appendices B
     and C; the top orchestrator edits the plan at all other times. Appendices A, B, and C, and the
@@ -304,25 +321,28 @@ placeholders.
     Its prompt MUST inline: the absolute path of this plan file (for editing Appendices A, B, and C
     only), the working-directory root, the Cluster's Units in full with their waves and gates, each
     Unit's tier alias and escalation tier from the model-role map, the run policies with the halt
-    policy's definition, the usage thresholds, the usage script path, the last usage status, the current
-    breaker count and threshold, the authorized destructive actions, the environmental harnesses,
-    and the protocol rules it must follow (Usage gating per Unit, Progress record, Automatic
-    delegation, Worker type, Self-contained prompts with the six standing constraints, Completion
-    message discipline, Failure escalation ladder, Run circuit breaker, Halt vs escalate,
-    Verification gates, Sequencing and isolation, Corrective units, Environmental vs real
-    failures, Recovery and re-planning, Destructive and irreversible actions, the return-status
-    contract in the next sub-bullet, and "run no git command"), each rule's text copied from this
-    block.
+    policy's definition, the usage thresholds, the usage script path, the last usage status, the
+    current breaker count and threshold, the authorized destructive actions, every Appendix C
+    `answer` entry so far, the environmental harnesses, and the protocol rules it must follow
+    (Usage gating per Unit, Progress record, Automatic delegation, Worker type, Self-contained
+    prompts with the six standing constraints, Completion message discipline, Failure escalation
+    ladder, Run circuit breaker, Halt vs escalate, Verification gates, Sequencing and isolation,
+    Corrective units, Environmental vs real failures, Recovery and re-planning, Destructive and
+    irreversible actions, the return-status contract in the next sub-bullet, and "run no git
+    command"), each rule's text copied from this block.
   - A Cluster orchestrator never asks the user anything (subagents do not have `AskUserQuestion`)
     and never sleeps; it returns exactly one status, with its breaker count and last usage status:
     `done` (every Unit gated and marked); `halted` (the question or blocker verbatim);
     `usage-pause` (a `stop` usage check); or `breaker` (the breaker threshold reached). A
-    plan-invalidating failure returns `halted`. If it has no `Agent` tool (nesting turned off), it
-    returns `halted` without doing any Unit itself, and the top orchestrator runs the Cluster.
+    plan-invalidating failure returns `halted`. It treats the inlined `answer` entries as binding
+    and never returns `halted` for a question one of them settles. If it has no `Agent` tool
+    (nesting turned off), it returns `halted` without doing any Unit itself, and the top
+    orchestrator runs the Cluster.
   - On `done`, the top orchestrator runs the Cluster review. On `halted`, it resolves the question
-    with the user per the halt policy and re-dispatches with the answer inlined. On `usage-pause`,
-    it sleeps per **Usage gating** and re-dispatches the Cluster's unmarked Units. On `breaker`, it
-    acts per **Run circuit breaker**. Only the top-level session uses `AskUserQuestion`.
+    with the user per the halt policy, records the user's reply as an Appendix C `answer` entry,
+    and re-dispatches with the answer inlined. On `usage-pause`, it sleeps per **Usage gating** and
+    re-dispatches the Cluster's unmarked Units. On `breaker`, it acts per **Run circuit breaker**.
+    Only the top-level session uses `AskUserQuestion`.
   <Name the orchestrator of each Cluster here.>
 - **Worker type:** dispatch every Unit that edits files to the `executor` subagent
   (`subagent_type: executor`) with `model:` set to that Unit's tier alias, unless this plan's
@@ -462,9 +482,9 @@ placeholders.
   already `[x]` and re-verified, and not run; every retry and escalation (which Unit, from which
   tier to which, and the outcome) and the final breaker count against the threshold; every usage
   pause and its length; any halt and the exact missing or contradictory decision behind it; the
-  number of Appendix C entries; the final gate results and the per-item Definition-of-Done
-  verification, naming any unmet item; and the artifacts produced plus commit, push, and worktree
-  status (or `stop at ready for review`).
+  number of Appendix C entries, split into user answers and entries pending review; the final gate
+  results and the per-item Definition-of-Done verification, naming any unmet item; and the
+  artifacts produced plus commit, push, and worktree status (or `stop at ready for review`).
 - **Decisions review (top orchestrator, after the final report):** walk every Appendix C entry
   marked `review: pending`, one at a time or in batches of up to four: give its context (what was
   decided, where, why, and the alternatives), then ask with `AskUserQuestion` whether to keep it or
