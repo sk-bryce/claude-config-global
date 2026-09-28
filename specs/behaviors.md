@@ -1,6 +1,6 @@
 ---
 created: 2026-07-26
-updated: 2026-09-25
+updated: 2026-09-28
 ---
 
 # Behavior Specs
@@ -113,14 +113,16 @@ buildable intent.
 - Execution, carried by the embedded block rather than a skill:
   - Model guard first: identify the session model, map it to its tier, and halt before touching
     anything when it is below the guard or cannot be determined; continue on a lower tier only on
-    the user's explicit instruction, logged in Appendix B.
+    the user's explicit instruction, logged in Appendix B. The check runs again in every session,
+    even when Appendix C records an earlier override, because the model can differ between sessions.
   - Pre-flight: read the plan and all three appendices; set up the working directory per the
     Run policies (clean-state check, worktree creation or reuse, or the main checkout); confirm
     tools and run any baseline; resume check; first usage check; blast-radius summary; Phase 0;
     then the confirmation pause per the confirmation policy.
   - Resume is part of pre-flight, not a separate section: re-run the gate of every Unit marked
     `[x]` and un-mark and log any that fail; trust a Cluster or Phase mark only when all of its
-    children re-verify; restore the circuit-breaker count from Appendix B; reuse the worktree; if
+    children re-verify; restore the circuit-breaker count from Appendix B; treat every Appendix C
+    `answer` entry as binding and never re-ask a question one settles; reuse the worktree; if
     every line except "Decisions review" and "Archive" is marked, go straight to the decisions
     review.
   - Halt policy: Sparse stops only on genuine ambiguity, contradictions, or issues and otherwise
@@ -156,7 +158,9 @@ buildable intent.
     subagent layers), and returns exactly one status: `done`, `halted` (with
     the question or blocker verbatim), `usage-pause`, or `breaker`; one with no `Agent` tool
     returns `halted` and the top orchestrator runs the Cluster itself. The top orchestrator resolves
-    a halt with the user and re-dispatches with the answer inlined. Because Clusters run one at a
+    a halt with the user, records the reply as an Appendix C `answer` entry, and re-dispatches with
+    the answer inlined; a Cluster orchestrator's prompt also inlines every recorded `answer` entry,
+    and it never halts on a question one settles. Because Clusters run one at a
     time, one agent at a time edits the plan file: a running Cluster orchestrator marks its own
     Units and appends to Appendices B and C; the top orchestrator edits otherwise.
   - Delegation, models, and failures carry forward from 0010: file-editing Units go to the
@@ -174,7 +178,7 @@ buildable intent.
     worktree is removed only after its changes are committed, and never with `--force`; otherwise
     it is left in place and the final report says so.
   - Final report, in a fixed format, as in 0010, plus the run policies used, usage pauses, and the
-    number of Appendix C entries.
+    number of Appendix C entries, split into user answers and entries pending review.
   - Decisions review: after the final report, walk every Appendix C entry marked
     `review: pending`, one at a time or in batches of up to four: give its context (what was
     decided, where, why, and the alternatives), then ask with `AskUserQuestion` whether to keep
@@ -195,12 +199,22 @@ buildable intent.
     criteria. It ends with these lines: Holistic review, Final verification, Commit and push (per
     policy), Decisions review, Archive. A line is marked `[x]` only after its gate or step passes.
   - Appendix B: Run log: starts as `- No entries yet.`; one line per retry, escalation, halt,
-    stale mark found on resume, guard override, usage status change or sleep, and breaker count,
-    in the form `- 2026-09-25 Unit 1.2.1: retried at haiku with failure context; breaker 1/5`.
+    stale mark found on resume, guard override, usage status change or sleep, breaker count, and
+    bare go-ahead at a confirmation pause, in the form
+    `- 2026-09-25 Unit 1.2.1: retried at haiku with failure context; breaker 1/5`.
   - Appendix C: Decisions log: starts as `- No entries yet.`; one line per decision the agent
     made in place of the user, deviation from the plan, or anomaly, in the form
     `- D3 | 2026-09-25 | Unit 1.2.1 | decision | <what> | why: <reason> | review: pending`, where
-    the fourth field is `decision`, `deviation`, or `anomaly`.
+    the fourth field is `decision`, `deviation`, `anomaly`, or `answer` (next bullet).
+  - Appendix C also records the user's own answers during a run: one `answer` entry per reply
+    that decides or changes something (a halt, a Phase 0 question, a confirmation-pause reply that
+    changes the plan, a circuit-breaker or escalation stop, a destructive-action confirmation, a
+    model guard override), in the form
+    `- D4 | 2026-09-25 | Unit 1.2.1 | answer | <question> -> <reply> | why: <cause> | review: n/a`,
+    where the third field is the Unit, Cluster, `Phase 0`, or `pre-flight` it arose in, written
+    before the orchestrator acts on the reply. The decisions review skips them. They live
+    in the plan, not in a memory file: an answer binds one run, and the plan is what a resumed or
+    compacted run reads, so an answer kept anywhere else is lost to the run that needs it.
   - Appendices A, B, and C, and Phase 0's own Clusters and Units when Phase 0 changes them (each
     change logged in Appendix C), are the only parts of the plan the orchestrators edit.
 - Usage-check script interface:
@@ -290,9 +304,10 @@ buildable intent.
     confirmation policy, stops per its halt policy, stops for any unauthorized destructive action
     even when Unattended, dispatches every substantive Unit to a subagent, checks usage before
     each Cluster (and each Unit at or above the warn threshold), pauses hourly at the stop
-    threshold and halts on a spend cap, re-verifies `[x]` marks on resume, reviews each Cluster
-    before the next, verifies the Definition of Done, walks Appendix C with the user, and archives
-    itself.
+    threshold and halts on a spend cap, re-verifies `[x]` marks on resume, records each deciding
+    answer the user gives as an Appendix C `answer` entry and never re-asks one, reviews each
+    Cluster before the next, verifies the Definition of Done, walks Appendix C with the user, and
+    archives itself.
   - `skills/planner/scripts/usage-check-tests/run.sh` passes, and `usage-check.sh` never prints or
     writes the token.
   - Escalation ladder and halt-vs-escalate behave per the recorded decisions.
