@@ -273,6 +273,20 @@
         "[deterministic] Every Cluster names review criteria, and the embedded protocol runs a fresh read-only reviewer after each Cluster before the next one starts",
         "Mechanical edit Units default to Haiku in the model-role map, with Sonnet as their escalation tier"
       ]
+    },
+    {
+      "id": 24,
+      "prompt": "Plan renaming the user_id column to account_id across our billing service: the migration, the three repositories that query it, and their tests. I'll be around to answer questions while it runs.",
+      "expected_output": "Produces a plan whose embedded protocol records every answer the user gives during the run that decides or changes something (a halt, a Phase 0 question, a confirmation-pause reply that changes the plan, a circuit-breaker or escalation stop, a destructive-action confirmation, a model guard override) as an Appendix C `answer` entry with `review: n/a`, written before acting on the reply; treats recorded answers as binding in pre-flight and in Cluster orchestrator prompts; logs a bare confirmation go-ahead in Appendix B; and keeps answers in the plan rather than in a memory file.",
+      "files": [],
+      "expectations": [
+        "[deterministic] The embedded protocol's Appendix C rule adds `answer` entries in the form `- D4 | 2026-09-25 | Unit 1.2.1 | answer | <question> -> <reply> | why: <cause> | review: n/a`",
+        "[deterministic] The embedded protocol's pre-flight treats every Appendix C `answer` entry as the user's binding reply and never asks again a question it already settles",
+        "[deterministic] The embedded protocol records the user's reply to a `halted` Cluster as an Appendix C `answer` entry before re-dispatching, and a Cluster orchestrator's prompt inlines every `answer` entry so far",
+        "[deterministic] The embedded protocol says to keep answers in the plan, never in a memory file or any other document",
+        "[deterministic] Appendix C starts as `- No entries yet.`",
+        "[deterministic] The embedded protocol writes each `answer` entry before acting on the reply, and logs a bare go-ahead at a confirmation pause in Appendix B, not Appendix C"
+      ]
     }
   ]
 }
