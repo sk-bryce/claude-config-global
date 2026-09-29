@@ -1,6 +1,6 @@
 ---
 created: 2026-08-05
-updated: 2026-09-23
+updated: 2026-09-29
 ---
 
 > Code examples in this file follow upstream Go idiom, including `:=` for local
@@ -91,7 +91,7 @@ Streams data through `io.Pipe` without buffering the full payload:
 
 ```go
 // GOOD: Streaming with pipe
-func StreamData(ctx context.Context) error {
+func (c *Client) StreamData(ctx context.Context) error {
  pr, pw := io.Pipe()
 
  // Writer goroutine
@@ -121,8 +121,8 @@ func StreamData(ctx context.Context) error {
   return fmt.Errorf("creating request: %w", err)
  }
 
- // Send the request
- resp, err := http.DefaultClient.Do(req)
+ // Send on the injected client: http.DefaultClient has no timeout
+ resp, err := c.httpClient.Do(req)
  if err != nil {
   return fmt.Errorf("sending request: %w", err)
  }
@@ -138,7 +138,7 @@ func StreamData(ctx context.Context) error {
 
 ```go
 // GOOD: Sequential multipart writes with pipe
-func UploadFiles(ctx context.Context, files []File) error {
+func (c *Client) UploadFiles(ctx context.Context, files []File) error {
  pr, pw := io.Pipe()
 
  // Create multipart writer
@@ -182,7 +182,7 @@ func UploadFiles(ctx context.Context, files []File) error {
  req.Header.Set("Content-Type", mw.FormDataContentType())
 
  // Send request
- resp, err := http.DefaultClient.Do(req)
+ resp, err := c.httpClient.Do(req)
  if err != nil {
   return fmt.Errorf("sending request: %w", err)
  }
