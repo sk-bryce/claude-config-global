@@ -287,6 +287,19 @@
         "[deterministic] Appendix C starts as `- No entries yet.`",
         "[deterministic] The embedded protocol writes each `answer` entry before acting on the reply, and logs a bare go-ahead at a confirmation pause in Appendix B, not Appendix C"
       ]
+    },
+    {
+      "id": 25,
+      "prompt": "Plan adding rate limiting to the three public endpoints of our orders API, with tests and a config flag to turn it off.",
+      "expected_output": "Writes the plan, then invokes review-md on the written plan file asking for findings only and excluding the verbatim protocol block, resolves each finding (fixed, rejected with a reason, or named as a protocol-source defect), re-runs the plan-level verification gate, and reports the review-md result in its final summary.",
+      "files": [],
+      "expectations": [
+        "[deterministic] Invokes the review-md skill on the written plan file after writing it and before the final summary",
+        "[deterministic] The review-md args ask for findings only, without edits, and say the Orchestration protocol section is a verbatim copy whose wording is not to be reported",
+        "[deterministic] Runs the plan-level verification gate after resolving the review-md findings",
+        "[deterministic] The final summary reports the review-md result: findings fixed, findings rejected with a reason, and any protocol-source defect",
+        "[deterministic] The embedded orchestration block still matches its source except the 12 filled placeholder lines"
+      ]
     }
   ]
 }

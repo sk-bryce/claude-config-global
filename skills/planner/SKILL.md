@@ -17,7 +17,7 @@ effort: high
 
 <!--
 created: 2026-07-27
-updated: 2026-09-28
+updated: 2026-09-29
 spec: specs/behaviors.md (Plan and Execute section)
 generated-by: Opus subagent, spec-driven migration plan execution (Phase 3 Workstream A); the
   shared-contract consistency check (Units section, check 5 of the refinement round checklist,
@@ -28,7 +28,8 @@ generated-by: Opus subagent, spec-driven migration plan execution (Phase 3 Works
   decisions/0010-single-planner-skill-with-self-running-plans.md); both are hand edits. Rewritten
   by an Opus executor from the Plan and Execute spec on 2026-09-25 for decision
   decisions/0011-planner-work-hierarchy-run-policies-and-usage-gating.md. Appendix C `answer`
-  entries for the user's run-time replies are a hand edit tracked in the same spec section.
+  entries for the user's run-time replies are a hand edit tracked in the same spec section, and so
+  is the review-md pass after refinement.
 model: claude-opus-5-thinking-high
 harness: Claude Code
 -->
@@ -508,6 +509,32 @@ in order, and fixes what it finds:
 15. Placeholders: none of the 12 placeholder lines remains unfilled; the block's other `<...>`
     format templates stay as copied.
 
+## Run review-md on the written plan
+
+After the refinement rounds, invoke the `review-md` skill on the plan file with the Skill tool, once
+per plan. The refinement rounds are the author checking its own work and share its blind spots; a
+reader without this conversation's context does not. Pass these args, with the absolute plan path
+filled in:
+
+`review <absolute plan path>. Report findings only; do not edit the file. The "## Orchestration
+protocol" section is a verbatim copy of a source block: do not report its wording. Text a Unit
+quotes from its target file, and every gate command, must stay exactly as written: do not report
+them as typos or style issues.`
+
+Resolve every finding before the verification gate:
+
+- If review-md asks the user which findings to address, the chosen ones are accepted and the rest
+  are rejected by the user. If it returns findings without asking, accept each one you agree with
+  and reject the others.
+- Fix the plan for every accepted finding. Never change a Unit's quoted target-file text or the
+  embedded block to satisfy one.
+- A real defect inside the embedded block belongs to `references/subagent-orchestration.md`'s
+  source, not to this plan: leave the plan's copy alone and name it in the summary.
+- Record each rejected finding and its reason for the summary.
+
+The verification gate below then re-checks what the fixes could have broken: the block diff, the
+IDs, and the gates.
+
 ## Plan-level verification gate
 
 Before reporting done, re-read the written file and confirm each item, reporting the result of each:
@@ -544,6 +571,8 @@ Before reporting done, re-read the written file and confirm each item, reporting
   copied can silently drop an entire bullet: the result still reads as complete prose and passes
   every other item in this gate, so nothing but a diff catches it. Observed 2026-09-08, where the
   `**Final report:**` bullet went missing and survived four refinement rounds.
+- review-md ran on the written plan, and every finding it returned is fixed, rejected with a
+  reason, or named as a protocol-source defect.
 
 If any item fails, fix the plan and re-run this gate rather than reporting it with caveats.
 
@@ -553,6 +582,7 @@ Report: the absolute plan path and which plans-directory rule resolved it; the o
 Phase, Cluster, and Unit counts (and whether there is a Phase 0); the run policies (model guard,
 halt, confirmation, worktree, commit and push with the branch, usage thresholds); the authorized
 destructive actions, or "none"; the model-role map in one line; how many refinement rounds ran; the
-pass result of each verification-gate item above; and the exact line to run the plan. Do not paste
-the plan body back. Name any clarifying question still open. Do not begin implementing the Units -
-executing the plan is a separate, user-initiated step.
+review-md result (findings fixed, findings rejected with each reason, and any protocol-source
+defect); the pass result of each verification-gate item above; and the exact line to run the plan.
+Do not paste the plan body back. Name any clarifying question still open. Do not begin implementing
+the Units - executing the plan is a separate, user-initiated step.
