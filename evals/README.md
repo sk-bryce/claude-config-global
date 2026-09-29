@@ -1,6 +1,6 @@
 ---
 created: 2026-07-27
-updated: 2026-09-26
+updated: 2026-09-29
 ---
 
 # Evals: Repo-Wide Run Procedure
@@ -287,6 +287,7 @@ the artifact count or run frequency grows.
 | 2026-09-23 | `go-dev` | not re-run [^18] | partial re-run of cases 4, 6 after rewording (not a suite score) [^18] | partial re-run of case 4 (not a suite score) [^18] | HOLD [^18] |
 | 2026-09-26 | `prompt-author` | 100% (10/10 positive at n=9, 10/10 negative at n=9) | 100% (35/35) | 100% (17/17) | SHIP |
 | 2026-09-26 | `prompt-author` | 100% (15/15 positive at n=9, 15/15 negative at n=9) | 95.7% (45/47) | 95.5% (21/22) | HOLD |
+| 2026-09-29 | `review-md` | not run (no trigger set) | 91% (50/55) | 89% (8/9) | BASELINE |
 
 **Every row above dated before 2026-09-08 was measured under the superseded threshold** - "fires on
 every run", recorded at three runs per query and in several cases computed at `run_eval.py`'s 0.5
@@ -420,22 +421,23 @@ proposing a mechanism for the difference, not your memory of its conclusion.
 
 ## Baselines
 
-Run records exist for `write-plan` and `execute-plan` (both 2026-08-03) and `deep-review`
-(2026-09-05, two records: the gate run and the ablation/self-review follow-up). `execute-plan`
+Run records exist for `write-plan` and `execute-plan` (both 2026-08-03), `deep-review`
+(2026-09-05, two records: the gate run and the ablation/self-review follow-up), and `review-md`
+(2026-09-29, `runs/2026-09-29-review-md-v1-baseline.md`, pinned at commit `d404556`). `execute-plan`
 shipped on a waiver; `write-plan` and `deep-review` are held. On 2026-09-25 `write-plan` was
 renamed `planner` and `execute-plan` was deleted: its run procedure moved into the protocol every
 plan embeds, and its cases were ported into `skills/planner/evals/evals.json`
 (`decisions/0010-single-planner-skill-with-self-running-plans.md`). The rows and run records
 keep the old names, and `planner` inherits the `write-plan` HOLD. See the
-Results log footnotes. None of the three is a pinned baseline, because no run file records a ref to
-pin. No baseline runs
-exist yet for `skill-author`, `review-md`, `cursor-projection`, `health-check`, or `research`.
+Results log footnotes. None of the first three is a pinned baseline, because no run file records a
+ref to pin; the review-md record pins `d404556`. No baseline runs
+exist yet for `skill-author`, `cursor-projection`, `health-check`, or `research`.
 Establishing them (running each skill's current `evals.json` per the procedure above and
 committing the resulting run file) requires a real Claude Code session, since that is where the
 native eval runner runs; it was deliberately deferred out of the Phase 2 and Phase 3 build
 passes that produced these eval sets, since no native runner was available in the harness those
 passes ran in. (Those phase names come from the spec-anchored migration plan, whose four phases
-all completed; the plan is not part of this repo.) The next time any of these five skills is
+all completed; the plan is not part of this repo.) The next time any of these four skills is
 regenerated, run this procedure first, on Claude Code, before treating that skill's prior
 `SKILL.md` as an eval-gated baseline.
 
