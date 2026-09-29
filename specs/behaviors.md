@@ -1,6 +1,6 @@
 ---
 created: 2026-07-26
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 
 # Behavior Specs
@@ -33,7 +33,8 @@ buildable intent.
     Working directory; Model-role map; Phases (Phase 0 only when needed, then Phase 1 onward,
     each holding Clusters, each holding Units grouped into waves); the embedded orchestration
     protocol with every placeholder filled; Appendix A: Progress; Appendix B: Run log;
-    Appendix C: Decisions log. Runs the refinement loop (2 to 5 rounds) and a plan-level
+    Appendix C: Decisions log. Runs the refinement loop (2 to 5 rounds), then `review-md` on the
+    written plan as a fresh reader (the loop is the author checking its own work), then a plan-level
     verification gate. Whenever two or more Units share an interface (one implements it, another
     tests or consumes it), the exact literal contract is authored once and pasted verbatim into
     every Unit that touches it - never independently re-described - and both the refinement loop
@@ -288,7 +289,8 @@ buildable intent.
 - Acceptance criteria:
   - `planner` auto-triggers on planning prompts, asks the plan-shaping questions and the
     applicable run-policy questions before writing, asks to authorize each destructive or
-    irreversible action it identifies, and produces a `plan-YYYY-MM-DD-<slug>.md` file meeting the
+    irreversible action it identifies, runs `review-md` on the written plan and resolves every
+    finding before its final summary, and produces a `plan-YYYY-MM-DD-<slug>.md` file meeting the
     plan-level verification gate: self-contained Units with hierarchical IDs; Phases numbered from
     1 (Phase 0 only for unanswered questions); every Cluster naming its orchestrator and review
     criteria; explicit wave order inside each Cluster; testable criteria; a Run policies section
