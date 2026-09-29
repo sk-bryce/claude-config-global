@@ -1,6 +1,6 @@
 ---
 created: 2026-08-05
-updated: 2026-09-23
+updated: 2026-09-29
 ---
 
 > Code examples in this file follow upstream Go idiom, including `:=` for local
@@ -74,15 +74,16 @@ follow it.
 **File naming**: `<package>_test.go`
 
 ```go
-// user_service_test.go
-package service_test // Use package_test for black-box tests
+// user_test.go
+package user_test // Use package_test for black-box tests
 
 import (
  "testing"
- "myapp/internal/service"
+
+ "myapp/internal/user"
 )
 
-func TestUserService_CreateUser(t *testing.T) {
+func TestService_CreateUser(t *testing.T) {
  // test implementation
 }
 ```

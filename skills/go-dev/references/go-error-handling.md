@@ -1,6 +1,6 @@
 ---
 created: 2026-08-05
-updated: 2026-09-23
+updated: 2026-09-29
 ---
 
 > Code examples in this file follow upstream Go idiom, including `:=` for local
@@ -40,18 +40,25 @@ package user
 
 import "errors"
 
-// Domain errors
 var (
- ErrNotFound      = errors.New("user not found")
- ErrInvalidEmail  = errors.New("invalid email address")
- ErrDuplicate     = errors.New("user already exists")
+ // ErrNotFound is returned when no user has the requested ID. Callers should
+ // treat it as a missing resource, not a failure, and not retry.
+ ErrNotFound = errors.New("user not found")
+
+ // ErrInvalidEmail is returned when an email address fails validation. Callers
+ // should report it back to whoever supplied the address.
+ ErrInvalidEmail = errors.New("invalid email address")
+
+ // ErrDuplicate is returned when a user with the same email already exists.
+ // Callers should report a conflict rather than create a second account.
+ ErrDuplicate = errors.New("user already exists")
 )
 
 func (r *Repository) GetUser(ctx context.Context, id string) (*User, error) {
  user, err := r.db.Find(ctx, id)
  if err != nil {
   if isNotFoundError(err) {
-   return nil, fmt.Errorf("user %s: %w", id, ErrNotFound)
+   return nil, fmt.Errorf("finding user %s: %w", id, ErrNotFound)
   }
   return nil, fmt.Errorf("querying user %s: %w", id, err)
  }
