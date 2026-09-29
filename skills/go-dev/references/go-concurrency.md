@@ -1,6 +1,6 @@
 ---
 created: 2026-08-05
-updated: 2026-09-23
+updated: 2026-09-29
 ---
 
 > Code examples in this file follow upstream Go idiom, including `:=` for local
@@ -370,21 +370,20 @@ for i := 0; i < 10; i++ {
 wg.Wait()
 ```
 
-**Use `sync.Once` for one-time initialization**:
+**Use `sync.Once` for one-time initialization**, held in a struct field rather than a
+package-level global:
 
 ```go
-var (
- instance *Service
- once     sync.Once
-)
+type Service struct {
+ indexOnce sync.Once
+ index     *Index
+}
 
-func GetService() *Service {
- once.Do(func() {
-  instance = &Service{
-   // expensive initialization
-  }
+func (s *Service) Index() *Index {
+ s.indexOnce.Do(func() {
+  s.index = buildIndex() // expensive, runs on first use only
  })
- return instance
+ return s.index
 }
 ```
 
