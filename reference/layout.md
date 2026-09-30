@@ -1,6 +1,6 @@
 ---
 created: 2026-09-14
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # Repository layout
@@ -255,8 +255,10 @@ section.
   left undone.
   - `skill-author` - create, audit, or explain agent skills; hands off to `skill-creator` for
     scaffolding and evals. See `specs/skills.md`'s skill-author section.
-  - `review-md` - proofread a single Markdown document, tracking settled/deferred findings in
-    `review-tracking.md`. See `specs/skills.md`'s review-md section.
+  - `review-md` - review one or more Markdown files in two passes: a Sonnet proofread pass per
+    document and one Opus judgment pass over the whole target, backed by `md-checks.sh`,
+    `link-recheck-hook.sh --review`, and `md-claims.sh`. Records settled and deferred findings,
+    anchored by quote, in `.claude/review-tracking.md`. See `specs/skills.md`'s review-md section.
   - `planner` - plan a multi-step piece of work into a self-contained Markdown plan file
     (`plan-YYYY-MM-DD-<slug>.md`) that runs itself when any agent is told to execute it: work is
     split into Phases, Clusters, and Units, and the embedded protocol from

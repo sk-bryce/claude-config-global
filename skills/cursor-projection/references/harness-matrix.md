@@ -1,6 +1,6 @@
 ---
 created: 2026-07-24
-updated: 2026-09-25
+updated: 2026-09-30
 ---
 
 # Harness Compatibility Matrix
@@ -124,10 +124,10 @@ Location is dual-read, but frontmatter and body content are not fully portable.
   Claude-only; Cursor always runs the skill inline regardless of these fields, so a skill that
   relies on the fork for isolation needs an equivalent manual dispatch in the body for Cursor to
   keep any isolation at all - do not remove that manual dispatch just because Claude Code also
-  forks the whole skill (see `skills/review-md/SKILL.md`'s "Do the review with a subagent" note
-  for the pattern). `agent:` names a read-only agent (for example `Explore`) for pure research
-  isolation, or a read/write one (`general-purpose`) when the forked run itself needs to edit
-  files, as `review-md` does.
+  forks the whole skill. `review-md` shows the alternative: its body runs inline and dispatches
+  explicit `Agent` calls for its review passes, so it needs no fork on either harness. `agent:`
+  names a read-only agent (for example `Explore`) for pure research isolation, or a read/write
+  one (`general-purpose`) when the forked run itself needs to edit files.
   `context: fork` dispatches cold: the forked agent's starting prompt is synthesized from the
   invocation line, not the full prior conversation, so only pin it on skills whose work is
   fully specified by their trigger and arguments.

@@ -1,0 +1,26 @@
+# ledgerd configuration: shipped defaults.
+# Install a copy at /etc/ledgerd/ledgerd.yaml and edit that copy.
+
+server:
+  listen_addr: 0.0.0.0
+  port: 8420
+  read_timeout: 15s
+  write_timeout: 15s
+
+storage:
+  data_dir: /var/lib/ledgerd
+  shard_count: 16
+  fsync: always
+
+queue:
+  max_batch: 500
+  flush_interval: 250ms
+  persist: false
+
+logging:
+  dir: /var/log/ledgerd
+  level: info
+  format: json
+
+metrics:
+  port: 9420

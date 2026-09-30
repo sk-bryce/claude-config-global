@@ -1,0 +1,4 @@
+[x] Retry changes for the export job
+[x] Review the Q2 hosting quote
+[ ] Migrate to the new queue (blocked: vendor access)
+[ ] Book vendor access requests earlier

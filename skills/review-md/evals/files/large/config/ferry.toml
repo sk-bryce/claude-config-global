@@ -1,0 +1,20 @@
+# Ferry scheduler configuration.
+# ferryd reads this file once at startup; restart it to apply a change.
+
+[server]
+port = 9170
+health_port = 9171
+log_dir = "/var/log/ferry"
+
+[queues.default]
+workers = 8
+
+[queues.bulk]
+workers = 4
+
+[queues.urgent]
+workers = 2
+
+[jobs]
+# max_retries is unset here, so the scheduler uses DEFAULT_MAX_RETRIES
+# from src/scheduler.py.

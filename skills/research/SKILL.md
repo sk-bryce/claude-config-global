@@ -15,7 +15,7 @@ description: |
 
 <!--
 created: 2026-08-10
-updated: 2026-09-25
+updated: 2026-09-30
 spec: specs/skills.md (research section)
 generated-by: skill-author + skill-creator, dispatched from Claude Code main thread (Sonnet 5)
 model: claude-sonnet-5
@@ -23,8 +23,7 @@ harness: Claude Code 2.1.222
 
 No `context`/`agent`/`model`/`effort` frontmatter, by deliberate deviation from skill-author's
 default "research-heavy work -> context: fork" guidance. `context: fork` dispatches to a
-cold-started agent context (docs/features/skills.md; specs/skills.md's review-md section calls
-its own use of that field a "cold-start fork" explicitly) - it does not share the invoking
+cold-started agent context (docs/features/skills.md) - it does not share the invoking
 conversation's prompt cache. This skill's entire purpose is to carry a workflow into whichever
 context invoked it, usually inline, so it can share that context's already-warm cache; setting
 `context: fork` here would silently reintroduce the cold-start cost problem

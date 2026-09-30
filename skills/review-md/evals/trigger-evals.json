@@ -1,0 +1,78 @@
+[
+  {
+    "query": "review docs/deployment.md, I rewrote the rollback section yesterday and want to know if anything is off",
+    "should_trigger": true
+  },
+  {
+    "query": "proofread README.md before I push it",
+    "should_trigger": true
+  },
+  {
+    "query": "review and refine specs/auth-flow.md, it has gotten messy after three rounds of edits",
+    "should_trigger": true
+  },
+  {
+    "query": "refine docs/onboarding.md so it reads cleanly for a new hire",
+    "should_trigger": true
+  },
+  {
+    "query": "revise CONTRIBUTING.md so it matches how we actually cut releases now",
+    "should_trigger": true
+  },
+  {
+    "query": "review everything in docs/runbooks/ and tell me whether those pages still agree with each other",
+    "should_trigger": true
+  },
+  {
+    "query": "can you review AGENTS.md? I think some of the instructions contradict each other",
+    "should_trigger": true
+  },
+  {
+    "query": "proofread notes/q3-retro.md and docs/roadmap.md",
+    "should_trigger": true
+  },
+  {
+    "query": "revise design/overview.md, the storage section is out of date",
+    "should_trigger": true
+  },
+  {
+    "query": "review this PR before I merge it, mostly the changes in src/billing/",
+    "should_trigger": false
+  },
+  {
+    "query": "review parse_config in config/loader.py for edge cases",
+    "should_trigger": false
+  },
+  {
+    "query": "review the diff on this branch and flag anything risky",
+    "should_trigger": false
+  },
+  {
+    "query": "review docker-compose.yml for consistency issues",
+    "should_trigger": false
+  },
+  {
+    "query": "deep review specs/auth-flow.md, is this design even a good idea?",
+    "should_trigger": false
+  },
+  {
+    "query": "be critical: is plans/migration.md the right approach at all?",
+    "should_trigger": false
+  },
+  {
+    "query": "audit my skills and tell me which descriptions are too vague",
+    "should_trigger": false
+  },
+  {
+    "query": "improve this prompt for the triage agent in prompts/triage.md",
+    "should_trigger": false
+  },
+  {
+    "query": "plan this: move our docs site from MkDocs to Docusaurus",
+    "should_trigger": false
+  },
+  {
+    "query": "finalize this plan in plans/cache-rewrite.md so it is ready to execute",
+    "should_trigger": false
+  }
+]

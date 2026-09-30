@@ -73,8 +73,7 @@ fi
 
 # --- Review mode ------------------------------------------------------------------------------------
 # Reads and writes no freshness state, never prints the hook's "link-recheck:" lines, and reports
-# every link (ok included). See the header's Usage block and the review-md/document-generation
-# contract for the exact row format.
+# every link (ok included). See the header's Usage block for the exact row format.
 if [[ "${1:-}" == "--review" ]]; then
   shift
   review_refs_rule=0

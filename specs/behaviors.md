@@ -1,6 +1,6 @@
 ---
 created: 2026-07-26
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # Behavior Specs
@@ -324,7 +324,8 @@ buildable intent.
   `reference/document-generation.md`.
 - Purpose: apply a consistent References-section and link-verification policy to all
   Markdown output that draws on external sources. Always-on, not an invoked skill.
-- Delivery (three pointers to the one policy file, no duplication):
+- Delivery (three routes to the one policy; the link classification table is mirrored in the
+  link-check script and review-md's proofread template):
   1. A `CLAUDE.md` Output Formatting pointer naming `reference/document-generation.md`.
   2. `scripts/link-recheck-hook.sh` scans a changed `.md` file's References section (skipping
      fenced code blocks) and reports each link's status per `reference/document-generation.md`'s
@@ -332,15 +333,15 @@ buildable intent.
      `Write|Edit` matcher: it is invoked by the deferred drain described under "Deferred Markdown
      Checks" below, once per distinct file at the end of the agent loop rather than once per
      edit.
-  3. `skills/review-md/references/document-generation.md` exists (synced by
-     `scripts/sync.sh`'s `sync_reference_copies()`), and `review-md`'s `SKILL.md` loads it
-     before checking links.
+  3. `review-md` checks links with `scripts/link-recheck-hook.sh --review` and carries the
+     link classification table in its proofread template, instead of loading a copy of the
+     policy file (see `specs/skills.md`'s review-md section).
 - Acceptance criteria:
   - Generated Markdown that used external sources ends with a verified References section
     per the policy.
   - The hook reports (without blocking on) broken links after a Markdown edit, at the end of the
     turn that made the edit per "Deferred Markdown Checks".
-  - `review-md` loads the synced policy copy before its link checks.
+  - `review-md` classifies links by the same verification table, through `--review` mode.
 
 ---
 

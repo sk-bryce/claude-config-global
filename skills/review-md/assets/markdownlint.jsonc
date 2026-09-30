@@ -1,0 +1,12 @@
+// review-md's conservative default: only rules that catch errors, not style opinions.
+{
+  "default": false,
+  "MD011": true, // catches reversed link syntax, (text)[url] instead of [text](url)
+  "MD037": true, // catches stray spaces inside emphasis markers, * text *
+  "MD038": true, // catches stray spaces inside code span backticks, ` text `
+  "MD039": true, // catches stray spaces inside link text, [ text ](url)
+  "MD042": true, // catches empty links with no destination
+  "MD052": true, // catches reference links/images whose label is never defined
+  "MD053": true, // catches reference link/image definitions that are never used
+  "MD056": true // catches tables with an inconsistent number of columns per row
+}

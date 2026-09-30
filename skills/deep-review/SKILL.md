@@ -17,7 +17,7 @@ effort: high
 
 <!--
 created: 2026-09-04
-updated: 2026-09-12
+updated: 2026-09-30
 spec: specs/skills.md (deep-review section)
 generated-by: skill-author
 model: claude-opus-5
@@ -248,4 +248,6 @@ link checks, lint, formatting. Premise, scope, alternatives, purpose-fit, and as
 one's. That sentence does not create a companion pass: **when the target is document-heavy, run
 `review-md` as well**, or tell the user plainly that the mechanical layer went unchecked. A deep
 pass told that mechanics belong to someone else, while no one else is running, misses what a
-`review-md` pass over the same target catches.
+`review-md` pass over the same target catches. When you run `review-md`, run it after presenting the
+verdict, and pass the verdict and your findings verbatim in the Skill call's arguments, so its
+judgment pass takes them as settled and does not re-argue purpose or fit.

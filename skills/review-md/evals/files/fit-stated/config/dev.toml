@@ -1,0 +1,3 @@
+# Settings for running notectl from a checkout.
+data_dir = "tmp/data"
+listen = "127.0.0.1:8080"
