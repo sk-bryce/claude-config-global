@@ -1,0 +1,67 @@
+{
+  "cfg": {
+    "base_date": "2026-03-02T10:00:00",
+    "generate": null,
+    "git": true,
+    "later": []
+  },
+  "clean": {
+    "base_date": "2026-03-02T10:00:00",
+    "generate": null,
+    "git": true,
+    "later": []
+  },
+  "fit-none": {
+    "base_date": "2026-03-02T10:00:00",
+    "generate": null,
+    "git": true,
+    "later": []
+  },
+  "fit-stated": {
+    "base_date": "2026-03-02T10:00:00",
+    "generate": null,
+    "git": true,
+    "later": []
+  },
+  "large": {
+    "base_date": "2026-03-02T10:00:00",
+    "generate": "large",
+    "git": true,
+    "later": []
+  },
+  "mixed": {
+    "base_date": "2026-03-02T10:00:00",
+    "generate": null,
+    "git": true,
+    "later": []
+  },
+  "nongit": {
+    "base_date": "2026-03-02T10:00:00",
+    "generate": null,
+    "git": false,
+    "later": []
+  },
+  "scale": {
+    "base_date": "2026-03-02T10:00:00",
+    "generate": "scale",
+    "git": true,
+    "later": []
+  },
+  "svc": {
+    "base_date": "2026-03-02T10:00:00",
+    "generate": null,
+    "git": true,
+    "later": [
+      {
+        "date": "2026-05-20T10:00:00",
+        "message": "Rename the drain heading",
+        "path": "docs/operations.md"
+      },
+      {
+        "date": "2026-06-15T10:00:00",
+        "message": "Update config docs",
+        "path": "docs/config.md"
+      }
+    ]
+  }
+}
