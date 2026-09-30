@@ -56,7 +56,7 @@ You orchestrate and never review, since the dispatched passes give the isolation
    settled; `not-found-by-script` and `candidate` rows of kind `path`, `command`, `flag`,
    `identifier`, `heading-ref`, or `dated` go to `{{CLAIMS}}`; `drift` rows to `{{SCRIPT_SIGNALS}}`.
 5. **Proofread passes** (`references/proofread-pass.md`), one per document, in waves of at most
-   10 per message, never one at a time. Split a document over 60,000 characters by top-level
+   5 per message, never one at a time. Split a document over 60,000 characters by top-level
    section into dispatches in the same wave, `{{SECTION_SCOPE}}` then being
    `sections: <heading>, <heading>`, since long context degrades accuracy.
 6. **Coverage check.** A heading is unverified when `Claims verified` is below `Claims found`,
@@ -92,7 +92,7 @@ return at once, faking a clean report. Send the text between the prompt markers,
 heading-level skips, unclosed fences, relative link targets, same-file anchors, fence language
 tags, empty alt text, H1 rules, repeated sibling headings), links (link liveness), scrub-check
 (home paths and identifiers), markdownlint (its rules' topics), vale (repeated words). Findings
-cap at 120 words, bar evidence quotes and Change. Fill the context block verbatim (no paraphrase):
+cap at 130 words, bar evidence quotes and Change. Fill the context block verbatim (no paraphrase):
 
 ```text
 Context block

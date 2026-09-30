@@ -1,11 +1,11 @@
 {
   "skill_name": "review-md",
   "constants": {
-    "wave": 10,
+    "wave": 5,
     "split_chars": 60000,
     "cap_files": 25,
     "cap_chars": 250000,
-    "word_bound": 120
+    "word_bound": 130
   },
   "evals": [
     {

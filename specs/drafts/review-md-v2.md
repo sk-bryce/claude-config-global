@@ -1,6 +1,6 @@
 ---
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # review-md v2 spec (draft)
@@ -104,7 +104,7 @@ live here; every rule an executor must follow also appears in `SKILL.md` or a pa
   3. Read the target repository's context files (CLAUDE.md, AGENTS.md) to decide which house rules
      apply (see Checks), and detect agent-config documents and `spec:` headers.
   4. Run every script check in one batched step (see Checks).
-  5. Dispatch one proofread pass per document, in waves of at most 10 per message.
+  5. Dispatch one proofread pass per document, in waves of at most 5 per message.
   6. Check the proofread passes' coverage lists; rerun what is unverified, once.
   7. Dispatch the judgment pass, which also verifies the proofread findings.
   8. Merge, drop rejected and duplicate findings, and filter against tracking.
@@ -147,10 +147,10 @@ live here; every rule an executor must follow also appears in `SKILL.md` or a pa
 ## Passes and tiers
 
 - Proofread pass (Sonnet), one per document (E37):
-  - Proofread dispatches go out in waves of at most 10 per message, never one at a time. The v1
+  - Proofread dispatches go out in waves of at most 5 per message, never one at a time. The v1
     baseline caught a run that dispatched them in sequence.
-  - A document over 60,000 characters (provisional; Plan B measures it) is split by top-level
-    section into several dispatches in the same wave (G15).
+  - A document over 60,000 characters (confirmed by the Plan B calibration run on 2026-09-30) is
+    split by top-level section into several dispatches in the same wave (G15).
   - Input: the template, the document path, the script output for that document (candidate
     claims, freshness and drift signals, and the list of tools that ran), the named spec section
     when the document has a `spec:` header, and the context block. Tracking entries are never
@@ -205,13 +205,14 @@ live here; every rule an executor must follow also appears in `SKILL.md` or a pa
   asks the user to confirm before any script or dispatch runs, and the question ends the turn. At
   Sonnet or above it asks nothing. The guard reads a self-report that can be wrong in either
   direction. No pass tier depends on it.
-- Size cap (P7, R16): the provisional threshold is 25 Markdown files or 250,000 characters across
-  the target. Above the cap, the question offers three answers: narrow the target (the user names
-  a subset), split the judgment pass into groups, or run one judgment pass. The question ends the
-  turn (D21). Under any answer, proofread dispatches go out at most 10 per message, in waves.
-  Groups follow the directory tree. A split shows in the declaration line, and Not checked says
-  that relations across groups went unreviewed. Plan B measures the real threshold and the wave
-  size with a scaling fixture and updates this spec.
+- Size cap (P7, R16): the threshold is 25 Markdown files or 250,000 characters across the target.
+  Above the cap, the question offers three answers: narrow the target (the user names a subset),
+  split the judgment pass into groups, or run one judgment pass. The question ends the turn (D21).
+  Under any answer, proofread dispatches go out at most 5 per message, in waves. Groups follow the
+  directory tree. A split shows in the declaration line, and Not checked says that relations
+  across groups went unreviewed. The Plan B calibration run on 2026-09-30 kept this threshold,
+  because scale-fixture recall was not 3 of 3 (one run was cut short by a rate limit), and set
+  the wave size to 5, because not every proofread wave completed.
   Rationale, directional only: published work on LLM code review names long-context degradation as
   a main limit; the source is about code, not prose.
 - Template contents (D27, E40, R11). Each template carries, verbatim:
@@ -440,10 +441,11 @@ live here; every rule an executor must follow also appears in `SKILL.md` or a pa
   (D8).
 - A finding with no concrete change is either dropped or reported as a labelled question for the
   user, never as a defect (D15).
-- Prose bound (D14): at most 120 words per finding, counting everything except the quoted
-  evidence and the replacement text. The number is provisional: Plan B measures real v2 finding
-  lengths and updates this spec. The number of findings is never capped, since a cut finding is a
-  missed one. SKILL.md, the templates, and this spec state the same number and the same scope.
+- Prose bound (D14): at most 130 words per finding, counting everything except the quoted
+  evidence and the replacement text. The number comes from measured v2 finding lengths in the Plan
+  B calibration run on 2026-09-30 (95th percentile: 127 words). The number of findings is never
+  capped, since a cut finding is a missed one. SKILL.md, the templates, and this spec state the
+  same number and the same scope.
 
 ## Fix policy
 
@@ -657,7 +659,7 @@ live here; every rule an executor must follow also appears in `SKILL.md` or a pa
   | Failure mode | Assertion |
   | --- | --- |
   | Backgrounded dispatch | every Agent call in the transcript has `run_in_background: false` |
-  | Proofread dispatches sent one at a time | each wave of at most 10 proofread Agent calls sits in one assistant message |
+  | Proofread dispatches sent one at a time | each wave of at most 5 proofread Agent calls sits in one assistant message |
   | Fork `subagent_type` | no Agent call in the transcript has `subagent_type: "fork"` |
   | Judgment pass not at Opus | the judgment Agent call has `model: "opus"`, and the declaration line says so |
   | Question narrated and carried on | the transcript ends after the question |
@@ -706,9 +708,9 @@ live here; every rule an executor must follow also appears in `SKILL.md` or a pa
 - One sound, defect-free fixture whose criterion is zero findings above minor (D10).
 - A fit fixture run twice: once with a stated purpose and once without, where fit findings must
   be labelled inferred and never auto-applied (D16).
-- A scaling fixture above the provisional size cap, and one document over the provisional
-  per-document split size, to measure both thresholds and the proofread wave size (P7, R16,
-  G15).
+- A scaling fixture above the first size cap (25 files or 250,000 characters), and one document
+  over the first per-document split size (60,000 characters), to measure both thresholds and the
+  proofread wave size (P7, R16, G15).
 - Before any v2 run, Plan B pre-registers that a fixture on which v1 scores full marks cannot show
   v2 is better (D38). Findings outside a fixture's key are recorded separately and graded true or
   false positive, never ignored.
@@ -735,7 +737,7 @@ Each existing case is kept and changed, or retired:
 - Eval 8, PR review: retired. A should-not-fire case cannot be tested in the behavioral harness,
   so it moves to the trigger set (D39).
 - Eval 9, directory review: kept, changed. The dispatch expectation becomes N proofread dispatches
-  in waves of at most 10 per message plus one judgment dispatch; expectations 9 and 11 merge;
+  in waves of at most 5 per message plus one judgment dispatch; expectations 9 and 11 merge;
   expectation 10 gets a harder report-only case, since the grader found it close to trivially
   satisfied (E53, E37, E10).
 - Eval 10, two named files: retired. It tested the ask-once branch, which section 0 removed (E53).
@@ -924,7 +926,7 @@ Each line is checked by a command or by the named grader.
 - `grep -E '^\| Judgment .*opus'` and `grep -E '^\| Proofread .*sonnet'` on SKILL.md each print
   one line, and SKILL.md contains `run_in_background: false`.
 - `grep -F` finds each of the five target phrases in the description; the description names
-  code-review and deep-review (grader check); "120 words" appears in SKILL.md and both templates.
+  code-review and deep-review (grader check); "130 words" appears in SKILL.md and both templates.
 - Template slots use a syntax md-checks does not flag as a placeholder.
 - The md-checks.sh test suite exits 0, with one case per probe listed in Checks.
 - The link review mode classes a DNS failure as broken and a timeout as inconclusive on a test

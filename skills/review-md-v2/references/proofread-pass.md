@@ -153,7 +153,7 @@ Each finding is a bold ID line followed by indented field lines, with the fields
     `link-broken`, `link-inconclusive`, `mechanical`, `freshness`, `spec-drift`, `hygiene`,
     `agent-config`.
 - A value may continue on following lines indented four spaces.
-- Prose bound: at most 120 words per finding, counting every field except the quoted spans (text
+- Prose bound: at most 130 words per finding, counting every field except the quoted spans (text
   inside double quotes or backticks) in `Evidence` and the text of `Change`. The number of findings
   is never capped.
 
