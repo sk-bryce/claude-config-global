@@ -1,6 +1,6 @@
 ---
 created: 2026-09-14
-updated: 2026-09-26
+updated: 2026-09-29
 ---
 
 # Repository layout
@@ -87,14 +87,25 @@ section.
       anything that isn't Markdown. Not registered directly in `settings.json`; reached only
       through `md-deferred-checks.sh`. Runs first in the drained-ledger sequence, since it can
       reformat the file before `md-checks.sh` reads it.
-    - `md-checks.sh` - the deterministic, offline mechanical checks over a Markdown file
-      (placeholders, CLAUDE.md typography compliance, skipped heading levels, relative link targets
-      that do not resolve, same-file anchors with no matching heading). Silent for a clean file,
-      never edits anything, always exits 0. Also invoked directly by the `review-md` skill, so one
-      implementation serves both the hook path and the review path.
-    - `link-recheck-hook.sh` - the only network-touching check. Probes References-section links in
-      parallel, prints nothing when every link resolves, and self-gates on a freshness window keyed
-      to the document's URL set, so a repeat run makes no network call at all.
+    - `md-checks.sh` - the deterministic, offline mechanical checks over Markdown files
+      (placeholders, typography by code point, skipped heading levels, unclosed fences, relative
+      link targets that do not resolve, same-file anchors checked with GitHub-style slugs).
+      `--no-typography` turns typography off; `--review` adds fence language tags, empty image alt
+      text, H1 rules, and repeated sibling headings. Silent for a clean file, never edits anything,
+      always exits 0. Also invoked directly by the `review-md` skill, so one implementation serves
+      both the hook path and the review path. Its regression suite is
+      `scripts/md-checks-tests/run.sh`.
+    - `link-recheck-hook.sh` - the only network-touching check. In hook mode it probes
+      References-section links in parallel, prints nothing when every link resolves, and self-gates
+      on a freshness window keyed to the document's URL set, so a repeat run makes no network call
+      at all. `--review` (used by `review-md`) probes every external link outside code, keeps no
+      state, and prints one tab-separated row per link with its class; its suite is
+      `scripts/link-recheck-tests/run.sh`.
+    - `md-claims.sh` - extracts checkable claims from Markdown (paths, commands, flags,
+      identifiers, heading references, dated statements), settles the ones a script can, and adds
+      `updated:` freshness and source-drift signals, as tab-separated rows for `review-md`'s
+      proofread pass. Read-only; never runs a command taken from a document. Its suite is
+      `scripts/md-claims-tests/run.sh`.
   - `filter-verbose-output.sh` (`PreToolUse`, matcher `Bash`) - registered.
   - `destructive-git-guard.sh` (`PreToolUse`, matcher `Bash`, ordered before
     `filter-verbose-output.sh` in the same matcher block) - registered. The operations it catches:

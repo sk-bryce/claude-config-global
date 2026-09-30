@@ -15,6 +15,14 @@
 #   No-ops for anything that isn't a *.md file, a missing file, or a file with no
 #   "# References"-style heading.
 #
+#        link-recheck-hook.sh --review [--references-rule] <file> [<file> ...]
+#   Reviews every link in each file (not just References-section ones), printing one tab-separated
+#   row per link: <abspath> <line> <url> <result>. Unlike hook mode, this reads and writes no
+#   freshness state and reports every result, "ok" included. --references-rule additionally flags a
+#   file that has a probed http(s) link but no "References" heading, with one extra
+#   "no-references" row. LINK_REVIEW_MAX_TIME overrides the per-probe --max-time (seconds);
+#   default 10.
+#
 # Three cost properties, all deliberate, all of them things this script did NOT do before
 # (see docs/efficient-agentic-use/04-configuration-hygiene.md's hook-cost section, which names
 # exactly this check as its worked example of a hook running more often than its answer changes):
@@ -48,6 +56,315 @@ set -uo pipefail  # deliberately not -e: this hook only ever reports or silently
 # an editing session never re-probes, short enough that genuine rot surfaces within a day.
 FRESH_MINUTES=1440
 PARALLELISM=8
+
+# --- Review mode: internal probe (separate from hook mode's --probe below) -----------------------
+# Prints "<curl exit>\t<http code>\t<url>" and nothing else.
+if [[ "${1:-}" == "--review-probe" ]]; then
+  url="${2:-}"
+  [[ -n "$url" ]] || exit 0
+  max_time="${LINK_REVIEW_MAX_TIME:-10}"
+  code="$(curl -s -o /dev/null -w '%{http_code}' -L --max-time "$max_time" \
+    -A 'Mozilla/5.0 (link-recheck-hook)' "$url" 2>/dev/null)"
+  exit_code=$?
+  [[ -z "$code" ]] && code="000"
+  printf '%s\t%s\t%s\n' "$exit_code" "$code" "$url"
+  exit 0
+fi
+
+# --- Review mode ------------------------------------------------------------------------------------
+# Reads and writes no freshness state, never prints the hook's "link-recheck:" lines, and reports
+# every link (ok included). See the header's Usage block and the review-md/document-generation
+# contract for the exact row format.
+if [[ "${1:-}" == "--review" ]]; then
+  shift
+  review_refs_rule=0
+  if [[ "${1:-}" == "--references-rule" ]]; then
+    review_refs_rule=1
+    shift
+  fi
+  if [[ $# -eq 0 ]]; then
+    echo "usage: link-recheck-hook.sh --review [--references-rule] <file> [<file> ...]" >&2
+    exit 2
+  fi
+
+  review_script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  review_self="$review_script_dir/$(basename "${BASH_SOURCE[0]}")"
+
+  review_have_curl=1
+  command -v curl >/dev/null 2>&1 || review_have_curl=0
+
+  review_classify() {
+    local ex="$1" co="$2"
+    case "$ex" in
+      6|7) printf 'broken\n'; return ;;
+      0) ;;
+      *) printf 'inconclusive\n'; return ;;
+    esac
+    case "$co" in
+      2??|3??) printf 'ok\n' ;;
+      404|410) printf 'broken\n' ;;
+      *) printf 'inconclusive\n' ;;
+    esac
+  }
+
+  # Per-file scan: fence and inline-code-span rules mirror md-checks.sh (an opener of 0-3 leading
+  # spaces then 3+ backticks/tildes, closed by 0-3 leading spaces then the same character repeated
+  # at least as many times then only whitespace; a code span is the text between a run of N
+  # backticks and the next run of exactly N backticks on the same line). Prints one "HASREF\t0|1"
+  # line, then one "<KIND>\t<line>\t<url>" line per link occurrence in line order. KIND is FENCED,
+  # INLINECODE, UNSUPPORTED, or PROBE; mailto links are not printed at all.
+  read -r -d '' REVIEW_PERL <<'PERL'
+use strict;
+use warnings;
+use utf8;
+
+binmode(STDOUT, ':encoding(UTF-8)');
+
+my ($file) = @ARGV;
+
+open(my $fh, '<:encoding(UTF-8)', $file) or exit 0;
+my @lines = <$fh>;
+close $fh;
+chomp @lines;
+my $n = scalar @lines;
+
+my @is_fenced = (0) x ($n + 1);
+my $in_fence = 0;
+my $fence_char = '';
+my $fence_len = 0;
+
+for (my $i = 1; $i <= $n; $i++) {
+  my $line = $lines[$i - 1];
+  if ($in_fence) {
+    $is_fenced[$i] = 1;
+    if ($line =~ /^ {0,3}\Q$fence_char\E{$fence_len,}[ \t]*$/) {
+      $in_fence = 0;
+    }
+    next;
+  }
+  if ($line =~ /^ {0,3}(`{3,}|~{3,})(.*)$/) {
+    $is_fenced[$i] = 1;
+    $in_fence = 1;
+    $fence_char = substr($1, 0, 1);
+    $fence_len = length($1);
+  }
+}
+
+my $has_references = 0;
+for (my $i = 1; $i <= $n; $i++) {
+  next if $is_fenced[$i];
+  my $line = $lines[$i - 1];
+  if ($line =~ /^#{1,6}[ \t]+(.*)$/) {
+    my $text = $1;
+    $text =~ s/^\s+|\s+$//g;
+    $text =~ s/\s*#+$//;
+    $text =~ s/\s+$//;
+    $has_references = 1 if $text eq 'References';
+  }
+}
+print "HASREF\t" . ($has_references ? 1 : 0) . "\n";
+
+sub parse_target {
+  my ($raw) = @_;
+  $raw =~ s/^\s+|\s+$//g;
+  return $1 if $raw =~ /^<([^>]*)>/;
+  return $1 if $raw =~ /^(\S*)/;
+  return '';
+}
+
+sub code_span_ranges {
+  my ($line) = @_;
+  my @ranges;
+  while ($line =~ /(`+)(.*?)\1/g) {
+    push @ranges, [$-[0], $+[0]];
+  }
+  return @ranges;
+}
+
+sub in_ranges {
+  my ($pos, $ranges) = @_;
+  foreach my $r (@$ranges) {
+    return 1 if $pos >= $r->[0] && $pos < $r->[1];
+  }
+  return 0;
+}
+
+sub emit {
+  my ($line, $pos, $target, $fenced, $ranges) = @_;
+  return if $target eq '';
+  if ($fenced) {
+    print "FENCED\t$line\t$target\n";
+    return;
+  }
+  if (in_ranges($pos, $ranges)) {
+    print "INLINECODE\t$line\t$target\n";
+    return;
+  }
+  if ($target =~ /^mailto:/i) {
+    return;
+  }
+  if ($target =~ /^https?:\/\//i) {
+    print "PROBE\t$line\t$target\n";
+    return;
+  }
+  print "UNSUPPORTED\t$line\t$target\n";
+}
+
+for (my $i = 1; $i <= $n; $i++) {
+  my $line = $lines[$i - 1];
+  my @ranges = code_span_ranges($line);
+
+  if ($line =~ /^\[[^\]]+\]:\s*(\S.*)$/) {
+    my $target = parse_target($1);
+    emit($i, 0, $target, $is_fenced[$i], \@ranges);
+  }
+
+  while ($line =~ /(!?\[[^\]]*\]\(([^)]*)\))|<(https?:\/\/[^>\s]+)>/g) {
+    my $pos = $-[0];
+    my $target;
+    if (defined $2) {
+      $target = parse_target($2);
+    } elsif (defined $3) {
+      $target = $3;
+    } else {
+      next;
+    }
+    emit($i, $pos, $target, $is_fenced[$i], \@ranges);
+  }
+}
+PERL
+
+  declare -a review_file_kind=() review_file_path=() review_file_scan=()
+  declare -A review_seen_url=()
+  declare -a review_probe_urls=()
+
+  for f in "$@"; do
+    if [[ ! -e "$f" ]]; then
+      review_file_kind+=("MISSING")
+      review_file_path+=("$f")
+      review_file_scan+=("")
+      continue
+    fi
+    case "$f" in
+      *.md|*.markdown)
+        review_abs="$(cd "$(dirname "$f")" 2>/dev/null && pwd)/$(basename "$f")"
+        review_out="$(perl -e "$REVIEW_PERL" -- "$review_abs" 2>/dev/null)"
+        review_file_kind+=("SCAN")
+        review_file_path+=("$review_abs")
+        review_file_scan+=("$review_out")
+        while IFS=$'\t' read -r review_kind review_line review_url; do
+          [[ "$review_kind" == "PROBE" ]] || continue
+          [[ -n "${review_seen_url[$review_url]:-}" ]] && continue
+          review_seen_url["$review_url"]=1
+          review_probe_urls+=("$review_url")
+        done <<< "$review_out"
+        ;;
+      *)
+        review_abs="$(cd "$(dirname "$f")" 2>/dev/null && pwd)/$(basename "$f")"
+        review_file_kind+=("NOTMD")
+        review_file_path+=("$review_abs")
+        review_file_scan+=("")
+        ;;
+    esac
+  done
+
+  declare -A review_url_result=()
+  if [[ ${#review_probe_urls[@]} -gt 0 && $review_have_curl -eq 1 ]]; then
+    review_round1="$(printf '%s\n' "${review_probe_urls[@]}" \
+      | xargs -r -P "$PARALLELISM" -I{} "$review_self" --review-probe {} 2>/dev/null)"
+    declare -A review_r1_exit=() review_r1_code=()
+    while IFS=$'\t' read -r review_ex review_co review_u; do
+      [[ -n "$review_u" ]] || continue
+      review_r1_exit["$review_u"]="$review_ex"
+      review_r1_code["$review_u"]="$review_co"
+    done <<< "$review_round1"
+
+    review_retry_urls=()
+    for review_u in "${review_probe_urls[@]}"; do
+      [[ "${review_r1_exit[$review_u]:-}" == "28" ]] && review_retry_urls+=("$review_u")
+    done
+
+    declare -A review_r2_exit=() review_r2_code=()
+    if [[ ${#review_retry_urls[@]} -gt 0 ]]; then
+      review_round2="$(printf '%s\n' "${review_retry_urls[@]}" \
+        | xargs -r -P "$PARALLELISM" -I{} "$review_self" --review-probe {} 2>/dev/null)"
+      while IFS=$'\t' read -r review_ex review_co review_u; do
+        [[ -n "$review_u" ]] || continue
+        review_r2_exit["$review_u"]="$review_ex"
+        review_r2_code["$review_u"]="$review_co"
+      done <<< "$review_round2"
+    fi
+
+    for review_u in "${review_probe_urls[@]}"; do
+      review_ex="${review_r1_exit[$review_u]:-}"
+      review_co="${review_r1_code[$review_u]:-}"
+      if [[ "$review_ex" == "28" ]]; then
+        review_ex2="${review_r2_exit[$review_u]:-}"
+        review_co2="${review_r2_code[$review_u]:-}"
+        if [[ "$review_ex2" == "28" ]]; then
+          review_url_result["$review_u"]="inconclusive"
+        else
+          review_url_result["$review_u"]="$(review_classify "$review_ex2" "$review_co2")"
+        fi
+      else
+        review_url_result["$review_u"]="$(review_classify "$review_ex" "$review_co")"
+      fi
+    done
+  fi
+
+  for review_i in "${!review_file_kind[@]}"; do
+    case "${review_file_kind[$review_i]}" in
+      MISSING)
+        printf '%s\t0\t-\tskipped:missing-file\n' "${review_file_path[$review_i]}"
+        ;;
+      NOTMD)
+        printf '%s\t0\t-\tskipped:not-markdown\n' "${review_file_path[$review_i]}"
+        ;;
+      SCAN)
+        review_abs="${review_file_path[$review_i]}"
+        review_hasref=0
+        review_first_seen=0
+        review_first_line=""
+        review_first_url=""
+        while IFS=$'\t' read -r review_kind review_line review_url; do
+          [[ -n "$review_kind" ]] || continue
+          case "$review_kind" in
+            HASREF)
+              review_hasref="$review_line"
+              ;;
+            FENCED)
+              printf '%s\t%s\t%s\tskipped:fenced-code\n' "$review_abs" "$review_line" "$review_url"
+              ;;
+            INLINECODE)
+              printf '%s\t%s\t%s\tskipped:inline-code\n' "$review_abs" "$review_line" "$review_url"
+              ;;
+            UNSUPPORTED)
+              printf '%s\t%s\t%s\tskipped:unsupported-scheme\n' "$review_abs" "$review_line" "$review_url"
+              ;;
+            PROBE)
+              if [[ $review_have_curl -eq 0 ]]; then
+                review_result="skipped:no-curl"
+              else
+                review_result="${review_url_result[$review_url]:-inconclusive}"
+              fi
+              printf '%s\t%s\t%s\t%s\n' "$review_abs" "$review_line" "$review_url" "$review_result"
+              if [[ $review_first_seen -eq 0 ]]; then
+                review_first_line="$review_line"
+                review_first_url="$review_url"
+                review_first_seen=1
+              fi
+              ;;
+          esac
+        done <<< "${review_file_scan[$review_i]}"
+        if [[ $review_refs_rule -eq 1 && "$review_hasref" -eq 0 && $review_first_seen -eq 1 ]]; then
+          printf '%s\t%s\t%s\tno-references\n' "$review_abs" "$review_first_line" "$review_first_url"
+        fi
+        ;;
+    esac
+  done
+
+  exit 0
+fi
 
 # --- Internal probe mode -------------------------------------------------------------------------
 # Split out so xargs can fan the probes out across processes. Prints "code<TAB>url" and nothing else.

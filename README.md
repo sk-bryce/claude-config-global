@@ -133,7 +133,7 @@ What it sets up:
   [What's here and why you might care](#whats-here-and-why-you-might-care) above.
 - `scripts/` - hook logic, the status line script, and the deterministic sync/check tooling:
   `commit-msg-check.sh`, `destructive-git-guard.sh`, `filter-verbose-output.sh`, `health-check.sh`,
-  `link-recheck-hook.sh`, `markdownlint-hook.sh`, `md-checks.sh`, `md-deferred-checks.sh`,
+  `link-recheck-hook.sh`, `markdownlint-hook.sh`, `md-checks.sh`, `md-claims.sh`, `md-deferred-checks.sh`,
   `md-ledger-append.sh`, `pre-commit-check.sh`, `read-only-plan-guard.sh`, `replicate.sh`,
   `scrub-check.sh`, `session-setup-check.sh`, `setup.sh`, `statusline.sh`, `sync.sh`. See
   `reference/layout.md` for what each script does and its registration state.
