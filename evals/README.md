@@ -1,6 +1,6 @@
 ---
 created: 2026-07-27
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # Evals: Repo-Wide Run Procedure
@@ -288,6 +288,7 @@ the artifact count or run frequency grows.
 | 2026-09-26 | `prompt-author` | 100% (10/10 positive at n=9, 10/10 negative at n=9) | 100% (35/35) | 100% (17/17) | SHIP |
 | 2026-09-26 | `prompt-author` | 100% (15/15 positive at n=9, 15/15 negative at n=9) | 95.7% (45/47) | 95.5% (21/22) | HOLD |
 | 2026-09-29 | `review-md` | not run (no trigger set) | 91% (50/55) | 89% (8/9) | BASELINE |
+| 2026-09-30 | `review-md` (v1, new fixtures) | 7/9 positive at >= 8 of 9, 10/10 negative at 0 fires | 98% (56/57) | 86% (44/51) | BASELINE |
 
 **Every row above dated before 2026-09-08 was measured under the superseded threshold** - "fires on
 every run", recorded at three runs per query and in several cases computed at `run_eval.py`'s 0.5
