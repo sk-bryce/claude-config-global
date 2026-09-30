@@ -289,6 +289,7 @@ the artifact count or run frequency grows.
 | 2026-09-26 | `prompt-author` | 100% (15/15 positive at n=9, 15/15 negative at n=9) | 95.7% (45/47) | 95.5% (21/22) | HOLD |
 | 2026-09-29 | `review-md` | not run (no trigger set) | 91% (50/55) | 89% (8/9) | BASELINE |
 | 2026-09-30 | `review-md` (v1, new fixtures) | 7/9 positive at >= 8 of 9, 10/10 negative at 0 fires | 98% (56/57) | 86% (44/51) | BASELINE |
+| 2026-09-30 | `review-md` (v2) | not run yet (swapped in before the v2 run) | not run yet | not run yet | SHIP (override, 2026-09-30) [^19] |
 
 **Every row above dated before 2026-09-08 was measured under the superseded threshold** - "fires on
 every run", recorded at three runs per query and in several cases computed at `run_eval.py`'s 0.5
@@ -299,7 +300,7 @@ positives and lower bounds on negatives.
 
 [^1]: `execute-plan` is manual-only; its run record states no broader trigger percentage applies,
     so this cell is not comparable with the others.
-[^2]: The only SHIP in this table is a waiver, not a clean pass. Counting all sub-expectations
+[^2]: This SHIP is a waiver, not a clean pass. Counting all sub-expectations
     rather than only those the fixture exercised, `execute-plan` scored 91.3%, below the 100%
     the threshold table demands without qualification. It shipped on the argument that the gap
     was fixture coverage rather than an observed failure.
@@ -422,25 +423,25 @@ proposing a mechanism for the difference, not your memory of its conclusion.
 
 ## Baselines
 
-Run records exist for `write-plan` and `execute-plan` (both 2026-08-03), `deep-review`
-(2026-09-05, two records: the gate run and the ablation/self-review follow-up), and `review-md`
-(2026-09-29, `runs/2026-09-29-review-md-v1-baseline.md`, pinned at commit `d404556`). `execute-plan`
-shipped on a waiver; `write-plan` and `deep-review` are held. On 2026-09-25 `write-plan` was
-renamed `planner` and `execute-plan` was deleted: its run procedure moved into the protocol every
-plan embeds, and its cases were ported into `skills/planner/evals/evals.json`
-(`decisions/0010-single-planner-skill-with-self-running-plans.md`). The rows and run records
-keep the old names, and `planner` inherits the `write-plan` HOLD. See the
-Results log footnotes. None of the first three is a pinned baseline, because no run file records a
-ref to pin; the review-md record pins `d404556`. No baseline runs
-exist yet for `skill-author`, `cursor-projection`, `health-check`, or `research`.
-Establishing them (running each skill's current `evals.json` per the procedure above and
-committing the resulting run file) requires a real Claude Code session, since that is where the
-native eval runner runs; it was deliberately deferred out of the Phase 2 and Phase 3 build
-passes that produced these eval sets, since no native runner was available in the harness those
-passes ran in. (Those phase names come from the spec-anchored migration plan, whose four phases
-all completed; the plan is not part of this repo.) The next time any of these four skills is
-regenerated, run this procedure first, on Claude Code, before treating that skill's prior
-`SKILL.md` as an eval-gated baseline.
+Run records exist for `write-plan` and `execute-plan` (both 2026-08-03), `deep-review` (2026-09-05,
+two records: the gate run and the ablation/self-review follow-up), and `review-md` (2026-09-29,
+`runs/2026-09-29-review-md-v1-baseline.md`, pinned at commit `d404556`; and 2026-09-30,
+`runs/2026-09-30-review-md-v1-new-fixtures.md`, the v1 side of the pending v2 comparison).
+`execute-plan` shipped on a waiver; `write-plan` and `deep-review` are held. On 2026-09-25
+`write-plan` was renamed `planner` and `execute-plan` was deleted: its run procedure moved into the
+protocol every plan embeds, and its cases were ported into `skills/planner/evals/evals.json`
+(`decisions/0010-single-planner-skill-with-self-running-plans.md`). The rows and run records keep
+the old names, and `planner` inherits the `write-plan` HOLD. See the Results log footnotes. None of
+the first three is a pinned baseline, because no run file records a ref to pin; the review-md
+records pin `d404556` and `c1d06ef`. No baseline runs exist yet for `skill-author`,
+`cursor-projection`, `health-check`, or `research`. Establishing them (running each skill's current
+`evals.json` per the procedure above and committing the resulting run file) requires a real Claude
+Code session, since that is where the native eval runner runs; it was deliberately deferred out of
+the Phase 2 and Phase 3 build passes that produced these eval sets, since no native runner was
+available in the harness those passes ran in. (Those phase names come from the spec-anchored
+migration plan, whose four phases all completed; the plan is not part of this repo.) The next time
+any of these four skills is regenerated, run this procedure first, on Claude Code, before treating
+that skill's prior `SKILL.md` as an eval-gated baseline.
 
 Until then, this repository explicitly accepts the current committed `SKILL.md` of each **never-run**
 skill as its de-facto first baseline, with no eval run backing it yet. The paired-comparison and
@@ -634,3 +635,6 @@ exists to force.
     miss a caller snippet using `:=`. The description's line-break fix was deliberately not
     re-measured. The full suite was not re-run, so the HOLD above stands. Details in the same run
     file.
+[^19]: An override, not a result: the user swapped v2 in before its behavioral run, so no v2
+    criterion has been evaluated. The full v2 comparison runs later, and this row is replaced by the
+    measured one. See `decisions/0012-review-md-v2-two-pass-redesign.md`.
