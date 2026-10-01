@@ -1,6 +1,6 @@
 ---
 created: 2026-07-27
-updated: 2026-09-30
+updated: 2026-10-01
 ---
 
 # Evals: Repo-Wide Run Procedure
@@ -290,6 +290,7 @@ the artifact count or run frequency grows.
 | 2026-09-29 | `review-md` | not run (no trigger set) | 91% (50/55) | 89% (8/9) | BASELINE |
 | 2026-09-30 | `review-md` (v1, new fixtures) | 7/9 positive at >= 8 of 9, 10/10 negative at 0 fires | 98% (56/57) | 86% (44/51) | BASELINE |
 | 2026-09-30 | `review-md` (v2) | not run yet (swapped in before the v2 run) | not run yet | not run yet | SHIP (override, 2026-09-30) [^19] |
+| 2026-10-01 | `review-md` (v2 efficiency, targeted) | not run | 231/243 | v1_missed_found=6/8, regressions=none, fp_clusters=1/10, cost_ratio_total=1.39 | SHIP (user-accepted, 2026-10-01) [^20] |
 
 **Every row above dated before 2026-09-08 was measured under the superseded threshold** - "fires on
 every run", recorded at three runs per query and in several cases computed at `run_eval.py`'s 0.5
@@ -638,3 +639,5 @@ exists to force.
 [^19]: An override, not a result: the user swapped v2 in before its behavioral run, so no v2
     criterion has been evaluated. The full v2 comparison runs later, and this row is replaced by the
     measured one. See `decisions/0012-review-md-v2-two-pass-redesign.md`.
+[^20]: `runs/2026-10-01-review-md-v2-efficiency.md`, cases 1, 2, 9, 10, 24, 25, and 26: SHIP was
+    user-accepted despite `quality=FAIL`, and the Area and Verify passes ship at Opus.
