@@ -17,7 +17,7 @@ effort: high
 
 <!--
 created: 2026-07-27
-updated: 2026-09-29
+updated: 2026-10-01
 spec: specs/behaviors.md (Plan and Execute section)
 generated-by: Opus subagent, spec-driven migration plan execution (Phase 3 Workstream A); the
   shared-contract consistency check (Units section, check 5 of the refinement round checklist,
@@ -583,6 +583,16 @@ Phase, Cluster, and Unit counts (and whether there is a Phase 0); the run polici
 halt, confirmation, worktree, commit and push with the branch, usage thresholds); the authorized
 destructive actions, or "none"; the model-role map in one line; how many refinement rounds ran; the
 review-md result (findings fixed, findings rejected with each reason, and any protocol-source
-defect); the pass result of each verification-gate item above; and the exact line to run the plan.
-Do not paste the plan body back. Name any clarifying question still open. Do not begin implementing
-the Units - executing the plan is a separate, user-initiated step.
+defect); and the pass result of each verification-gate item above. Do not paste the plan body back.
+Name any clarifying question still open. Do not begin implementing the Units - executing the plan is
+a separate, user-initiated step.
+
+End the summary with the exact line to run the plan, alone in a fenced code block so it copies
+cleanly:
+
+```text
+execute the plan at /absolute/path/to/plan-YYYY-MM-DD-<slug>.md
+```
+
+When you later change a plan file this skill wrote, in this session or a later one, end that reply
+with the same fenced line to run the plan, using the plan's current absolute path.

@@ -298,7 +298,8 @@
         "[deterministic] The review-md args ask for findings only, without edits, and say the Orchestration protocol section is a verbatim copy whose wording is not to be reported",
         "[deterministic] Runs the plan-level verification gate after resolving the review-md findings",
         "[deterministic] The final summary reports the review-md result: findings fixed, findings rejected with a reason, and any protocol-source defect",
-        "[deterministic] The embedded orchestration block still matches its source except the 12 filled placeholder lines"
+        "[deterministic] The embedded orchestration block still matches its source except the 12 filled placeholder lines",
+        "[deterministic] The final summary ends with the line `execute the plan at <absolute plan path>` alone in a fenced code block"
       ]
     }
   ]
