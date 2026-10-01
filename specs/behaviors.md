@@ -1,6 +1,6 @@
 ---
 created: 2026-07-26
-updated: 2026-09-30
+updated: 2026-10-01
 ---
 
 # Behavior Specs
@@ -141,9 +141,10 @@ buildable intent.
     Cluster. After any check returns `warn` or `unknown`, the orchestrator running the Cluster
     checks before each Unit, until a check returns `ok`. On `stop`, a Cluster orchestrator
     finishes the gate of the Unit in flight, starts nothing new, and returns `usage-pause`; the
-    top orchestrator logs it, sleeps one hour with a background shell `sleep 3600` (never a
-    foreground sleep), re-checks, and repeats until the check returns `ok` or `warn` (below the
-    stop threshold), then resumes from Appendix A. On `stop-cap`, halt and report: a spend cap does
+    top orchestrator logs it and starts a background-shell poll loop (never a foreground sleep)
+    that re-checks every 15 minutes until a check returns anything but `stop`, plus a recurring
+    `CronCreate` heartbeat every 60 minutes that restarts the loop if it died. On `ok` or `warn`
+    (below the stop threshold) it deletes the heartbeat and resumes from Appendix A. On `stop-cap`, halt and report: a spend cap does
     not reset within hours. `unknown` is never treated as headroom: log it and keep checking
     before every Unit. Every check that changes the status, and every sleep, is logged in
     Appendix B.
@@ -244,7 +245,7 @@ buildable intent.
           unknown   30  no value present; or no token, a token error, a network failure, or a
                         response that is not JSON (pct=- source=none, every value "-")
           stop-cap  21  spend >= stop   (spend cap: does not reset within hours; halt, never sleep)
-          stop      20  pct >= stop     (5-hour or 7-day window: pause, re-check hourly)
+          stop      20  pct >= stop     (5-hour or 7-day window: pause, re-check every 15 min)
           warn      10  pct >= warn     (check before every Unit)
           ok         0  otherwise       (check before every Cluster)
   ```
@@ -305,8 +306,8 @@ buildable intent.
   - A plan executed by an agent with no skill loaded halts below its model guard, confirms per its
     confirmation policy, stops per its halt policy, stops for any unauthorized destructive action
     even when Unattended, dispatches every substantive Unit to a subagent, checks usage before
-    each Cluster (and each Unit at or above the warn threshold), pauses hourly at the stop
-    threshold and halts on a spend cap, re-verifies `[x]` marks on resume, records each deciding
+    each Cluster (and each Unit at or above the warn threshold), pauses at the stop threshold
+    with a 15-minute re-check and halts on a spend cap, re-verifies `[x]` marks on resume, records each deciding
     answer the user gives as an Appendix C `answer` entry and never re-asks one, reviews each
     Cluster before the next, verifies the Definition of Done, walks Appendix C with the user, and
     archives itself.

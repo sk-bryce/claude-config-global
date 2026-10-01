@@ -1,6 +1,6 @@
 ---
 created: 2026-09-25
-updated: 2026-09-25
+updated: 2026-10-01
 ---
 
 # 11. Planner work hierarchy, run policies, usage gating, and in-plan tracking
@@ -49,7 +49,8 @@ subagent.
 - Usage gating: a standalone script, `skills/planner/scripts/usage-check.sh`, reads the OAuth usage
   endpoint the status line already uses. The top orchestrator checks before every Cluster; at or
   above the warn threshold (default 85) checks move to before every Unit; at or above the stop
-  threshold (default 95) the run pauses and re-checks hourly. A spend cap at the stop threshold
+  threshold (default 95) the run pauses and re-checks every 15 minutes (amended 2026-10-01; see
+  below). A spend cap at the stop threshold
   halts instead, since a monthly cap does not reset within hours. A run resumes once usage is below
   the stop threshold, not below the warn threshold, so a 7-day window sitting between the two
   after a 5-hour reset does not stall the run for days.
@@ -76,8 +77,16 @@ subagent.
 - Plans get longer again: a Run policies section, three appendices, and a larger protocol block.
 - Usage gating depends on an undocumented endpoint. When it fails, the script reports `unknown`
   and the orchestrator checks before every Unit instead of treating the failure as headroom.
-- The hourly sleep relies on a background shell sleep in the top-level session; its behavior in a
+- The pause relies on a background shell poll loop in the top-level session; its behavior in a
   headless `claude -p` run is unverified.
+- Amended 2026-10-01: the re-check interval dropped from one hour to 15 minutes. In practice a
+  smaller upper bound on time spent idle after a usage reset was worth the extra checks, which
+  cost nothing in model usage because the loop runs in the shell. The single background `sleep`
+  also proved fragile: a container restart lost one, and wakeups that fired during a lockout
+  failed their turn and so never re-armed the next timer (plan
+  `plan-2026-09-29-review-md-v2-build-eval-swap.md`, Decisions log D37). The pause now polls in a
+  background shell loop that needs no model turn until headroom returns, backed by an hourly
+  `CronCreate` heartbeat that restarts the loop if it died.
 - Existing plans keep their embedded old protocol and still run; they are not migrated.
 - Whether agents actually follow the new protocol stays untested until a plan-execution eval run
   exists, as with 0010.

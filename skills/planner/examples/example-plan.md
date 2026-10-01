@@ -1,6 +1,6 @@
 <!--
 created: 2026-07-27
-updated: 2026-09-28
+updated: 2026-10-01
 spec: specs/behaviors.md (Plan and Execute section)
 generated-by: Opus subagent, spec-driven migration plan execution (Phase 3 Workstream A); updated
   by hand on 2026-09-25 to the self-running plan shape; regenerated on 2026-09-25 for
@@ -389,9 +389,18 @@ placeholders.
     `unknown`, the orchestrator running the Cluster (top or Cluster orchestrator) also checks
     before each Unit, until a check returns `ok`.
   - On `stop`: finish the gate of the Unit in flight, start nothing new, and log it. A Cluster
-    orchestrator returns `usage-pause`. The top orchestrator sleeps one hour with a background
-    shell `sleep 3600` (never a foreground sleep), re-checks, and repeats until the check returns
-    `ok` or `warn` (below the stop threshold), then resumes from Appendix A.
+    orchestrator returns `usage-pause`. The top orchestrator then waits with two mechanisms, so a
+    turn that fails while the account is at its limit cannot end the wait:
+    - A poll loop in a background shell (never a foreground sleep) that re-checks every 15
+      minutes and exits on any status other than `stop`, with the usage-check command above in
+      place of `<check>`: `while sleep 900; do <check>; [ $? -eq 20 ] || break; done`.
+    - A recurring `CronCreate` heartbeat every 60 minutes, at a minute other than :00 or :30,
+      whose prompt names this plan and says: if the run is still paused and no poll loop is
+      running, run the usage check and act on it as this section says.
+    When the loop exits, act on its last output line: on `ok` or `warn` (below the stop threshold),
+    delete the heartbeat and resume from Appendix A; on `stop-cap`, delete it and halt as below; on
+    `unknown`, log it and start a new loop. A container restart or session end loses both, so the
+    first turn after one re-checks and restarts them.
   - On `stop-cap`: halt and report; a spend cap does not reset within hours, so never sleep on it.
     A Cluster orchestrator returns `halted` with the check's output line verbatim.
   - `unknown` is never treated as headroom: log it and keep checking before every Unit.

@@ -238,12 +238,12 @@
     {
       "id": 21,
       "prompt": "Plan a large refactor of our billing service into separate invoicing and payments modules - about 25 files across four areas. I'm near my usage limits this week, so don't let the run blow through them.",
-      "expected_output": "Produces a plan whose Run policies set usage thresholds (warn 85, stop 95 unless the planner states a reason to change them) and whose embedded protocol gates usage with the usage-check script: a check before every Cluster, a check before every Unit once a check returns warn or unknown, an hourly background sleep at the stop threshold that resumes once usage is below stop, and a halt on a spend cap.",
+      "expected_output": "Produces a plan whose Run policies set usage thresholds (warn 85, stop 95 unless the planner states a reason to change them) and whose embedded protocol gates usage with the usage-check script: a check before every Cluster, a check before every Unit once a check returns warn or unknown, a background poll loop at the stop threshold that re-checks every 15 minutes, backed by an hourly CronCreate heartbeat, and resumes once usage is below stop, and a halt on a spend cap.",
       "files": [],
       "expectations": [
         "[deterministic] The `## Run policies` section states the usage thresholds, and the embedded block's usage-thresholds placeholder is filled with the same values",
         "[deterministic] The embedded protocol runs `usage-check.sh` before dispatching each Cluster, and before each Unit after a check returns `warn` or `unknown`",
-        "[deterministic] The embedded protocol pauses on `stop` with a background `sleep 3600` (never a foreground sleep) and resumes once a re-check returns `ok` or `warn`, below the stop threshold rather than below the warn threshold",
+        "[deterministic] The embedded protocol pauses on `stop` with a background poll loop running `sleep 900` between checks (never a foreground sleep) plus a recurring `CronCreate` heartbeat and resumes once a re-check returns `ok` or `warn`, below the stop threshold rather than below the warn threshold",
         "[deterministic] The embedded protocol halts rather than sleeps on `stop-cap`, and never treats `unknown` as headroom",
         "The Phases split the work into several Clusters, so the per-Cluster usage check has natural pause points"
       ]

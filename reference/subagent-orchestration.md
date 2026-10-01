@@ -1,6 +1,6 @@
 ---
 created: 2026-07-24
-updated: 2026-09-28
+updated: 2026-10-01
 ---
 
 # Subagent Orchestration Protocol
@@ -138,8 +138,10 @@ treat this as the intent, not a frozen API.
   unavailable, end the turn with the question and wait for a reply
 - Usage check: `Bash` running
   `"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/planner/scripts/usage-check.sh" --warn N --stop N`
-- Hourly usage sleep: a background shell, `Bash` with `run_in_background: true` running
-  `sleep 3600`, then re-check when it exits; never a foreground sleep
+- Usage pause poll loop: a background shell, `Bash` with `run_in_background: true` running the
+  15-minute loop in **Usage gating**; never a foreground sleep
+- Usage pause heartbeat: `CronCreate` with `recurring: true`, removed with `CronDelete` on resume
+  or halt; where `CronCreate` is unavailable, rely on the poll loop alone
 - Read a file: `Read`
 - Run git/build/test/lint in the shell: `Bash`
 - Read linter/type diagnostics: run the linter via `Bash` and read its output
@@ -258,9 +260,18 @@ placeholders.
     `unknown`, the orchestrator running the Cluster (top or Cluster orchestrator) also checks
     before each Unit, until a check returns `ok`.
   - On `stop`: finish the gate of the Unit in flight, start nothing new, and log it. A Cluster
-    orchestrator returns `usage-pause`. The top orchestrator sleeps one hour with a background
-    shell `sleep 3600` (never a foreground sleep), re-checks, and repeats until the check returns
-    `ok` or `warn` (below the stop threshold), then resumes from Appendix A.
+    orchestrator returns `usage-pause`. The top orchestrator then waits with two mechanisms, so a
+    turn that fails while the account is at its limit cannot end the wait:
+    - A poll loop in a background shell (never a foreground sleep) that re-checks every 15
+      minutes and exits on any status other than `stop`, with the usage-check command above in
+      place of `<check>`: `while sleep 900; do <check>; [ $? -eq 20 ] || break; done`.
+    - A recurring `CronCreate` heartbeat every 60 minutes, at a minute other than :00 or :30,
+      whose prompt names this plan and says: if the run is still paused and no poll loop is
+      running, run the usage check and act on it as this section says.
+    When the loop exits, act on its last output line: on `ok` or `warn` (below the stop threshold),
+    delete the heartbeat and resume from Appendix A; on `stop-cap`, delete it and halt as below; on
+    `unknown`, log it and start a new loop. A container restart or session end loses both, so the
+    first turn after one re-checks and restarts them.
   - On `stop-cap`: halt and report; a spend cap does not reset within hours, so never sleep on it.
     A Cluster orchestrator returns `halted` with the check's output line verbatim.
   - `unknown` is never treated as headroom: log it and keep checking before every Unit.

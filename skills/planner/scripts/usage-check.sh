@@ -17,7 +17,7 @@
 #   unknown   30  no value present; or no token, a token error, a network failure, or a response
 #                 that is not JSON
 #   stop-cap  21  spend >= stop   (spend cap: does not reset within hours; halt, never sleep)
-#   stop      20  pct >= stop     (5-hour or 7-day window: pause, re-check hourly)
+#   stop      20  pct >= stop     (5-hour or 7-day window: pause, re-check every 15 min)
 #   warn      10  pct >= warn     (check before every Unit)
 #   ok         0  otherwise       (check before every Cluster)
 #
