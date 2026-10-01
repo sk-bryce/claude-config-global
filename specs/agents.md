@@ -1,6 +1,6 @@
 ---
 created: 2026-07-30
-updated: 2026-09-25
+updated: 2026-10-01
 ---
 
 # Subagent Specs
@@ -264,3 +264,38 @@ Shared conventions for every subagent spec:
     not something this agent can detect from inside its own dispatch).
   - Cites sources for material drawn from external pages, per
     `reference/document-generation.md`'s References-section policy.
+
+---
+
+## review-md workers
+
+- Purpose: three definitions used only by the review-md skill, `review-md-coordinator`,
+  `review-md-proofread`, and `review-md-judgment`. They exist because a frontmatter pin is the
+  only way to set a subagent's effort level (the Agent tool has no effort parameter, and
+  `ultrathink` only asks for more reasoning within the active level). Each pins `effort: high`
+  and a model (`sonnet` for the coordinator and proofread, `opus` for judgment); dispatches also
+  pass the same model, so a harness that drops the frontmatter model still gets the right tier.
+- Tools: coordinator `Agent, Bash, Read, Write, Grep, Glob`; proofread and judgment
+  `Read, Grep, Glob, Bash, Write`.
+- Bodies stay minimal (read the named prompt file, follow it, write only the named output file,
+  never ask the user), because the real instructions live in `skills/review-md/references/` and
+  are read per dispatch; the descriptions say the agents are internal to review-md so nothing else
+  routes to them.
+- Harness notes: definitions load at session start, so a new or edited one needs a restart; on
+  Cursor, `~/.claude/agents/` is dual-read and `effort` is ignored (unverified).
+- Model/tier: `effort: high` for all three; Sonnet for the coordinator and proofread, Opus for
+  judgment (area and verify passes). `specs/skills.md`'s review-md section records why.
+- Acceptance criteria:
+  - Each file carries exactly the frontmatter values below, with `name` equal to its file name.
+  - `grep -l ultrathink` over the three files prints nothing.
+  - Each description says the agent is internal to review-md. Each worker body says to read the
+    named prompt file, write only the named output file, and never ask the user; the coordinator
+    body says to follow the file its prompt names, never ask the user, and never edit a file
+    under review.
+- The exact frontmatter of each file:
+
+  ```text
+  review-md-coordinator: model: sonnet, effort: high, color: green, tools: Agent, Bash, Read, Write, Grep, Glob
+  review-md-proofread:   model: sonnet, effort: high, color: cyan, tools: Read, Grep, Glob, Bash, Write
+  review-md-judgment:    model: opus, effort: high, color: magenta, tools: Read, Grep, Glob, Bash, Write
+  ```
