@@ -1,6 +1,6 @@
 ---
 created: 2026-09-14
-updated: 2026-09-30
+updated: 2026-10-01
 ---
 
 # Repository layout
@@ -106,6 +106,16 @@ section.
       `updated:` freshness and source-drift signals, as tab-separated rows for `review-md`'s
       proofread pass. Read-only; never runs a command taken from a document. Its suite is
       `scripts/md-claims-tests/run.sh`.
+    - `review-checks.sh` - review-md's mechanical checks: `init` creates a run directory and
+      sizes the target; `run` runs md-checks, link review, md-claims, scrub-check, markdownlint,
+      and Vale together and writes finding blocks and per-document claim, signal, and spec files.
+      Its suite is `scripts/review-checks-tests/run.sh`.
+    - `review-fill.sh` - packs documents into proofread units and judgment groups and fills the
+      review-md pass templates into prompt files. Its suite is `scripts/review-fill-tests/run.sh`.
+    - `review-merge.sh` - review-md's coverage check, tracking filter, merge, numbering,
+      declaration line, report draft, and tracking writes. Its suite is
+      `scripts/review-merge-tests/run.sh`; `scripts/review-md-scripts-tests/run.sh` runs all three
+      together.
   - `filter-verbose-output.sh` (`PreToolUse`, matcher `Bash`) - registered.
   - `destructive-git-guard.sh` (`PreToolUse`, matcher `Bash`, ordered before
     `filter-verbose-output.sh` in the same matcher block) - registered. The operations it catches:
@@ -255,10 +265,12 @@ section.
   left undone.
   - `skill-author` - create, audit, or explain agent skills; hands off to `skill-creator` for
     scaffolding and evals. See `specs/skills.md`'s skill-author section.
-  - `review-md` - review one or more Markdown files in two passes: a Sonnet proofread pass per
-    document and one Opus judgment pass over the whole target, backed by `md-checks.sh`,
-    `link-recheck-hook.sh --review`, and `md-claims.sh`. Records settled and deferred findings,
-    anchored by quote, in `.claude/review-tracking.md`. See `specs/skills.md`'s review-md section.
+  - `review-md` - review one or more Markdown files. The skill stays inline for the questions and
+    fixes and hands the run to a Sonnet coordinator subagent, which runs `review-checks.sh`,
+    `review-fill.sh`, and `review-merge.sh` and dispatches workers: Sonnet proofread passes over
+    packed units of documents, and an Opus area pass and verify pass. Records settled and deferred
+    findings, anchored by quote, in `.claude/review-tracking.md`. See `specs/skills.md`'s
+    review-md section.
   - `planner` - plan a multi-step piece of work into a self-contained Markdown plan file
     (`plan-YYYY-MM-DD-<slug>.md`) that runs itself when any agent is told to execute it: work is
     split into Phases, Clusters, and Units, and the embedded protocol from
@@ -334,5 +346,8 @@ section.
     report rather than continuing once it crosses a caller-set threshold. No `Agent`/`Task`
     tool, so it cannot fan out further, and is never dispatched more than one at a time - see
     `decisions/0008-avoid-parallel-research-fanout.md` for why.
+  - `review-md-coordinator`, `review-md-proofread`, `review-md-judgment` - internal to
+    `review-md`; pinned `effort: high`, Sonnet for the coordinator and proofread and Opus for
+    judgment, each told only to read one prompt file and follow it. See `specs/agents.md`'s review-md workers section.
 
 This list will grow as commands and hooks are added.

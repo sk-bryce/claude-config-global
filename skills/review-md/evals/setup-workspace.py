@@ -32,7 +32,7 @@ with open(EVD / "evals.json", encoding="utf-8") as f:
     EVALS = json.load(f)
 EVALS_BY_ID = {e["id"]: e for e in EVALS["evals"]}
 
-SCRIPT_NAMES = ["md-checks.sh", "link-recheck-hook.sh", "md-claims.sh"]
+SCRIPT_NAMES = ["md-checks.sh", "link-recheck-hook.sh", "md-claims.sh", "review-checks.sh", "review-fill.sh", "review-merge.sh"]
 
 HOME_PATH = "/" + "home" + "/" + "rmv2user" + "/projects/ledger-notes"
 

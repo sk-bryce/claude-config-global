@@ -135,6 +135,7 @@ What it sets up:
   `commit-msg-check.sh`, `destructive-git-guard.sh`, `filter-verbose-output.sh`, `health-check.sh`,
   `link-recheck-hook.sh`, `markdownlint-hook.sh`, `md-checks.sh`, `md-claims.sh`, `md-deferred-checks.sh`,
   `md-ledger-append.sh`, `pre-commit-check.sh`, `read-only-plan-guard.sh`, `replicate.sh`,
+  `review-checks.sh`, `review-fill.sh`, `review-merge.sh`,
   `scrub-check.sh`, `session-setup-check.sh`, `setup.sh`, `statusline.sh`, `sync.sh`. See
   `reference/layout.md` for what each script does and its registration state.
 - `evals/` - the repo-wide eval run procedure, thresholds, and results log; see `evals/README.md`.
@@ -149,7 +150,9 @@ What it sets up:
   `SKILL.md` of its own is skipped whole. Only a foreign skill installed flat beside your own
   needs naming in `skills-foreign.local` (repository root, gitignored, one name per line, `#` for
   comments), which is why that file normally does not exist.
-- `agents/` - personal subagent definitions (`Explore`, `runner`, `executor`, `researcher`).
+- `agents/` - personal subagent definitions (`Explore`, `runner`, `executor`, `researcher`,
+  `review-md-coordinator`, `review-md-proofread`, and `review-md-judgment` (internal to
+  `review-md`)).
 
 `reference/layout.md` has the full version of this list: every script's registration state and
 rationale, and a longer description of each skill and subagent.

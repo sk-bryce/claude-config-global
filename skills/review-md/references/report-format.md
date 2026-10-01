@@ -1,13 +1,13 @@
 <!--
 created: 2026-09-30
-updated: 2026-09-30
+updated: 2026-10-01
 -->
 
 # Report Format
 
-The orchestrator's rules for the review report, read before writing it (SKILL.md step 10). The
-fixed shape lets the user and a deterministic eval check see at once when a pass or tool is
-missing.
+The review report's contract. review-merge.sh merge writes the report draft in this shape, and the
+orchestrator adds only the Applied changes body and the pick-what-to-fix question (SKILL.md
+carries the rules for both). No pass and no orchestrator reads this file at run time.
 
 ## Skeleton
 
@@ -33,8 +33,9 @@ finding from a typo in one.
 The first line starts with `Run:` and holds these semicolon-separated fields, in this order:
 
 - `proofread=<N> docs`: the number of documents given a proofread pass.
-- `judgment=dispatched(opus)`, `judgment=split into <K> groups(opus)`, or
-  `judgment=failed (<reason>)`.
+- `judgment=dispatched(<tier>)`, `judgment=split into <K> groups(<tier>)`, or
+  `judgment=failed (<reason>)`, where tier is `sonnet` or `opus`: the tier the area and verify
+  passes ran at.
 - `tools=` with each tool and its result, comma-separated, in the order md-checks, links, claims,
   scrub-check, markdownlint, vale (table below).
 - `ascii-rule=adopted (<reason>)` or `ascii-rule=not adopted (<reason>)`. The reason names the
@@ -62,13 +63,13 @@ setup reference.
 The line must match this Python regular expression, exactly:
 
 ```text
-^Run: proofread=\d+ docs; judgment=(?:dispatched\(opus\)|split into \d+ groups\(opus\)|failed \([^()]+\)); tools=md-checks=(?:ran|error\(\d+\)), links=(?:ran|error\(\d+\)), claims=(?:ran|error\(\d+\)), scrub-check=(?:ran|absent|error\(\d+\)), markdownlint=(?:ran|error\(\d+\)|not installed \(see references/markdownlint-setup\.md\)), vale=(?:ran|error\(\d+\)|not installed \(see references/vale-setup\.md\)); ascii-rule=(?:adopted|not adopted) \([^()]+\); references-rule=(?:adopted|not adopted); profile=(?:agent-config|none); fresh=(?:yes|no); skipped=(?:none|[^;]+)$
+^Run: proofread=\d+ docs; judgment=(?:dispatched\((?:sonnet|opus)\)|split into \d+ groups\((?:sonnet|opus)\)|failed \([^()]+\)); tools=md-checks=(?:ran|error\(\d+\)), links=(?:ran|error\(\d+\)), claims=(?:ran|error\(\d+\)), scrub-check=(?:ran|absent|error\(\d+\)), markdownlint=(?:ran|error\(\d+\)|not installed \(see references/markdownlint-setup\.md\)), vale=(?:ran|error\(\d+\)|not installed \(see references/vale-setup\.md\)); ascii-rule=(?:adopted|not adopted) \([^()]+\); references-rule=(?:adopted|not adopted); profile=(?:agent-config|none); fresh=(?:yes|no); skipped=(?:none|[^;]+)$
 ```
 
 A valid example:
 
 ```text
-Run: proofread=2 docs; judgment=dispatched(opus); tools=md-checks=ran, links=ran, claims=ran, scrub-check=absent, markdownlint=not installed (see references/markdownlint-setup.md), vale=not installed (see references/vale-setup.md); ascii-rule=not adopted (CLAUDE.md has no ASCII rule); references-rule=not adopted; profile=none; fresh=no; skipped=none
+Run: proofread=2 docs; judgment=dispatched(sonnet); tools=md-checks=ran, links=ran, claims=ran, scrub-check=absent, markdownlint=not installed (see references/markdownlint-setup.md), vale=not installed (see references/vale-setup.md); ascii-rule=not adopted (CLAUDE.md has no ASCII rule); references-rule=not adopted; profile=none; fresh=no; skipped=none
 ```
 
 ## Finding blocks
@@ -89,8 +90,9 @@ Each finding is a bold ID line followed by indented field lines, in this order:
   - Raised by: proofread
 ```
 
-- Report IDs are `F<n>`, unique within the report. Pass IDs (`D<k>.<n>`, `J<n>`) are replaced by
-  report IDs; nothing else in a finding changes.
+- Report IDs are `F<n>`, unique within the report. Pass IDs (`D<j>.<n>` proofread, `J<n>`
+  area, `V<n>` verify, `S<n>` script) are replaced by report IDs; nothing else in a finding
+  changes.
 - `Question:` replaces `Change:` when no concrete change exists.
 - `Best case:` is present for Blocker and Major only.
 - `Purpose basis:` is present for `fit` findings only: `stated - "<quote>" (<file>:<line>)` or
@@ -128,13 +130,6 @@ The Summary holds, in this order:
   (`stated - "<quote>" (<file>:<line>)`), or marked `inferred - <purpose>`, taken from the
   judgment pass's `### Purpose measured against` block.
 
-## Applied changes
-
-Each applied change with its finding ID; for a fix that touched more than one file, the files it
-changed and why; every `updated:` header bump; and the post-fix md-checks result. A fix that
-added a new md-checks finding shows that finding next to it. Write `None.` when nothing was
-applied.
-
 ## Not checked
 
 List each item that applies:
@@ -147,21 +142,3 @@ List each item that applies:
 - Relations across size-cap groups, when the judgment pass was split.
 - Always, one line naming what this skill never reviews: code-block correctness, and worth
   questions, which belong to deep-review.
-
-## Pick-what-to-fix question
-
-Ask it after a report-only review and for case 2's leftovers; never after case 1, where the user
-already named the fixes. Every finding already has its ID in the report.
-
-- Ask one multi-select question per severity level that has reported, unapplied findings, so at
-  most three questions in one call.
-- A level with 4 or fewer findings lists each finding as an option.
-- A larger level offers "all" for that level plus its first three findings; the user names any
-  others by ID in the free-text answer.
-- A level with a single finding offers that finding and "none".
-- Without a question tool (a headless or subagent run), ask the same questions in plain text with
-  the finding IDs.
-
-The question is the last thing in the reply. Never narrate a question and carry on past it, and
-never answer it in the same reply, because both shapes were observed and each hides the choice
-from the user.

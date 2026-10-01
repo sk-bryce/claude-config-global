@@ -1,6 +1,6 @@
 ---
 created: 2026-07-24
-updated: 2026-09-30
+updated: 2026-10-01
 ---
 
 # Harness Compatibility Matrix
@@ -164,6 +164,11 @@ Claude Code also accepts `color`, `permissionMode`, `mcpServers`, `hooks`, `maxT
 harness ignores are inert rather than invalid, so one file can carry both sides: pairing
 `tools:` with `readonly: true` is the portable way to express a read-only subagent, since Claude
 enforces the allow-list and Cursor enforces the flag.
+
+review-md's three agents (`agents/review-md-*.md`) pin `effort: high`, which Cursor ignores
+(verify), so on Cursor their passes run at that harness's default effort. Claude Code loads agent
+definitions at session start, so a new or edited definition needs a restart before it can be
+dispatched (tested 2026-10-01).
 
 `is_background` is confirmed broken as of 2026-08 for the Cursor CLI this repo targets (and for
 ACP integration too): a Cursor team member confirmed on the community forum that

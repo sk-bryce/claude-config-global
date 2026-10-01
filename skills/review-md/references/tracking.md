@@ -1,13 +1,14 @@
 <!--
 created: 2026-09-30
-updated: 2026-09-30
+updated: 2026-10-01
 -->
 
 # Decision Tracking
 
-The orchestrator's rules for the tracking file, read before merging findings (SKILL.md step 8)
-and before recording decisions (step 11). Tracking exists so an item the user already settled is
-not raised again in a later session.
+The tracking contract. review-merge.sh implements it: prefilter drops tracked proofread
+findings before the verify pass, merge filters every finding, and record writes entries. The
+orchestrator does not read this file at run time. Tracking exists so an item the user already
+settled is not raised again in a later session.
 
 ## Location
 
@@ -48,8 +49,10 @@ An example file:
 
 ## Filter
 
-- The passes report every finding, and never see tracking entries, because an entry shown to a
-  pass would bias what it looks for. Filtering happens only in the orchestrator, after the merge.
+- The passes report every finding and never see tracking entries, because an entry shown to
+  a pass would bias what it looks for. Filtering happens only in review-merge.sh: once on the
+  proofread findings before the verify pass, so no verification is spent on a settled item, and
+  again on every finding at merge.
 - Drop a finding when an entry in the section for the same file, or for the same file set, meets
   all of these:
   - its quote still appears in that file (for a set-level entry, each quote in its own file);
@@ -79,9 +82,11 @@ decisions. The declaration line then says `fresh=yes`.
 
 ## Recording
 
-- After the user replies, record each item the user marks intentional or deferred. Append it with
-  today's date, its quote, and its category to the section that owns it: the document's section
-  for a per-document finding, the set-level section for a cross-document finding.
+- After the user replies, the orchestrator records each item the user marks intentional or
+  deferred with review-merge.sh record <run-dir> <F-id> <intentional|deferred> "<description>",
+  which appends it with today's date, its quote, and its category to the section that owns it:
+  the document's section for a per-document finding, the set-level section for a cross-document
+  finding.
 - Re-dismissing an item that already has an entry updates that entry's date and quote instead of
   adding a second entry.
 - Outside any git repository, record nothing; the report already says so with the Summary line
