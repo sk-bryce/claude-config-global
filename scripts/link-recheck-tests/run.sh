@@ -335,5 +335,22 @@ else
   printf 'FAIL review-mode-state-unchanged\n--- before\n%s\n--- after\n%s\n' "$before" "$after"
 fi
 
+# review mode fails loudly on an internal failure (here: a required command is missing) instead
+# of exiting 0 having never checked anything.
+total=$((total + 1))
+MINPATH_DIR="$T/minpath"
+mkdir -p "$MINPATH_DIR"
+ln -sf "$BASH" "$MINPATH_DIR/bash"
+cat > "$T/internal-failure.md" <<EOF
+[a](http://127.0.0.1:$PORT/ok)
+EOF
+internal_err="$(PATH="$MINPATH_DIR" "$LINK" --review "$T/internal-failure.md" 2>&1 >/dev/null)"
+internal_status=$?
+if [[ "$internal_status" -eq 1 && "$internal_err" == "link-recheck-hook.sh: "* ]]; then
+  pass=$((pass + 1)); printf 'ok   review-mode-internal-failure-is-loud\n'
+else
+  printf 'FAIL review-mode-internal-failure-is-loud\n--- exit status: %s\n--- stderr\n%s\n' "$internal_status" "$internal_err"
+fi
+
 printf '%s/%s passed\n' "$pass" "$total"
 [[ "$pass" -eq "$total" ]]

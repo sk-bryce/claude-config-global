@@ -6,9 +6,13 @@
 #
 # Per decisions/0003-hooks-and-scripts-authoring-policy.md, this file (hook logic) may be
 # model-generated and is reviewed in full before commit; the registration that activates it (the
-# settings.json PostToolUse entry) is a separate, human step. This script only reports; it never
-# blocks, edits the file, or exits non-zero, so a caller can safely ignore its exit code (kept 0 in
-# every path as a second guard).
+# settings.json PostToolUse entry) is a separate, human step. In hook mode (no --review), this
+# script only reports; it never blocks, edits the file, or exits non-zero, so a caller can safely
+# ignore its exit code (kept 0 in every path as a second guard). --review mode is different: it
+# exits 2 on a usage error and 1 on an internal failure (a missing required command, a temp
+# directory that could not be created, a scan or probe fan-out that failed), printing one
+# "link-recheck-hook.sh: " stderr line in the latter case, so a caller can tell a check that never
+# ran from one that ran clean.
 #
 # Usage: link-recheck-hook.sh <file-path>
 #        link-recheck-hook.sh --probe <url>     (internal, used by the parallel fan-out below)
@@ -75,6 +79,10 @@ fi
 # Reads and writes no freshness state, never prints the hook's "link-recheck:" lines, and reports
 # every link (ok included). See the header's Usage block for the exact row format.
 if [[ "${1:-}" == "--review" ]]; then
+  if [[ -z "${BASH_VERSINFO[0]:-}" || "${BASH_VERSINFO[0]}" -lt 3 || ( "${BASH_VERSINFO[0]}" -eq 3 && "${BASH_VERSINFO[1]}" -lt 2 ) ]]; then
+    echo "link-recheck-hook.sh: --review needs bash 3.2 or newer" >&2
+    exit 1
+  fi
   shift
   review_refs_rule=0
   if [[ "${1:-}" == "--references-rule" ]]; then
@@ -86,11 +94,24 @@ if [[ "${1:-}" == "--review" ]]; then
     exit 2
   fi
 
+  for review_cmd in dirname basename perl xargs mktemp awk; do
+    command -v "$review_cmd" >/dev/null 2>&1 || {
+      echo "link-recheck-hook.sh: required command '$review_cmd' not found" >&2
+      exit 1
+    }
+  done
+
   review_script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
   review_self="$review_script_dir/$(basename "${BASH_SOURCE[0]}")"
 
   review_have_curl=1
   command -v curl >/dev/null 2>&1 || review_have_curl=0
+
+  review_tmpdir="$(mktemp -d)" || {
+    echo "link-recheck-hook.sh: could not create temp directory" >&2
+    exit 1
+  }
+  trap 'rm -rf "$review_tmpdir"' EXIT
 
   review_classify() {
     local ex="$1" co="$2"
@@ -234,8 +255,9 @@ for (my $i = 1; $i <= $n; $i++) {
 PERL
 
   declare -a review_file_kind=() review_file_path=() review_file_scan=()
-  declare -A review_seen_url=()
   declare -a review_probe_urls=()
+  review_all_probe_file="$review_tmpdir/all-probe-urls"
+  : > "$review_all_probe_file"
 
   for f in "$@"; do
     if [[ ! -e "$f" ]]; then
@@ -248,14 +270,17 @@ PERL
       *.md|*.markdown)
         review_abs="$(cd "$(dirname "$f")" 2>/dev/null && pwd)/$(basename "$f")"
         review_out="$(perl -e "$REVIEW_PERL" -- "$review_abs" 2>/dev/null)"
+        review_perl_status=$?
+        if [[ $review_perl_status -ne 0 ]]; then
+          echo "link-recheck-hook.sh: perl scan of '$review_abs' failed (exit $review_perl_status)" >&2
+          exit 1
+        fi
         review_file_kind+=("SCAN")
         review_file_path+=("$review_abs")
         review_file_scan+=("$review_out")
         while IFS=$'\t' read -r review_kind review_line review_url; do
           [[ "$review_kind" == "PROBE" ]] || continue
-          [[ -n "${review_seen_url[$review_url]:-}" ]] && continue
-          review_seen_url["$review_url"]=1
-          review_probe_urls+=("$review_url")
+          printf '%s\n' "$review_url" >> "$review_all_probe_file"
         done <<< "$review_out"
         ;;
       *)
@@ -267,47 +292,59 @@ PERL
     esac
   done
 
-  declare -A review_url_result=()
+  if [[ -s "$review_all_probe_file" ]]; then
+    while IFS= read -r review_url; do
+      review_probe_urls+=("$review_url")
+    done < <(awk '!seen[$0]++' "$review_all_probe_file")
+  fi
+
+  review_results_file="$review_tmpdir/results"
+  : > "$review_results_file"
   if [[ ${#review_probe_urls[@]} -gt 0 && $review_have_curl -eq 1 ]]; then
-    review_round1="$(printf '%s\n' "${review_probe_urls[@]}" \
-      | xargs -r -P "$PARALLELISM" -I{} "$review_self" --review-probe {} 2>/dev/null)"
-    declare -A review_r1_exit=() review_r1_code=()
-    while IFS=$'\t' read -r review_ex review_co review_u; do
-      [[ -n "$review_u" ]] || continue
-      review_r1_exit["$review_u"]="$review_ex"
-      review_r1_code["$review_u"]="$review_co"
-    done <<< "$review_round1"
+    review_r1_file="$review_tmpdir/r1"
+    printf '%s\n' "${review_probe_urls[@]}" \
+      | xargs -r -P "$PARALLELISM" -I{} "$review_self" --review-probe {} 2>/dev/null > "$review_r1_file"
+    review_round1_status=$?
+    if [[ $review_round1_status -ne 0 ]]; then
+      echo "link-recheck-hook.sh: link probe fan-out failed (exit $review_round1_status)" >&2
+      exit 1
+    fi
 
     review_retry_urls=()
     for review_u in "${review_probe_urls[@]}"; do
-      [[ "${review_r1_exit[$review_u]:-}" == "28" ]] && review_retry_urls+=("$review_u")
+      review_rec="$(awk -F'\t' -v u="$review_u" '$3==u{print $1; exit}' "$review_r1_file")"
+      [[ "$review_rec" == "28" ]] && review_retry_urls+=("$review_u")
     done
 
-    declare -A review_r2_exit=() review_r2_code=()
+    review_r2_file="$review_tmpdir/r2"
+    : > "$review_r2_file"
     if [[ ${#review_retry_urls[@]} -gt 0 ]]; then
-      review_round2="$(printf '%s\n' "${review_retry_urls[@]}" \
-        | xargs -r -P "$PARALLELISM" -I{} "$review_self" --review-probe {} 2>/dev/null)"
-      while IFS=$'\t' read -r review_ex review_co review_u; do
-        [[ -n "$review_u" ]] || continue
-        review_r2_exit["$review_u"]="$review_ex"
-        review_r2_code["$review_u"]="$review_co"
-      done <<< "$review_round2"
+      printf '%s\n' "${review_retry_urls[@]}" \
+        | xargs -r -P "$PARALLELISM" -I{} "$review_self" --review-probe {} 2>/dev/null > "$review_r2_file"
+      review_round2_status=$?
+      if [[ $review_round2_status -ne 0 ]]; then
+        echo "link-recheck-hook.sh: link probe fan-out failed (exit $review_round2_status)" >&2
+        exit 1
+      fi
     fi
 
     for review_u in "${review_probe_urls[@]}"; do
-      review_ex="${review_r1_exit[$review_u]:-}"
-      review_co="${review_r1_code[$review_u]:-}"
+      review_rec1="$(awk -F'\t' -v u="$review_u" '$3==u{print $1"\t"$2; exit}' "$review_r1_file")"
+      review_ex="${review_rec1%%$'\t'*}"
+      review_co="${review_rec1#*$'\t'}"
       if [[ "$review_ex" == "28" ]]; then
-        review_ex2="${review_r2_exit[$review_u]:-}"
-        review_co2="${review_r2_code[$review_u]:-}"
+        review_rec2="$(awk -F'\t' -v u="$review_u" '$3==u{print $1"\t"$2; exit}' "$review_r2_file")"
+        review_ex2="${review_rec2%%$'\t'*}"
+        review_co2="${review_rec2#*$'\t'}"
         if [[ "$review_ex2" == "28" ]]; then
-          review_url_result["$review_u"]="inconclusive"
+          review_result="inconclusive"
         else
-          review_url_result["$review_u"]="$(review_classify "$review_ex2" "$review_co2")"
+          review_result="$(review_classify "$review_ex2" "$review_co2")"
         fi
       else
-        review_url_result["$review_u"]="$(review_classify "$review_ex" "$review_co")"
+        review_result="$(review_classify "$review_ex" "$review_co")"
       fi
+      printf '%s\t%s\n' "$review_u" "$review_result" >> "$review_results_file"
     done
   fi
 
@@ -344,7 +381,8 @@ PERL
               if [[ $review_have_curl -eq 0 ]]; then
                 review_result="skipped:no-curl"
               else
-                review_result="${review_url_result[$review_url]:-inconclusive}"
+                review_result="$(awk -F'\t' -v u="$review_url" '$1==u{print $2; exit}' "$review_results_file")"
+                [[ -n "$review_result" ]] || review_result="inconclusive"
               fi
               printf '%s\t%s\t%s\t%s\n' "$review_abs" "$review_line" "$review_url" "$review_result"
               if [[ $review_first_seen -eq 0 ]]; then

@@ -114,6 +114,12 @@ stripped="$(printf '%s' "$cmd" | sed -E "s/'[^']*'//g" | sed -E 's/"[^"]*"//g')"
 # revision anchored on whitespace and so missed `(git stash drop)`, where `git` follows a paren.
 [[ "$stripped" == *git* ]] || exit 0
 
+# Lowercase one value. bash 3.2 (macOS's /bin/bash) has no lowercase parameter expansion, so this
+# uses tr.
+lc() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
 # `git config` write rules. Takes the canonical "git config <args>" string and echoes a deny reason
 # or nothing. Separate from classify()'s regex rules because `git config` puts the key and its value
 # in two adjacent tokens, so the value has to be read positionally rather than matched in place.
@@ -135,7 +141,7 @@ classify_config_write() {
   fi
 
   for ((i = 2; i < ${#t[@]}; i++)); do
-    key="${t[$i],,}"
+    key="$(lc "${t[$i]}")"
     [[ "$key" == "commit.gpgsign" || "$key" == "tag.gpgsign" || "$key" == "core.hookspath" ]] || continue
 
     # An --unset removes the setting outright. With signing enabled only at the scope being
@@ -159,7 +165,7 @@ classify_config_write() {
     [[ -n "$val" && "$val" != -* ]] || return 0
 
     if [[ "$key" == "commit.gpgsign" ]]; then
-      case "${val,,}" in
+      case "$(lc "$val")" in
         false|0|no|off)
           printf '%s' "destructive-git-guard: git config commit.gpgsign false disables commit signing for every later commit and is denied, the same as --no-gpg-sign."
           return 0 ;;
@@ -168,7 +174,7 @@ classify_config_write() {
     fi
 
     if [[ "$key" == "tag.gpgsign" ]]; then
-      case "${val,,}" in
+      case "$(lc "$val")" in
         false|0|no|off)
           printf '%s' "destructive-git-guard: git config tag.gpgsign false disables tag signing for every later tag - and makes a bare \`git tag <name>\` lightweight rather than annotated - and is denied, the same as git tag --no-sign."
           return 0 ;;
@@ -295,11 +301,11 @@ classify_config() {
     [[ "$tok" == *=* ]] || continue
     key="${tok%%=*}"
     val="${tok#*=}"
-    case "${key,,}" in
+    case "$(lc "$key")" in
       commit.gpgsign | tag.gpgsign)
         # Both signing keys take the same shape, so they share one branch; only the noun and the
         # flag each one is equivalent to differ.
-        if [[ "${key,,}" == "tag.gpgsign" ]]; then
+        if [[ "$(lc "$key")" == "tag.gpgsign" ]]; then
           noun="tag"
           equiv="git tag --no-sign"
         else
@@ -313,7 +319,7 @@ classify_config() {
           printf '%s' "destructive-git-guard: git --config-env=${key}=VAR hides the signing setting in an environment variable and is denied, the same as ${equiv}."
           return 0
         fi
-        case "${val,,}" in
+        case "$(lc "$val")" in
           false|0|no|off|"")
             printf '%s' "destructive-git-guard: setting ${key} to a false value via a config override produces an unsigned ${noun} and is denied, the same as ${equiv}."
             return 0 ;;
