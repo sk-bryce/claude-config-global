@@ -1,6 +1,6 @@
 <!--
 created: 2026-07-22
-updated: 2026-09-25
+updated: 2026-10-01
 
 Section order is deliberate. Rules that apply on every turn come first; conditional sections
 (Repository Maintenance) and time-scoped ones (Compact Instructions, which only fires at
@@ -23,7 +23,7 @@ reference/subagent-orchestration.md, and the planner and skill-author skills.
 
 ## Canary
 
-ALWAYS say "At the ready, Commander" after you read this content.
+ALWAYS say "This unit is ready for instruction, Shepard Commander" after you read this content.
 
 ## Path Conventions
 
